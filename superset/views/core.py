@@ -964,6 +964,12 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             ),
         )
 
+    @event_logger.log_this
+    @expose("/copilot/")
+    @deprecated(new_target="/copilot")
+    def copilot(self) -> FlaskResponse:
+        return redirect("/copilot/")
+
     @has_access
     @event_logger.log_this
     @expose("/profile/")

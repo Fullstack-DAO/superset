@@ -184,6 +184,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.views.log.api import LogRestApi
         from superset.views.log.views import LogModelView
         from superset.views.profile import ProfileView
+        from superset.views.copilot import CopilotView
         from superset.views.redirects import R
         from superset.views.sql_lab.views import (
             SavedQueryView,
@@ -239,6 +240,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             cond=lambda: bool(appbuilder.app.config["LOGO_TARGET_PATH"]),
         )
 
+
+
         appbuilder.add_view(
             DatabaseView,
             "Databases",
@@ -284,6 +287,9 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
                 "DYNAMIC_PLUGINS"
             ),
         )
+
+
+
         appbuilder.add_view(
             CssTemplateModelView,
             "CSS Templates",
@@ -312,6 +318,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_view_no_menu(KV)
         appbuilder.add_view_no_menu(R)
         appbuilder.add_view_no_menu(ProfileView)
+        appbuilder.add_view_no_menu(CopilotView)
         appbuilder.add_view_no_menu(SavedQueryView)
         appbuilder.add_view_no_menu(SavedQueryViewApi)
         appbuilder.add_view_no_menu(SliceAsync)
@@ -371,6 +378,16 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             category="SQL Lab",
             category_label=__("SQL Lab"),
         )
+
+        appbuilder.add_link(
+            "Copilot",
+            label=__("Copilot"),
+            href="/copilot",
+            icon="fa-dashboard",
+            category="",
+            category_icon="",
+        )
+
         appbuilder.add_view(
             TagModelView,
             "Tags",
@@ -394,6 +411,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             ),
         )
         appbuilder.add_api(SecurityRestApi)
+
+        
         #
         # Conditionally setup email views
         #

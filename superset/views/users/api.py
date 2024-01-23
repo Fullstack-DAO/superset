@@ -93,3 +93,34 @@ class CurrentUserRestApi(BaseSupersetApi):
             return self.response_401()
         user = bootstrap_user_data(g.user, include_perms=True)
         return self.response(200, result=user)
+
+    @expose("/token/", methods=("GET",))
+    @safe
+    def token(self) -> Response:
+        """Get the user object corresponding to the agent making the request.
+        ---
+        get:
+          summary: Get the user object
+          description: >-
+            Gets the user object corresponding to the agent making the request,
+            or returns a 401 error if the user is unauthenticated.
+          responses:
+            200:
+              description: The current user
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/UserResponseSchema'
+            401:
+              $ref: '#/components/responses/401'
+        """
+        try:
+            if g.user is None or g.user.is_anonymous:
+                return self.response_401()
+        except NoAuthorizationError:
+            return self.response_401()
+
+        return self.response(200, result=user_response_schema.dump(g.user))

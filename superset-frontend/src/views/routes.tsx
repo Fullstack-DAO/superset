@@ -22,6 +22,11 @@ import React, { lazy } from 'react';
 // not lazy loaded since this is the home page.
 import Home from 'src/pages/Home';
 
+const Copilot = lazy(
+  () =>
+    import(/* webpackChunkName: "Copilot" */ 'src/pages/Copilot'),
+);
+
 const ChartCreation = lazy(
   () =>
     import(/* webpackChunkName: "ChartCreation" */ 'src/pages/ChartCreation'),
@@ -138,6 +143,10 @@ export const routes: Routes = [
   {
     path: '/superset/welcome/',
     Component: Home,
+  },
+  {
+    path: '/copilot',
+    Component: Copilot
   },
   {
     path: '/dashboard/list/',

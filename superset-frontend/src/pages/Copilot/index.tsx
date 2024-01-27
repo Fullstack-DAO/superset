@@ -17,30 +17,31 @@
  * under the License.
  */
 import { SupersetClient } from '@superset-ui/core';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 function Copilot() {
+  const [token, setToken] = useState();
 
-  const [token, setToken] = useState()
-
-  useEffect(()=> {
+  useEffect(() => {
     SupersetClient.get({
-      url: '/api/v1/me/token/'
-    }).then(res=> {
-      setToken(res.json.token)
-    })
-  },[])
-  
+      url: '/api/v1/me/token/',
+    }).then(res => {
+      setToken(res.json.token);
+    });
+  }, []);
 
   return (
     <>
-      { token && <iframe src={`http://localhost:4200/chat?cid=1&model=chatgpt&token=${token}`} style={{
-        width: '100%',
-        height: 'calc(100vh - 53px)'
-      }}>
-
-      </iframe>
-      }
+      {token && (
+        <iframe
+          title="Copilot"
+          src={`http://localhost:4200/chat?cid=1&model=chatgpt&token=${token}`}
+          style={{
+            width: '100%',
+            height: 'calc(100vh - 53px)',
+          }}
+        />
+      )}
     </>
   );
 }

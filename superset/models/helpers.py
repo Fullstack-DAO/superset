@@ -781,6 +781,9 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
     @property
     def columns(self) -> list[Any]:
         raise NotImplementedError()
+    @property
+    def check_dynamic_ready(self) -> bool:
+        raise NotImplementedError()
 
     def get_extra_cache_keys(self, query_obj: dict[str, Any]) -> list[Hashable]:
         raise NotImplementedError()
@@ -2078,7 +2081,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                 qry = qry.where(top_groups)
         
         
-        if(self.is_virtual and "trino" in self.database.sqlalchemy_uri):
+        if(self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready):
           dv_table_name = f"dv_{self.uuid}"
           dv_sql_expression = self.text(f"\"{dv_table_name}\"")
           qry = qry.select_from(dv_sql_expression)
@@ -2123,3 +2126,4 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             sqla_query=qry,
             prequeries=prequeries,
         )
+    

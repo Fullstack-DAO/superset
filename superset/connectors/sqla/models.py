@@ -1152,6 +1152,7 @@ class SqlaTable(
     extra = Column(Text)
     normalize_columns = Column(Boolean, default=False)
     always_filter_main_dttm = Column(Boolean, default=False)
+    dynamic_ready = Column(Boolean, default=False)
 
     baselink = "tablemodelview"
 
@@ -1235,6 +1236,10 @@ class SqlaTable(
     @property
     def database_name(self) -> str:
         return self.database.name
+
+    @property
+    def check_dynamic_ready(self) -> bool:
+        return self.dynamic_ready
 
     @classmethod
     def get_datasource_by_name(
@@ -1856,7 +1861,7 @@ class SqlaTable(
             return df
 
         try:
-            if(self.is_virtual and "trino" in self.database.sqlalchemy_uri):
+            if(self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready):
               df = pd.read_sql_query(sql, db.engine)
             else:
               df = self.database.get_df(sql, self.schema, mutator=assign_column_label)

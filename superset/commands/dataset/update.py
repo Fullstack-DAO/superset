@@ -41,6 +41,7 @@ from superset.connectors.sqla.models import SqlaTable
 from superset.daos.dataset import DatasetDAO
 from superset.daos.exceptions import DAOUpdateFailedError
 from superset.exceptions import SupersetSecurityException
+from superset.extensions import db
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class UpdateDatasetCommand(UpdateMixin, BaseCommand):
         self.validate()
         if self._model:
             try:
+                self._properties["dynamic_ready"] = False
                 sql_update = self._model.sql != self._properties["sql"]
                 dataset = DatasetDAO.update(
                     self._model,
@@ -69,6 +71,8 @@ class UpdateDatasetCommand(UpdateMixin, BaseCommand):
                 )
                 if(sql_update):
                     SqlaTable.down_single_dataset_datas(self._model)
+                    dataset.dynamic_ready = True
+                    db.session.commit()
                 return dataset
             except DAOUpdateFailedError as ex:
                 logger.exception(ex.exception)

@@ -123,4 +123,7 @@ class CurrentUserRestApi(BaseSupersetApi):
         except NoAuthorizationError:
             return self.response_401()
 
-        return self.response(200, result=user_response_schema.dump(g.user))
+        token = self.appbuilder.sm.create_user_access_token(g.user)
+
+
+        return self.response(200, token=token)

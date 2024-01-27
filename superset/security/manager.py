@@ -2193,6 +2193,18 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
         }
         return self.pyjwt_for_guest_token.encode(claims, secret, algorithm=algo)
 
+    def create_user_access_token(
+        self,
+        user: User
+    ) -> bytes:
+        # gen jwt token for user
+        secret = current_app.config["SECRET_KEY"]
+        algo = current_app.config["JWT_ALGORITHM"]
+        payload = {
+            "sub": user.id
+        }
+        return self.pyjwt_for_guest_token.encode(payload, secret, algorithm=algo)
+
     def get_guest_user_from_request(self, req: Request) -> Optional[GuestUser]:
         """
         If there is a guest token in the request (used for embedded),

@@ -16,18 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { SupersetClient } from '@superset-ui/core';
 import React, { useEffect, useMemo, useState } from 'react';
 
 function Copilot() {
 
+  const [token, setToken] = useState()
+
+  useEffect(()=> {
+    SupersetClient.get({
+      url: '/api/v1/me/token/'
+    }).then(res=> {
+      setToken(res.json.token)
+    })
+  },[])
+  
+
   return (
     <>
-      <iframe src="http://localhost:4200" style={{
+      { token && <iframe src={`http://localhost:4200/chat?cid=1&model=chatgpt&token=${token}`} style={{
         width: '100%',
         height: 'calc(100vh - 53px)'
       }}>
 
       </iframe>
+      }
     </>
   );
 }

@@ -64,6 +64,11 @@ def init() -> None:
     appbuilder.add_permissions(update_perms=True)
     security_manager.sync_role_definitions()
 
+@superset.command()
+@with_appcontext
+def datasetdown() -> None:
+    """Dynamically generate intermediate tables from data sets and initialize historical data at the same time"""
+    security_manager.dataset_data_down()
 
 @superset.command()
 @with_appcontext

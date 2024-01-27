@@ -17,7 +17,7 @@
 import logging
 from typing import Optional
 
-from superset import security_manager
+from superset import security_manager, db
 from superset.commands.base import BaseCommand
 from superset.commands.dataset.exceptions import (
     DatasetDeleteFailedError,
@@ -28,6 +28,7 @@ from superset.connectors.sqla.models import SqlaTable
 from superset.daos.dataset import DatasetDAO
 from superset.daos.exceptions import DAODeleteFailedError
 from superset.exceptions import SupersetSecurityException
+from superset.daos.dynamic_model import drop_dynamic_table
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ class DeleteDatasetCommand(BaseCommand):
         assert self._models
 
         try:
+            for model in self._models:
+                dv_table_name = "dv_" + str(model.uuid)
+                drop_dynamic_table(dv_table_name)
             DatasetDAO.delete(self._models)
         except DAODeleteFailedError as ex:
             logger.exception(ex.exception)

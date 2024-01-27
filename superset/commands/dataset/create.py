@@ -32,6 +32,7 @@ from superset.commands.dataset.exceptions import (
 from superset.daos.dataset import DatasetDAO
 from superset.daos.exceptions import DAOCreateFailedError
 from superset.extensions import db
+from superset.connectors.sqla.models import SqlaTable
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +46,10 @@ class CreateDatasetCommand(CreateMixin, BaseCommand):
         try:
             # Creates SqlaTable (Dataset)
             dataset = DatasetDAO.create(attributes=self._properties, commit=False)
-
             # Updates columns and metrics from the dataset
-            dataset.fetch_metadata(commit=False)
+            data_set = dataset.fetch_metadata(commit=False)
             db.session.commit()
+            SqlaTable.down_single_dataset_datas(dataset)
         except (SQLAlchemyError, DAOCreateFailedError) as ex:
             logger.warning(ex, exc_info=True)
             db.session.rollback()

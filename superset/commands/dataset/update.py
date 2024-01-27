@@ -62,10 +62,13 @@ class UpdateDatasetCommand(UpdateMixin, BaseCommand):
         self.validate()
         if self._model:
             try:
+                sql_update = self._model.sql != self._properties["sql"]
                 dataset = DatasetDAO.update(
                     self._model,
                     attributes=self._properties,
                 )
+                if(sql_update):
+                    SqlaTable.down_single_dataset_datas(self._model)
                 return dataset
             except DAOUpdateFailedError as ex:
                 logger.exception(ex.exception)

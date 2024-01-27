@@ -122,6 +122,7 @@ from superset.superset_typing import (
 from superset.utils import core as utils
 from superset.utils.backports import StrEnum
 from superset.utils.core import GenericDataType, MediumText
+from superset.daos.dynamic_model import reinit_dynamic_table
 
 config = app.config
 metadata = Model.metadata  # pylint: disable=no-member
@@ -1757,6 +1758,69 @@ class SqlaTable(
             groups.append(and_(*group))
 
         return or_(*groups)
+    
+    @classmethod
+    def down_single_dataset_datas(cls, dataset):        
+        if("trino" in dataset.database.sqlalchemy_uri):
+          # exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
+          # res = cls.execute_query_and_get_column_info(dataset.database, dataset.schema, exe_sql)
+          res = cls.execute_query_and_get_column_info(dataset)
+          dv_table_name = "dv_" + str(dataset.uuid)
+          reinit_dynamic_table(dv_table_name, res["columns"], res["datas"])
+          # dynamic_model = create_dynamic_table(dv_table_name, res["columns"])
+          # add_data_to_dynamic_table(dynamic_model, res["datas"])
+              
+    @classmethod
+    def down_dataset_datas(cls, session):
+        datasets = session.query(cls).filter(cls.sql.isnot(None), cls.sql != '').all()
+        for dataset in datasets:
+            cls.down_single_dataset_datas(dataset)
+
+    @classmethod
+    def execute_query_and_get_column_info(cls, dataset):
+    # def execute_query_and_get_column_info(cls, database: Database, schema: str, sql: str):
+        """
+        Executes a SQL query and returns column details and query results.
+
+        :param connection_string: Database connection string.
+        :param sql: SQL query string.
+        :return: A dictionary containing column details and query results.
+        """
+        if("trino" in dataset.database.sqlalchemy_uri):
+          exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
+          df = dataset.database.get_df(exe_sql, dataset.schema)
+          datas = df.to_dict(orient='records')
+          column_info_dict = {col.column_name: col.type for col in dataset.columns}
+          return {
+              "columns": column_info_dict,
+              "datas": datas
+          }
+        # engine = create_engine(database.sqlalchemy_uri)
+        # with engine.connect() as conn:
+        # with database.get_raw_connection(schema) as conn:
+        #   if("trino" in database.sqlalchemy_uri):
+        #       cursor = conn.cursor()
+        #       cursor.execute(sql)
+        #       column_info_dict = {col.name: col.type_code for col in cursor.description}
+        #       data = cursor.fetchall()
+        #       column_names = list(col.name for col in cursor.description)
+        #       table_datas = [{column_names[i]: row[i] for i in range(len(column_names))} for row in data]
+        #       return {
+        #           "columns": column_info_dict,
+        #           "datas": table_datas
+        #       }
+          # if("sqlite" in database.sqlalchemy_uri):
+          #     result = conn.execute(sql)
+              
+          #     column_info = [{'column_name': col[0], 'data_type': 'varchar(255)'} for col in result.description]
+          #     # data = result.fetchall()
+          # else:
+          #     cursor = conn.cursor()
+          #     cursor.execute(sql)
+          #     column_info = [{'column_name': col[0], 'data_type': col[1].__name__} for col in cursor.description]
+              # data = cursor.fetchall()
+             
+          
 
     def query(self, query_obj: QueryObjectDict) -> QueryResult:
         qry_start_dttm = datetime.now()
@@ -1792,7 +1856,10 @@ class SqlaTable(
             return df
 
         try:
-            df = self.database.get_df(sql, self.schema, mutator=assign_column_label)
+            if(self.is_virtual and "trino" in self.database.sqlalchemy_uri):
+              df = pd.read_sql_query(sql, db.engine)
+            else:
+              df = self.database.get_df(sql, self.schema, mutator=assign_column_label)
         except Exception as ex:  # pylint: disable=broad-except
             df = pd.DataFrame()
             status = QueryStatus.FAILED

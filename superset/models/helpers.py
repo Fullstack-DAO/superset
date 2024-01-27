@@ -2076,8 +2076,14 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                     result.df, dimensions, groupby_series_columns, columns_by_name
                 )
                 qry = qry.where(top_groups)
-
-        qry = qry.select_from(tbl)
+        
+        
+        if(self.is_virtual and "trino" in self.database.sqlalchemy_uri):
+          dv_table_name = f"dv_{self.uuid}"
+          dv_sql_expression = self.text(f"\"{dv_table_name}\"")
+          qry = qry.select_from(dv_sql_expression)
+        else:
+          qry = qry.select_from(tbl)
 
         if is_rowcount:
             if not db_engine_spec.allows_subqueries:

@@ -1153,6 +1153,7 @@ class SqlaTable(
     normalize_columns = Column(Boolean, default=False)
     always_filter_main_dttm = Column(Boolean, default=False)
     dynamic_ready = Column(Boolean, default=False)
+    dynamic_refresh_type = Column(String(10), default="increment")   
 
     baselink = "tablemodelview"
 

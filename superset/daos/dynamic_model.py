@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from typing import Any
 from superset import db
 import re
-from sqlalchemy import DECIMAL, Integer, String, BigInteger, Text, Float, DateTime
+from sqlalchemy import DECIMAL, Integer, Numeric, BigInteger, Text, Float, DateTime
 from sqlalchemy.dialects.postgresql import VARCHAR, TIMESTAMP
 from sqlalchemy import Table
 
@@ -18,6 +18,7 @@ trino_to_sqlalchemy_type_mapping = {
     # Trino 的 'double' 映射为 SQLAlchemy 的 Float
     'DOUBLE': Float,
     # Trino 的 'real' 和 'numeric' 映射为 SQLAlchemy 的 Numeric
+    'NUMERIC': DECIMAL,
     'REAL': Float,
     'DATE': DateTime,
     'TEXT': Text,

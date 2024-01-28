@@ -81,25 +81,47 @@ def create_dynamic_table(table_name, fields, base=Base):
     Base.metadata.create_all(bind=db.engine)
     return DynamicTable
 
-def add_data_to_dynamic_table(table_class, datas: dict[str, Any]):
-    logger.info(
-        "Insert datas to dataset dynamic table Start."
-    )
-    items = []
-    try:
-        for data in datas:
-          item = table_class(**data)
-          db.session.add(item)
-          items.append(item)
+# def add_data_to_dynamic_table(table_class, datas: dict[str, Any]):
+#     logger.info(
+#         "Insert datas to dataset dynamic table Start."
+#     )
+#     items = []
+#     try:
+#         for data in datas:
+#           item = table_class(**data)
+#           db.session.add(item)
+#           items.append(item)
         
-        db.session.commit()
-        logger.info(
-            "Insert datas to dataset dynamic table Finish."
-        )
-        return items
-    except SQLAlchemyError as ex:
-        db.session.rollback()
-        raise RuntimeError("Failed to create item in database") from ex
+#         db.session.commit()
+#         logger.info(
+#             "Insert datas to dataset dynamic table Finish."
+#         )
+#         return items
+#     except SQLAlchemyError as ex:
+#         db.session.rollback()
+#         raise RuntimeError("Failed to create item in database") from ex
+
+def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_size: int = 50000):
+    logger.info("Insert datas to dataset dynamic table Start.")
+    total = len(datas)
+    batches = (total - 1) // batch_size + 1  
+    items = []
+
+    for i in range(batches):
+        batch_data = datas[i * batch_size:(i + 1) * batch_size]
+        try:
+            for data in batch_data:
+                item = table_class(**data)
+                db.session.add(item)
+                items.append(item)
+            db.session.commit()
+            logger.info(f"Batch {i+1}/{batches} inserted successfully.")
+        except SQLAlchemyError as ex:
+            db.session.rollback()
+            logger.error(f"Error occurred in batch {i+1}/{batches}.", exc_info=True)
+            raise RuntimeError(f"Failed to create item in database in batch {i+1}") from ex
+    logger.info("Insert datas to dataset dynamic table Finish.")
+    return items
 
 def drop_dynamic_table(table_name: str):
     db.session.execute('DROP TABLE IF EXISTS "'+ table_name +'";')  

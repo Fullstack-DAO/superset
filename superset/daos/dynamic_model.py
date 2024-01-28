@@ -25,6 +25,8 @@ trino_to_sqlalchemy_type_mapping = {
     'REAL': Float,
     'DATE': DateTime,
     'TEXT': Text,
+    'STRING': VARCHAR,
+    
 }
 Base = declarative_base()
 

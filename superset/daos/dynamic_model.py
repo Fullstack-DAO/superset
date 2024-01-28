@@ -101,7 +101,7 @@ def create_dynamic_table(table_name, fields, base=Base):
 #         db.session.rollback()
 #         raise RuntimeError("Failed to create item in database") from ex
 
-def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_size: int = 50000):
+def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_size: int = 10000):
     logger.info("Insert datas to dataset dynamic table Start.")
     total = len(datas)
     batches = (total - 1) // batch_size + 1  

@@ -1770,9 +1770,11 @@ class SqlaTable(
         if("trino" in dataset.database.sqlalchemy_uri):
           # exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
           # res = cls.execute_query_and_get_column_info(dataset.database, dataset.schema, exe_sql)
-          res = cls.execute_query_and_get_column_info(dataset)
+          res_gen = cls.execute_query_and_get_datas(dataset)
           dv_table_name = "dv_" + str(dataset.uuid)
-          reinit_dynamic_table(dv_table_name, res["columns"], res["datas"])
+          # column_info_dict = {col.column_name: col.type for col in dataset.columns}
+          
+          reinit_dynamic_table(dv_table_name, res_gen)
           # dynamic_model = create_dynamic_table(dv_table_name, res["columns"])
           # add_data_to_dynamic_table(dynamic_model, res["datas"])
               
@@ -1783,7 +1785,7 @@ class SqlaTable(
             cls.down_single_dataset_datas(dataset)
 
     @classmethod
-    def execute_query_and_get_column_info(cls, dataset):
+    def execute_query_and_get_datas(cls, dataset):
     # def execute_query_and_get_column_info(cls, database: Database, schema: str, sql: str):
         """
         Executes a SQL query and returns column details and query results.
@@ -1794,27 +1796,33 @@ class SqlaTable(
         """
         if("trino" in dataset.database.sqlalchemy_uri):
           exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
-          df = dataset.database.get_df(exe_sql, dataset.schema)
-          datas = df.to_dict(orient='records')
-          column_info_dict = {col.column_name: col.type for col in dataset.columns}
-          return {
-              "columns": column_info_dict,
-              "datas": datas
-          }
+          with dataset.database.get_raw_connection(dataset.schema) as conn:
+              cursor = conn.cursor()
+              cursor.execute(exe_sql)
+              column_info_dict = {col.name: col.type_code for col in cursor.description}
+              yield {'columns': column_info_dict}
+              
+              while True: 
+                records = cursor.fetchmany(size=50000)
+                if not records:
+                    break
+                yield {'records': records}
+              # table_datas = [{column_names[i]: row[i] for i in range(len(column_names))} for row in data]
+              # return {
+              #     "columns": column_info_dict,
+              #     "datas": table_datas
+              # }
+
+          # df = dataset.database.get_df(exe_sql, dataset.schema)
+
+          # datas = df.to_dict(orient='records')
+          # return {
+          #     "columns": column_info_dict,
+          #     "datas": datas
+          # }
         # engine = create_engine(database.sqlalchemy_uri)
         # with engine.connect() as conn:
-        # with database.get_raw_connection(schema) as conn:
-        #   if("trino" in database.sqlalchemy_uri):
-        #       cursor = conn.cursor()
-        #       cursor.execute(sql)
-        #       column_info_dict = {col.name: col.type_code for col in cursor.description}
-        #       data = cursor.fetchall()
-        #       column_names = list(col.name for col in cursor.description)
-        #       table_datas = [{column_names[i]: row[i] for i in range(len(column_names))} for row in data]
-        #       return {
-        #           "columns": column_info_dict,
-        #           "datas": table_datas
-        #       }
+          
           # if("sqlite" in database.sqlalchemy_uri):
           #     result = conn.execute(sql)
               

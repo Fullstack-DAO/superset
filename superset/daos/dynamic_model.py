@@ -12,20 +12,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 trino_to_sqlalchemy_type_mapping = {
-    'VARCHAR': VARCHAR,
-    'DECIMAL': DECIMAL,
-    'BIGINT': BigInteger,
-    'TIMESTAMP': TIMESTAMP,
+    'varchar': VARCHAR,
+    'decimal': DECIMAL,
+    'bigint': BigInteger,
+    'timestamp': TIMESTAMP,
     # Trino 的 'integer' 映射为 SQLAlchemy 的 Integer
-    'INTEGER': Integer,
+    'integer': Integer,
     # Trino 的 'double' 映射为 SQLAlchemy 的 Float
-    'DOUBLE': Float,
+    'double': Float,
     # Trino 的 'real' 和 'numeric' 映射为 SQLAlchemy 的 Numeric
-    'NUMERIC': DECIMAL,
-    'REAL': Float,
-    'DATE': DateTime,
-    'TEXT': Text,
-    'STRING': VARCHAR,
+    'numeric': DECIMAL,
+    'real': Float,
+    'date': DateTime,
+    'text': Text,
+    'string': VARCHAR,
     
 }
 Base = declarative_base()
@@ -101,7 +101,7 @@ def create_dynamic_table(table_name, fields, base=Base):
 #         db.session.rollback()
 #         raise RuntimeError("Failed to create item in database") from ex
 
-def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_size: int = 10000):
+def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_size: int = 50000):
     logger.info("Insert datas to dataset dynamic table Start.")
     total = len(datas)
     batches = (total - 1) // batch_size + 1  
@@ -129,11 +129,16 @@ def drop_dynamic_table(table_name: str):
     db.session.execute('DROP TABLE IF EXISTS "'+ table_name +'";')  
     db.session.commit()
 
-def reinit_dynamic_table(table_name: str, fields: dict[str, Any], datas: dict[str, Any]):
+def reinit_dynamic_table(table_name: str, res_gen):
     logger.info(
         "Start init dataset dynamic table process, table_name: %r.", table_name
     )
     # drop_dynamic_table(table_name)
+    fields = next(res_gen)['columns']
     table_class = create_dynamic_table(table_name, fields)
-    add_data_to_dynamic_table(table_class, datas)
+
+    for batch in res_gen:
+      records = batch['records']
+      table_datas = [{key: record[i] for i, key in enumerate(fields.keys())} for record in records]
+      add_data_to_dynamic_table(table_class, table_datas)
     return table_class

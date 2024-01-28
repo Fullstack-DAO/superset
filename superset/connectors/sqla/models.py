@@ -1803,7 +1803,7 @@ class SqlaTable(
               yield {'columns': column_info_dict}
               
               while True: 
-                records = cursor.fetchmany(size=50000)
+                records = cursor.fetchmany(size=100000)
                 if not records:
                     break
                 yield {'records': records}

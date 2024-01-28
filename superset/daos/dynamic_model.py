@@ -115,14 +115,14 @@ def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_si
                 db.session.add(item)
                 items.append(item)
             db.session.commit()
-            logger.info(f"Batch {i+1}/{batches} inserted successfully.")
+            logger.info(f"Nested Batch {i+1}/{batches} inserted successfully.")
         except SQLAlchemyError as ex:
             db.session.rollback()
-            logger.error(f"Error occurred in batch {i+1}/{batches}.", exc_info=True)
-            raise RuntimeError(f"Failed to create item in database in batch {i+1}") from ex
+            logger.error(f"Error occurred in nested batch {i+1}/{batches}.", exc_info=True)
+            raise RuntimeError(f"Failed to create item in database in nested batch {i+1}") from ex
         finally:
             del batch_data
-    logger.info("Insert datas to dataset dynamic table Finish.")
+    
     return items
 
 def drop_dynamic_table(table_name: str):
@@ -136,9 +136,11 @@ def reinit_dynamic_table(table_name: str, res_gen):
     # drop_dynamic_table(table_name)
     fields = next(res_gen)['columns']
     table_class = create_dynamic_table(table_name, fields)
-
+    i = 0
     for batch in res_gen:
       records = batch['records']
       table_datas = [{key: record[i] for i, key in enumerate(fields.keys())} for record in records]
       add_data_to_dynamic_table(table_class, table_datas)
+      i += 1
+      logger.info(f"Finish {i} batch datas save to dynamic table {table_name}.")
     return table_class

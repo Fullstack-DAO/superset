@@ -63,8 +63,10 @@ class UpdateDatasetCommand(UpdateMixin, BaseCommand):
         self.validate()
         if self._model:
             try:
-                self._properties["dynamic_ready"] = False
+                
                 sql_update = self._model.sql != self._properties["sql"]
+                if(sql_update):
+                    self._properties["dynamic_ready"] = False
                 dataset = DatasetDAO.update(
                     self._model,
                     attributes=self._properties,

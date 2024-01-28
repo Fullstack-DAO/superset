@@ -7,6 +7,9 @@ import re
 from sqlalchemy import DECIMAL, Integer, Numeric, BigInteger, Text, Float, DateTime
 from sqlalchemy.dialects.postgresql import VARCHAR, TIMESTAMP
 from sqlalchemy import Table
+import logging
+
+logger = logging.getLogger(__name__)
 
 trino_to_sqlalchemy_type_mapping = {
     'VARCHAR': VARCHAR,
@@ -50,7 +53,9 @@ def create_dynamic_table(table_name, fields, base=Base):
     #     # 如果该类存在于 metadata 中，则也移除它
     #     if table_name in base.metadata.tables:
     #         del base.metadata.tables[table_name]
-    
+    logger.info(
+        "Create dataset dynamic table, table_name: %r.", table_name
+    )
     if table_name in base.metadata.tables:
         table = Table(table_name, base.metadata, autoload_with=db.engine)
         table.drop(db.engine, checkfirst=True)
@@ -75,6 +80,9 @@ def create_dynamic_table(table_name, fields, base=Base):
     return DynamicTable
 
 def add_data_to_dynamic_table(table_class, datas: dict[str, Any]):
+    logger.info(
+        "Insert datas to dataset dynamic table Start."
+    )
     items = []
     try:
         for data in datas:
@@ -83,6 +91,9 @@ def add_data_to_dynamic_table(table_class, datas: dict[str, Any]):
           items.append(item)
         
         db.session.commit()
+        logger.info(
+            "Insert datas to dataset dynamic table Finish."
+        )
         return items
     except SQLAlchemyError as ex:
         db.session.rollback()
@@ -93,6 +104,9 @@ def drop_dynamic_table(table_name: str):
     db.session.commit()
 
 def reinit_dynamic_table(table_name: str, fields: dict[str, Any], datas: dict[str, Any]):
+    logger.info(
+        "Start init dataset dynamic table process, table_name: %r.", table_name
+    )
     # drop_dynamic_table(table_name)
     table_class = create_dynamic_table(table_name, fields)
     add_data_to_dynamic_table(table_class, datas)

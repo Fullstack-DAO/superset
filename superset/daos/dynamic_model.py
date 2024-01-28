@@ -120,6 +120,8 @@ def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_si
             db.session.rollback()
             logger.error(f"Error occurred in batch {i+1}/{batches}.", exc_info=True)
             raise RuntimeError(f"Failed to create item in database in batch {i+1}") from ex
+        finally:
+            del batch_data
     logger.info("Insert datas to dataset dynamic table Finish.")
     return items
 

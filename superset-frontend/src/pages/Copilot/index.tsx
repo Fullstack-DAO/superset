@@ -18,6 +18,9 @@
  */
 import { SupersetClient } from '@superset-ui/core';
 import React, { useEffect, useState } from 'react';
+import getBootstrapData from 'src/utils/getBootstrapData';
+
+const bootstrapData = getBootstrapData();
 
 function Copilot() {
   const [token, setToken] = useState();
@@ -35,7 +38,7 @@ function Copilot() {
       {token && (
         <iframe
           title="Copilot"
-          src={`http://localhost:4200/chat?cid=1&model=chatgpt&token=${token}`}
+          src={`${bootstrapData.common.copilot_url}/chat?cid=1&model=chatgpt&token=${token}`}
           style={{
             width: '100%',
             height: 'calc(100vh - 53px)',

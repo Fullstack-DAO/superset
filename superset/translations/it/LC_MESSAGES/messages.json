@@ -1683,6 +1683,7 @@
         ""
       ],
       "Left Axis Format": [""],
+      "Left Axis chart(s)": [""],
       "Left Margin": [""],
       "Left margin, in pixels, allowing for more room for axis labels": [""],
       "Left to Right": [""],
@@ -2102,6 +2103,12 @@
       "Pick a dimension from which categorical colors are defined": [""],
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Seleziona una granularità nella sezione tempo e deseleziona 'Includi Tempo'"
+      ],
+      "Pick a metric for left axis!": [
+        "Seleziona una metrica per l'asse sinistro"
+      ],
+      "Pick a metric for right axis!": [
+        "Seleziona una metrica per l'asse destro"
       ],
       "Pick a metric for x, y and size": [
         "Seleziona una metrica per x, y e grandezza"
@@ -3221,7 +3228,13 @@
       "Time Lag": [""],
       "Time Range": [""],
       "Time Series - Bar Chart": ["Serie Temporali - Grafico Barre"],
+      "Time Series - Dual Axis Line Chart": [
+        "Serie Temporali - Grafico Lineare ad Assi Duali"
+      ],
       "Time Series - Line Chart": ["Serie Temporali - Grafico Lineare"],
+      "Time Series - Multiple Line Charts": [
+        "Serie Temporali - Grafico Lineare"
+      ],
       "Time Series - Nightingale Rose Chart": [""],
       "Time Series - Paired t-test": [""],
       "Time Series - Percent Change": [

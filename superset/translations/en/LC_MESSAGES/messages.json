@@ -2212,6 +2212,7 @@
       "Multi-Levels": [""],
       "Multi-Variables": [""],
       "Multiple": [""],
+      "Multiple Line Charts": [""],
       "Multiple file extensions are not allowed for columnar uploads. Please make sure all files are of the same extension.": [
         ""
       ],
@@ -2522,6 +2523,8 @@
       "Physical dataset": [""],
       "Pick a dimension from which categorical colors are defined": [""],
       "Pick a granularity in the Time section or uncheck 'Include Time'": [""],
+      "Pick a metric for left axis!": [""],
+      "Pick a metric for right axis!": [""],
       "Pick a metric for x, y and size": [""],
       "Pick a metric to display": [""],
       "Pick a metric!": [""],
@@ -3823,7 +3826,9 @@
       "Time Ratio": [""],
       "Time Series": [""],
       "Time Series - Bar Chart": [""],
+      "Time Series - Dual Axis Line Chart": [""],
       "Time Series - Line Chart": [""],
+      "Time Series - Multiple Line Charts": [""],
       "Time Series - Nightingale Rose Chart": [""],
       "Time Series - Paired t-test": [""],
       "Time Series - Percent Change": [""],

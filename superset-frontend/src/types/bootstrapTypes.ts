@@ -140,7 +140,6 @@ export interface MenuData {
     color: string;
   };
 }
-
 export interface CommonBootstrapData {
   flash_messages: FlashMessage[];
   conf: JsonObject;
@@ -152,6 +151,7 @@ export interface CommonBootstrapData {
   theme_overrides: JsonObject;
   menu_data: MenuData;
   d3_format: Partial<FormatLocaleDefinition>;
+  copilot_url: string;
 }
 
 export interface BootstrapData {

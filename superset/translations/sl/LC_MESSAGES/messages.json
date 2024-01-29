@@ -2613,6 +2613,7 @@
       "Multi-Levels": ["Večplastni"],
       "Multi-Variables": ["Več spremenljivk"],
       "Multiple": ["Več"],
+      "Multiple Line Charts": ["Veččrtni grafikon"],
       "Multiple file extensions are not allowed for columnar uploads. Please make sure all files are of the same extension.": [
         "Za nalaganje stolpčnih datotek niso dovoljene različne končnice. Poskrbite, da imajo vse datoteke enake končnice."
       ],
@@ -2974,6 +2975,8 @@
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Izberite granulacijo v razdelku 'Čas' ali odstranite 'Vključi čas'"
       ],
+      "Pick a metric for left axis!": ["Izberite mero za levo os!"],
+      "Pick a metric for right axis!": ["Izberite mero za desno os!"],
       "Pick a metric for x, y and size": ["Izberite mere za x, y in velikost"],
       "Pick a metric to display": ["Izberite mero za prikaz"],
       "Pick a metric!": ["Izberite mero!"],
@@ -4477,7 +4480,13 @@
       "Time Range": ["Časovno obdobje"],
       "Time Series": ["Časovna vrsta"],
       "Time Series - Bar Chart": ["Časovna vrsta - Stolpčni grafikon"],
+      "Time Series - Dual Axis Line Chart": [
+        "Časovna vrsta - Črtni grafikon z dvojno osjo"
+      ],
       "Time Series - Line Chart": ["Časovna vrsta - Črtni grafikon"],
+      "Time Series - Multiple Line Charts": [
+        "Časovna vrsta - Veččrtni grafikon"
+      ],
       "Time Series - Nightingale Rose Chart": [
         "Časovna vrsta - Nightingale Rose grafikon"
       ],

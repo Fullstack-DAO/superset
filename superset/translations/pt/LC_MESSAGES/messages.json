@@ -2095,6 +2095,12 @@
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Escolha uma granularidade na secção Tempo ou desmarque 'Incluir hora'"
       ],
+      "Pick a metric for left axis!": [
+        "Selecione uma métrica para o eixo esquerdo!"
+      ],
+      "Pick a metric for right axis!": [
+        "Selecione uma métrica para o eixo direito!"
+      ],
       "Pick a metric for x, y and size": [
         "Selecione uma métrica para x, y e tamanho"
       ],
@@ -3197,7 +3203,13 @@
       "Time Comparison": ["Coluna de tempo"],
       "Time Range": ["Granularidade Temporal"],
       "Time Series - Bar Chart": ["Série Temporal - Gráfico de barras"],
+      "Time Series - Dual Axis Line Chart": [
+        "Série Temporal - Gráfico de linha de dois eixos"
+      ],
       "Time Series - Line Chart": ["Série Temporal - Gráfico de linhas"],
+      "Time Series - Multiple Line Charts": [
+        "Série Temporal - Gráfico de linhas"
+      ],
       "Time Series - Nightingale Rose Chart": [
         "Série Temporal - Gráfico de linhas"
       ],

@@ -2333,6 +2333,7 @@
       "Multi-Levels": [""],
       "Multi-Variables": [""],
       "Multiple": [""],
+      "Multiple Line Charts": [""],
       "Multiple file extensions are not allowed for columnar uploads. Please make sure all files are of the same extension.": [
         ""
       ],
@@ -2662,6 +2663,12 @@
       "Pick a dimension from which categorical colors are defined": [""],
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Kies een granulariteit in de sectie Tijd of vink ‘Inclusief tijd’ uit"
+      ],
+      "Pick a metric for left axis!": [
+        "Kies een meeteenheid voor de linkeras!"
+      ],
+      "Pick a metric for right axis!": [
+        "Kies een meeteenheid voor de rechteras!"
       ],
       "Pick a metric for x, y and size": [
         "Kies een meeteenheid voor x, y en grootte"
@@ -4037,7 +4044,13 @@
       "Time Range": [""],
       "Time Series": [""],
       "Time Series - Bar Chart": ["Tijdreeks - Staafdiagram"],
+      "Time Series - Dual Axis Line Chart": [
+        "Tijdreeks - lijngrafiek met twee assen"
+      ],
       "Time Series - Line Chart": ["Tijdreeks - Lijngrafiek"],
+      "Time Series - Multiple Line Charts": [
+        "Tijdreeksen - Meervoudige lijndiagrammen"
+      ],
       "Time Series - Nightingale Rose Chart": [
         "Tijdreeks - Nightingale Rose grafiek"
       ],

@@ -2817,6 +2817,7 @@
       "Multi-Levels": ["Многоуровневый"],
       "Multi-Variables": ["Несколько переменных"],
       "Multiple": ["Несколько"],
+      "Multiple Line Charts": ["Несколько линейных диаграмм"],
       "Multiple file extensions are not allowed for columnar uploads. Please make sure all files are of the same extension.": [
         "Несколько расширений файлов столбчатого формата не разрешены к загрузке. Пожалуйста, убедитесь, что все файлы имеют одинаковое расширение."
       ],
@@ -3224,6 +3225,8 @@
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Выберите степень детализации в разделе Время или снимите флажок \"Включить время\"."
       ],
+      "Pick a metric for left axis!": ["Выберите меру для левой оси"],
+      "Pick a metric for right axis!": ["Выберите меру для правой оси"],
       "Pick a metric for x, y and size": ["Выберите меру для x, y и размера"],
       "Pick a metric to display": ["Выберите меру для отображения"],
       "Pick a metric!": ["Выберите меру!"],
@@ -4838,6 +4841,9 @@
       "Time Ratio": ["Соотношение времени"],
       "Time Series": ["Временной ряд"],
       "Time Series - Bar Chart": ["Столбчатая диаграмма (временные ряды)"],
+      "Time Series - Dual Axis Line Chart": [
+        "Диаграмма с двумя осями (временные ряды)"
+      ],
       "Time Series - Line Chart": ["Линейная диаграмма (временные ряды)"],
       "Time Series - Nightingale Rose Chart": [
         "Диаграмма Найтингейл (временные ряды)"

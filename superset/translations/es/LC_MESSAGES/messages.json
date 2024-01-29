@@ -646,7 +646,7 @@
       "Cell content": ["Contenido de la celda"],
       "Certification details": [""],
       "Certified by": ["Certificado por"],
-      "Certified by %s": ["Certificado por %s"],
+      "Certified by %s": ["Certidicado por %s"],
       "Change order of columns.": [""],
       "Change order of rows.": [""],
       "Changed By": ["Cambiado por"],
@@ -2142,6 +2142,12 @@
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Elige una granularidad en la sección de tiempo o desmarca 'Incluir tiempo'"
       ],
+      "Pick a metric for left axis!": [
+        "Elige una métrica para el eje izquierdo!"
+      ],
+      "Pick a metric for right axis!": [
+        "Elige una métrica para el eje derecho!"
+      ],
       "Pick a metric for x, y and size": [
         "Elige una métrica para 'x', 'y' y 'tamaño'"
       ],
@@ -3249,7 +3255,13 @@
       "Thursday": ["Jueves"],
       "Time": ["Tiempo"],
       "Time Series - Bar Chart": ["Serie Temporal - Gráfico de Barras"],
+      "Time Series - Dual Axis Line Chart": [
+        "Serie Temporal - Gráfico de líneas de doble eje"
+      ],
       "Time Series - Line Chart": ["Serie Temporal - Gráfico de Líneas"],
+      "Time Series - Multiple Line Charts": [
+        "Serie temportal - Gráfico de múltiples líneas"
+      ],
       "Time Series - Nightingale Rose Chart": [
         "Serie Temporal - Gráfico de Nightingale Rose"
       ],

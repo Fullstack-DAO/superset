@@ -3045,6 +3045,7 @@
       "Multi-Levels": ["Mehrstufige"],
       "Multi-Variables": ["Multi-Variablen"],
       "Multiple": ["Mehrfach"],
+      "Multiple Line Charts": ["Mehr-Liniendiagramme"],
       "Multiple file extensions are not allowed for columnar uploads. Please make sure all files are of the same extension.": [
         "Unterschiedliche Dateierweiterungen sind für spaltenförmige Uploads nicht zulässig. Bitte stellen Sie sicher, dass alle Dateien die gleiche Erweiterung haben."
       ],
@@ -3508,6 +3509,12 @@
       ],
       "Pick a granularity in the Time section or uncheck 'Include Time'": [
         "Wählen Sie eine Granularität im Abschnitt Zeit aus oder deaktivieren Sie \"Zeit einschließen\"."
+      ],
+      "Pick a metric for left axis!": [
+        "Wählen Sie eine Metrik für die linke Achse!"
+      ],
+      "Pick a metric for right axis!": [
+        "Wählen Sie eine Metrik für die rechte Achse!"
       ],
       "Pick a metric for x, y and size": [
         "Wählen Sie eine Metrik für x, y und Größe"
@@ -4362,6 +4369,9 @@
       ],
       "Shows or hides markers for the time series": [
         "Ein- oder Ausblenden von Markern für die Zeitreihe"
+      ],
+      "Shows the composition of a dataset by segmenting a given rectangle as smaller rectangles with areas proportional to their value or contribution to the whole. Those rectangles may also, in turn, be further segmented hierarchically.": [
+        "Zeigt die Zusammensetzung eines Datensatzes an, indem ein bestimmtes Rechteck als kleinere Rechtecke mit Bereichen segmentiert wird, die proportional zu ihrem Wert oder Beitrag zum Ganzen sind. Diese Rechtecke können wiederum auch hierarchisch weiter segmentiert werden."
       ],
       "Significance Level": ["Signifikanzniveau"],
       "Simple": ["Einfach"],
@@ -5317,7 +5327,13 @@
       "Time Ratio": ["Zeitverhältnis"],
       "Time Series": ["Zeitreihen"],
       "Time Series - Bar Chart": ["Zeitreihen - Balkendiagramm"],
+      "Time Series - Dual Axis Line Chart": [
+        "Zeitreihen - Zweiachsen-Liniendiagramm"
+      ],
       "Time Series - Line Chart": ["Zeitreihen - Liniendiagramm"],
+      "Time Series - Multiple Line Charts": [
+        "Zeitreihen - Diagramme mit mehreren Linien"
+      ],
       "Time Series - Nightingale Rose Chart": [
         "Zeitreihe - Nightingale Rose Chart"
       ],
@@ -5728,6 +5744,9 @@
       ],
       "Visualize two different time series using the same x-axis. Note that each time series can be visualized differently (e.g. 1 using bars and 1 using a line).": [
         "Visualisieren Sie zwei verschiedene Zeitreihen mit derselben x-Achse. Beachten Sie, dass jede Zeitreihe unterschiedlich visualisiert werden kann (z. B. eine mit Balken und die andere mit einer Linie)."
+      ],
+      "Visualizes 2 metrics as line plots using the same x-axis. This chart is useful for comparing metrics across the same time range.": [
+        "Visualisiert 2 Metriken als Liniendiagramme mit derselben x-Achse. Dieses Diagramm ist nützlich, um Metriken über den gleichen Zeitraum zu vergleichen."
       ],
       "Visualizes a metric across three dimensions of data in a single chart (X axis, Y axis, and bubble size). Bubbles from the same group can be showcased using bubble color.": [
         "Visualisiert eine Metrik über drei Datendimensionen in einem einzelnen Diagramm (X-Achse, Y-Achse und Blasengröße). Blasen aus derselben Gruppe können mit Blasenfarbe präsentiert werden."

@@ -37,9 +37,13 @@ services:
     image: postgres:15
     container_name: superset_db
     restart: unless-stopped
+    shm_size: 3gb
     volumes:
       - db_home:/var/lib/postgresql/data
       - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./docker/db/postgresql.conf:/etc/postgresql/postgresql.conf
+    command:
+      -c 'config_file=/etc/postgresql/postgresql.conf'
 
   superset:
     env_file: docker/.env-non-dev

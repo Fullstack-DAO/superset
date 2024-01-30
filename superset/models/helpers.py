@@ -52,7 +52,7 @@ from sqlalchemy.sql.expression import Label, Select, TextAsFrom
 from sqlalchemy.sql.selectable import Alias, TableClause
 from sqlalchemy_utils import UUIDType
 
-from superset import app, is_feature_enabled, security_manager
+from superset import app, db, is_feature_enabled, security_manager
 from superset.advanced_data_type.types import AdvancedDataTypeResponse
 from superset.common.db_query_status import QueryStatus
 from superset.common.utils.time_range_utils import get_since_until_from_time_range
@@ -1359,30 +1359,48 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
         tp = self.get_template_processor()
         tbl, cte = self.get_from_clause(tp)
 
-        qry = (
-            sa.select(
-                # The alias (label) here is important because some dialects will
-                # automatically add a random alias to the projection because of the
-                # call to DISTINCT; others will uppercase the column names. This
-                # gives us a deterministic column name in the dataframe.
-                [target_col.get_sqla_col(template_processor=tp).label("column_values")]
+        
+        if(self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready):
+            dv_table_name = f"dv_{self.uuid}"
+            dv_sql_expression = self.text(f"\"{dv_table_name}\"")
+            qry = (
+                sa.select(
+                    [target_col.get_sqla_col(template_processor=tp).label("column_values")]
+                )
+                .select_from(dv_sql_expression)
+                .distinct()
             )
-            .select_from(tbl)
-            .distinct()
-        )
+        else:
+            qry = (
+                sa.select(
+                    # The alias (label) here is important because some dialects will
+                    # automatically add a random alias to the projection because of the
+                    # call to DISTINCT; others will uppercase the column names. This
+                    # gives us a deterministic column name in the dataframe.
+                    [target_col.get_sqla_col(template_processor=tp).label("column_values")]
+                )
+                .select_from(tbl)
+                .distinct()
+            )
+        
         if limit:
             qry = qry.limit(limit)
-
+        
         if self.fetch_values_predicate:
             qry = qry.where(self.get_fetch_values_predicate(template_processor=tp))
 
-        with self.database.get_sqla_engine_with_context() as engine:
-            sql = qry.compile(engine, compile_kwargs={"literal_binds": True})
-            sql = self._apply_cte(sql, cte)
-            sql = self.mutate_query_from_config(sql)
+        if(self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready):
+              sql = qry.compile(db.engine, compile_kwargs={"literal_binds": True})
+              df = pd.read_sql_query(sql=sql, con=db.engine)
+              return df["column_values"].to_list()
+        else:
+            with self.database.get_sqla_engine_with_context() as engine:
+                sql = qry.compile(engine, compile_kwargs={"literal_binds": True})
+                sql = self._apply_cte(sql, cte)
+                sql = self.mutate_query_from_config(sql)
 
-            df = pd.read_sql_query(sql=sql, con=engine)
-            return df["column_values"].to_list()
+                df = pd.read_sql_query(sql=sql, con=engine)
+                return df["column_values"].to_list()
 
     def get_timestamp_expression(
         self,

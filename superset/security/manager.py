@@ -2342,3 +2342,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
     def dataset_data_down(self):
         from superset.connectors.sqla.models import SqlaTable
         SqlaTable.down_dataset_datas(session=self.get_session)
+
+    def refresh_data(self):
+        from superset.connectors.sqla.models import SqlaTable
+        SqlaTable.refresh_dataset_datas()

@@ -481,11 +481,12 @@ export function fetchCharts(
   force = false,
   interval = 0,
   dashboardId,
+  cacheLevel,
 ) {
   return (dispatch, getState) => {
     if (!interval) {
       chartList.forEach(chartKey =>
-        dispatch(refreshChart(chartKey, force, dashboardId)),
+        dispatch(refreshChart(chartKey, force, dashboardId, cacheLevel)),
       );
       return;
     }
@@ -510,9 +511,16 @@ export function fetchCharts(
   };
 }
 
-const refreshCharts = (chartList, force, interval, dashboardId, dispatch) =>
+const refreshCharts = (
+  chartList,
+  force,
+  interval,
+  dashboardId,
+  dispatch,
+  cacheLevel,
+) =>
   new Promise(resolve => {
-    dispatch(fetchCharts(chartList, force, interval, dashboardId));
+    dispatch(fetchCharts(chartList, force, interval, dashboardId, cacheLevel));
     resolve();
   });
 
@@ -537,15 +545,21 @@ export function onRefresh(
   force = false,
   interval = 0,
   dashboardId,
+  cacheLevel,
 ) {
   return dispatch => {
     dispatch({ type: ON_REFRESH });
-    refreshCharts(chartList, force, interval, dashboardId, dispatch).then(
-      () => {
-        dispatch(onRefreshSuccess());
-        dispatch(onFiltersRefresh());
-      },
-    );
+    refreshCharts(
+      chartList,
+      force,
+      interval,
+      dashboardId,
+      dispatch,
+      cacheLevel,
+    ).then(() => {
+      dispatch(onRefreshSuccess());
+      dispatch(onFiltersRefresh());
+    });
   };
 }
 

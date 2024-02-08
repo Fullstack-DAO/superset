@@ -6,8 +6,9 @@ from superset import db
 import re
 from sqlalchemy import DECIMAL, Integer, Numeric, BigInteger, Text, Float, DateTime
 from sqlalchemy.dialects.postgresql import VARCHAR, TIMESTAMP
-from sqlalchemy import Table
+from sqlalchemy import Table, and_, or_
 import logging
+from superset.utils import core as utils
 
 logger = logging.getLogger(__name__)
 
@@ -46,24 +47,14 @@ def map_trino_type_to_sqlalchemy(trino_type):
         raise ValueError(f"No SQLAlchemy mapping for Trino type: {base_type}")
 
 def create_dynamic_table(table_name, fields, base=Base):
-    # # 检查并清理旧的类定义
-    # if table_name in base._decl_class_registry:
-    #     # 清理映射
-    #     clear_mappers()
-    #     # 从注册表中移除类
-    #     del base._decl_class_registry[table_name]
-    #     # 如果该类存在于 metadata 中，则也移除它
-    #     if table_name in base.metadata.tables:
-    #         del base.metadata.tables[table_name]
     logger.info(
         "Create dataset dynamic table, table_name: %r.", table_name
     )
     if table_name in base.metadata.tables:
         table = Table(table_name, base.metadata, autoload_with=db.engine)
         table.drop(db.engine, checkfirst=True)
-    # if table_name in base.metadata.tables:
-    #     table = Table(table_name, base.metadata)
-    #     table.drop(db.engine, checkfirst=True)
+    else:
+        drop_dynamic_table(table_name)
 
     attributes = {'__tablename__': table_name, '__table_args__': {'extend_existing': True}}
     
@@ -73,33 +64,29 @@ def create_dynamic_table(table_name, fields, base=Base):
         attributes[field_name] = sa.Column(map_trino_type_to_sqlalchemy(field_type))
     
     DynamicTable = type(table_name, (Base,), attributes)
-
-    # if table_name in Base.metadata.tables:
-    #     del base.metadata.tables[table_name]
-        # Base.metadata.tables[table_name].extend_existing = True
    
     Base.metadata.create_all(bind=db.engine)
     return DynamicTable
 
-# def add_data_to_dynamic_table(table_class, datas: dict[str, Any]):
-#     logger.info(
-#         "Insert datas to dataset dynamic table Start."
-#     )
-#     items = []
-#     try:
-#         for data in datas:
-#           item = table_class(**data)
-#           db.session.add(item)
-#           items.append(item)
-        
-#         db.session.commit()
-#         logger.info(
-#             "Insert datas to dataset dynamic table Finish."
-#         )
-#         return items
-#     except SQLAlchemyError as ex:
-#         db.session.rollback()
-#         raise RuntimeError("Failed to create item in database") from ex
+def append_data_to_dynamic_table(table_name, datas: list[dict[str, Any]], batch_size: int = 50000, base=Base):
+    logger.info(f"Append datas to dataset dynamic table Start, params( table_name: {table_name})" )
+    total = len(datas)
+    batches = (total - 1) // batch_size + 1  
+    table = Table(table_name, base.metadata, autoload_with=db.engine)
+    for i in range(batches):
+        try:
+            with db.engine.connect() as conn:
+                trans = conn.begin()
+                batch_data = datas[i * batch_size:(i + 1) * batch_size]
+                conn.execute(table.insert(), batch_data)
+                logger.info(f"Append data nested Batch {i+1}/{batches} inserted successfully.")
+                trans.commit()
+        except SQLAlchemyError as ex:
+            db.session.rollback()
+            logger.error(f"Error occurred in nested batch {i+1}/{batches}.", exc_info=True)
+            raise RuntimeError(f"Failed to create item in database in nested batch {i+1}") from ex
+        finally:
+            del batch_data
 
 def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_size: int = 50000):
     logger.info("Insert datas to dataset dynamic table Start.")
@@ -124,6 +111,9 @@ def add_data_to_dynamic_table(table_class, datas: list[dict[str, Any]], batch_si
             del batch_data
     
     return items
+def delete_dynamic_table(table_name: str):
+    db.session.execute('delete from "'+ table_name +'";')  
+    db.session.commit()
 
 def drop_dynamic_table(table_name: str):
     db.session.execute('DROP TABLE IF EXISTS "'+ table_name +'";')  
@@ -144,3 +134,66 @@ def reinit_dynamic_table(table_name: str, res_gen):
       i += 1
       logger.info(f"Finish {i} batch datas save to dynamic table {table_name}.")
     return table_class
+
+def refresh_dynamic_table_datas_by_condition(table_name: str, conditions: list,  res_gen):
+    conditions_str = [
+        condition['col'] + condition['op'] + str((','.join(condition['val']) if isinstance(condition['val'], list) else condition['val']))
+        for condition in conditions
+        if condition['op'] != utils.FilterOperator.TEMPORAL_RANGE.value
+    ]
+    logger.info("Start refresh dataset dynamic table process, table_name: %r, conditions: %r.", table_name, conditions_str)
+    fields = next(res_gen)['columns']
+    i = 0
+    for batch in res_gen:
+      records = batch['records']
+      table_datas = [{key: record[i] for i, key in enumerate(fields.keys())} for record in records]
+      append_data_to_dynamic_table(table_name, table_datas)
+      i += 1
+      logger.info(f"Finish {i} batch datas append to dynamic table. params( table_name: {table_name}, conditions: {conditions_str} )")
+
+def delete_dynamic_table_datas_by_condition(table_name: str, conditions: list):
+    conditions_str = [
+        condition['col'] + condition['op'] + str((','.join(condition['val']) if isinstance(condition['val'], list) else condition['val']))
+        for condition in conditions
+        if condition['op'] != utils.FilterOperator.TEMPORAL_RANGE.value
+    ]
+    logger.info("Start delete dataset dynamic table process, table_name: %r, conditions: %r.", table_name, conditions_str)
+    table = Table(table_name, Base.metadata, autoload_with=db.engine)
+    #将入参conditions，过滤掉op等于TEMPORAL_RANGE的数据
+    condition_expressions = [build_condition(table, condition) for condition in conditions if condition['op'] != utils.FilterOperator.TEMPORAL_RANGE.value]
+
+    where_clause = and_(*condition_expressions)
+    db.session.execute(table.delete().where(where_clause))
+    db.session.commit()
+
+    logger.info(f"Finish delete dynamic table datas by condition. params( table_name: {table_name}, conditions: {conditions_str})")
+
+    
+
+
+def build_condition(table, condition):
+    op = condition['op']
+    col = condition['col']
+    val = condition['val']
+    column = getattr(table.c, col)
+    
+    if op == utils.FilterOperator.EQUALS.value:
+        return column == val
+    elif op == utils.FilterOperator.NOT_EQUALS.value:
+        return column != val
+    elif op == utils.FilterOperator.IN.value:
+        return column.in_(val)
+    elif op == utils.FilterOperator.NOT_IN.value:
+        return column.notin_(val)
+    elif op == utils.FilterOperator.GREATER_THAN.value:
+        return column > val
+    elif op == utils.FilterOperator.LESS_THAN.value:
+        return column < val
+    elif op == utils.FilterOperator.GREATER_THAN_OR_EQUALS.value:
+        return column >= val
+    elif op == utils.FilterOperator.LESS_THAN_OR_EQUALS.value:
+        return column <= val
+    elif op == utils.FilterOperator.LIKE.value:
+        return column.like(val)
+    else:
+        raise ValueError(f"Unsupported operator: {op}")

@@ -56,7 +56,7 @@ class QueryContext:
     custom_cache_timeout: int | None
 
     cache_values: dict[str, Any]
-
+    cache_level: int = 0 #0 redis cache, 1 dynamic_table cache
     _processor: QueryContextProcessor
 
     # TODO: Type datasource and query_object dictionary with TypedDict when it becomes

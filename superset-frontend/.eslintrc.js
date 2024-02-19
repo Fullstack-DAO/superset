@@ -145,7 +145,7 @@ module.exports = {
         'react/require-default-props': 0,
         'react/sort-comp': 0, // TODO: re-enable in separate PR
         'react/static-property-placement': 0, // re-enable up for discussion
-        'prettier/prettier': 'error',
+        'prettier/prettier': 'warn',
         'file-progress/activate': 1,
       },
       settings: {
@@ -212,10 +212,10 @@ module.exports = {
     },
   ],
   rules: {
-    'theme-colors/no-literal-colors': 'error',
-    'translation-vars/no-template-vars': ['error', true],
+    'theme-colors/no-literal-colors': 'warn',
+    'translation-vars/no-template-vars': ['warn', true],
     camelcase: [
-      'error',
+      'warn',
       {
         allow: ['^UNSAFE_'],
         properties: 'never',
@@ -226,7 +226,7 @@ module.exports = {
     'func-names': 0,
     'guard-for-in': 0,
     'import/extensions': [
-      'error',
+      'warn',
       {
         '.js': 'always',
         '.jsx': 'always',

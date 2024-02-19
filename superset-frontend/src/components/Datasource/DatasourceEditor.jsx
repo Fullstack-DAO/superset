@@ -686,6 +686,7 @@ class DatasourceEditor extends React.PureComponent {
 
     this.props.onChange(newDatasource, this.state.errors);
   }
+
   changeDynamicRefreshYearColumn(data) {
     this.setState(prevState => ({
       datasource: {
@@ -699,6 +700,7 @@ class DatasourceEditor extends React.PureComponent {
     };
     this.props.onChange(newDatasource, this.state.errors);
   }
+
   changeDynamicRefreshMonthColumn(data) {
     this.setState(prevState => ({
       datasource: {

@@ -355,7 +355,7 @@ class Chart extends React.Component {
         : this.props.formData,
       resultType: 'full',
       resultFormat: format,
-      force: true,
+      force: false,
       ownState: this.props.ownState,
     });
   }

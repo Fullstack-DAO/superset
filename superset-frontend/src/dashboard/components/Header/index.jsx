@@ -209,6 +209,23 @@ class Header extends React.PureComponent {
       const { refreshFrequency } = this.props;
       this.startPeriodicRender(refreshFrequency * 1000);
     }
+    if (!this.props.isLoading) {
+      const remainingCharts = JSON.parse(
+        localStorage.getItem(`${this.props.dashboardInfo.id}_remainingCharts`),
+      );
+      if (remainingCharts && remainingCharts.length > 0) {
+        this.props.onRefresh(
+          remainingCharts,
+          false,
+          0,
+          this.props.dashboardInfo.id,
+          1,
+        );
+        localStorage.removeItem(
+          `${this.props.dashboardInfo.id}_remainingCharts`,
+        );
+      }
+    }
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -276,11 +293,17 @@ class Header extends React.PureComponent {
         interval: 0,
         chartCount: chartList.length,
       });
+      const [firstChart, ...remainingCharts] = chartList;
+      localStorage.setItem(
+        `${this.props.dashboardInfo.id}_remainingCharts`,
+        JSON.stringify(remainingCharts),
+      );
       return this.props.onRefresh(
-        chartList,
+        [firstChart],
         true,
         0,
         this.props.dashboardInfo.id,
+        1,
       );
     }
     return false;

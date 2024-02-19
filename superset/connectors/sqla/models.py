@@ -122,8 +122,9 @@ from superset.superset_typing import (
 from superset.utils import core as utils
 from superset.utils.backports import StrEnum
 from superset.utils.core import GenericDataType, MediumText
-from superset.daos.dynamic_model import reinit_dynamic_table
-
+from superset.daos.dynamic_model import reinit_dynamic_table, refresh_dynamic_table_datas_by_condition
+from superset.daos.dynamic_model import delete_dynamic_table_datas_by_condition
+import traceback
 config = app.config
 metadata = Model.metadata  # pylint: disable=no-member
 logger = logging.getLogger(__name__)
@@ -1154,6 +1155,8 @@ class SqlaTable(
     always_filter_main_dttm = Column(Boolean, default=False)
     dynamic_ready = Column(Boolean, default=False)
     dynamic_refresh_type = Column(String(10), default="increment")   
+    dynamic_refresh_year_column = Column(String(250), default="year")
+    dynamic_refresh_month_column = Column(String(250), default="month")
 
     baselink = "tablemodelview"
 
@@ -1440,6 +1443,7 @@ class SqlaTable(
             labels_expected=sqlaq.labels_expected,
             prequeries=sqlaq.prequeries,
             sql=sql,
+            sub_sql=sqlaq.sub_query,
         )
 
     def get_query_str(self, query_obj: QueryObjectDict) -> str:
@@ -1768,16 +1772,32 @@ class SqlaTable(
     @classmethod
     def down_single_dataset_datas(cls, dataset):        
         if("trino" in dataset.database.sqlalchemy_uri):
-          # exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
-          # res = cls.execute_query_and_get_column_info(dataset.database, dataset.schema, exe_sql)
-          res_gen = cls.execute_query_and_get_datas(dataset)
+          exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
+          res_gen = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, exe_sql)
           dv_table_name = "dv_" + str(dataset.uuid)
-          # column_info_dict = {col.column_name: col.type for col in dataset.columns}
-          
           reinit_dynamic_table(dv_table_name, res_gen)
-          # dynamic_model = create_dynamic_table(dv_table_name, res["columns"])
-          # add_data_to_dynamic_table(dynamic_model, res["datas"])
-              
+
+    @classmethod
+    def refresh_single_dataset_datas(cls,dataset):
+        now = datetime.now()
+        year_column = dataset.dynamic_refresh_year_column
+        month_column = dataset.dynamic_refresh_month_column
+        year = now.year
+        month = now.month
+        dv_table_name = "dv_" + str(dataset.uuid)
+        try:
+            exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
+            exe_sql = f"select * from ({exe_sql}) where {year_column}={str(year)} and {month_column} = {str(month)}"
+            datas = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, exe_sql)
+            ##remove old datas
+            conditions = [{'col': year_column, 'op': '==', 'val': year}, {'col': month_column, 'op': '==', 'val': month}]
+            delete_dynamic_table_datas_by_condition(dv_table_name, conditions)
+            refresh_dynamic_table_datas_by_condition(dv_table_name, conditions, datas)
+        except Exception as ex:  
+            traceback.print_exc()
+            error_message = utils.error_msg_from_exception(ex)
+            logger.error("Refresh dataset datas error table: %s, error: %s", dv_table_name, error_message)
+
     @classmethod
     def down_dataset_datas(cls, session):
         datasets = session.query(cls).filter(cls.sql.isnot(None), cls.sql != '').all()
@@ -1785,61 +1805,50 @@ class SqlaTable(
             cls.down_single_dataset_datas(dataset)
 
     @classmethod
-    def execute_query_and_get_datas(cls, dataset):
-    # def execute_query_and_get_column_info(cls, database: Database, schema: str, sql: str):
+    def refresh_dataset_datas(cls):
+        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready).all()
+        for dataset in datasets:
+            dv_table_name = "dv_" + str(dataset.uuid)
+            logger.info("Schedule exec refresh dataset datas, table_name: %s, refresh_type: %s", dv_table_name, dataset.dynamic_refresh_type)
+            if(dataset.dynamic_refresh_type == 'full'):
+                dataset.dynamic_ready = False
+                db.session.commit()
+                cls.down_single_dataset_datas(dataset)    
+                dataset.dynamic_ready = True
+                db.session.commit()
+            else:
+                dataset.dynamic_ready = False
+                db.session.commit()
+                cls.refresh_single_dataset_datas(dataset)
+                dataset.dynamic_ready = True
+                db.session.commit()
+
+
+    @classmethod
+    def execute_query_and_get_datas_by_sql(cls, database, schema, sql):
         """
-        Executes a SQL query and returns column details and query results.
-
-        :param connection_string: Database connection string.
-        :param sql: SQL query string.
-        :return: A dictionary containing column details and query results.
+        Executes a SQL query and returns query results.
         """
-        if("trino" in dataset.database.sqlalchemy_uri):
-          exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
-          with dataset.database.get_raw_connection(dataset.schema) as conn:
-              cursor = conn.cursor()
-              cursor.execute(exe_sql)
-              column_info_dict = {col.name: col.type_code for col in cursor.description}
-              yield {'columns': column_info_dict}
-              
-              while True: 
-                records = cursor.fetchmany(size=100000)
-                if not records:
-                    break
-                yield {'records': records}
-              # table_datas = [{column_names[i]: row[i] for i in range(len(column_names))} for row in data]
-              # return {
-              #     "columns": column_info_dict,
-              #     "datas": table_datas
-              # }
+        if("trino" in database.sqlalchemy_uri):
+            with database.get_raw_connection(schema) as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql)
+                column_info_dict = {col.name: col.type_code for col in cursor.description}
+                yield {'columns': column_info_dict}
+                
+                while True: 
+                  records = cursor.fetchmany(size=100000)
+                  if not records:
+                      break
+                  yield {'records': records}
 
-          # df = dataset.database.get_df(exe_sql, dataset.schema)
+    
 
-          # datas = df.to_dict(orient='records')
-          # return {
-          #     "columns": column_info_dict,
-          #     "datas": datas
-          # }
-        # engine = create_engine(database.sqlalchemy_uri)
-        # with engine.connect() as conn:
-          
-          # if("sqlite" in database.sqlalchemy_uri):
-          #     result = conn.execute(sql)
-              
-          #     column_info = [{'column_name': col[0], 'data_type': 'varchar(255)'} for col in result.description]
-          #     # data = result.fetchall()
-          # else:
-          #     cursor = conn.cursor()
-          #     cursor.execute(sql)
-          #     column_info = [{'column_name': col[0], 'data_type': col[1].__name__} for col in cursor.description]
-              # data = cursor.fetchall()
-             
-          
-
-    def query(self, query_obj: QueryObjectDict) -> QueryResult:
+    def query(self, query_obj: QueryObjectDict, is_ad_hoc_refresh: bool = False) -> QueryResult:
         qry_start_dttm = datetime.now()
         query_str_ext = self.get_query_str_extended(query_obj)
         sql = query_str_ext.sql
+        sub_sql = query_str_ext.sub_sql
         status = QueryStatus.SUCCESS
         errors = None
         error_message = None
@@ -1868,12 +1877,19 @@ class SqlaTable(
                     df = df.iloc[:, 0 : len(labels_expected)]
                 df.columns = labels_expected
             return df
-
+        
         try:
-            if(self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready):
-              df = pd.read_sql_query(sql, db.engine)
+            if is_ad_hoc_refresh and self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready:
+                # 如果是刷新缓存查询，则将结果增量添加到动态缓存表中，同时在添加之前需要根据条件将动态缓存表中的老数据删除
+                dv_table_name = "dv_" + str(self.uuid)
+                datas = SqlaTable.execute_query_and_get_datas_by_sql(self.database, self.schema, sub_sql)
+                delete_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"])
+                refresh_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"], datas)
+
+            if self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready:
+                df = pd.read_sql_query(sql, db.engine)
             else:
-              df = self.database.get_df(sql, self.schema, mutator=assign_column_label)
+                df = self.database.get_df(sql, self.schema, mutator=assign_column_label)
         except Exception as ex:  # pylint: disable=broad-except
             df = pd.DataFrame()
             status = QueryStatus.FAILED

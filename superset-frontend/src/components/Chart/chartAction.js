@@ -121,6 +121,7 @@ const legacyChartDataRequest = async (
   method = 'POST',
   requestParams = {},
   parseMethod,
+  cacheLevel,
 ) => {
   const endpointType = getLegacyEndpointType({ resultFormat, resultType });
   const allowDomainSharding =
@@ -132,6 +133,7 @@ const legacyChartDataRequest = async (
     force,
     allowDomainSharding,
     method,
+    cache_level: cacheLevel,
     requestParams: requestParams.dashboard_id
       ? { dashboard_id: requestParams.dashboard_id }
       : {},
@@ -162,6 +164,7 @@ const v1ChartDataRequest = async (
   setDataMask,
   ownState,
   parseMethod,
+  cacheLevel,
 ) => {
   const payload = buildV1ChartDataPayload({
     formData,
@@ -170,6 +173,7 @@ const v1ChartDataRequest = async (
     force,
     setDataMask,
     ownState,
+    cacheLevel,
   });
 
   // The dashboard id is added to query params for tracking purposes
@@ -180,6 +184,7 @@ const v1ChartDataRequest = async (
   if (sliceId !== undefined) qs.form_data = `{"slice_id":${sliceId}}`;
   if (dashboardId !== undefined) qs.dashboard_id = dashboardId;
   if (force) qs.force = force;
+  if (cacheLevel) qs.cache_level = cacheLevel;
 
   const allowDomainSharding =
     // eslint-disable-next-line camelcase
@@ -210,6 +215,7 @@ export async function getChartDataRequest({
   method = 'POST',
   requestParams = {},
   ownState = {},
+  cacheLevel = 0,
 }) {
   let querySettings = {
     ...requestParams,
@@ -232,6 +238,7 @@ export async function getChartDataRequest({
       method,
       querySettings,
       parseMethod,
+      cacheLevel,
     );
   }
   return v1ChartDataRequest(
@@ -243,6 +250,7 @@ export async function getChartDataRequest({
     setDataMask,
     ownState,
     parseMethod,
+    cacheLevel,
   );
 }
 
@@ -377,6 +385,7 @@ export function exploreJSON(
   key,
   dashboardId,
   ownState,
+  cacheLevel,
 ) {
   return async dispatch => {
     const logStart = Logger.getTimestamp();
@@ -400,6 +409,7 @@ export function exploreJSON(
       method: 'POST',
       requestParams,
       ownState,
+      cacheLevel,
     });
 
     dispatch(chartUpdateStarted(controller, formData, key));
@@ -521,8 +531,17 @@ export function postChartFormData(
   key,
   dashboardId,
   ownState,
+  cacheLevel,
 ) {
-  return exploreJSON(formData, force, timeout, key, dashboardId, ownState);
+  return exploreJSON(
+    formData,
+    force,
+    timeout,
+    key,
+    dashboardId,
+    ownState,
+    cacheLevel,
+  );
 }
 
 export function redirectSQLLab(formData, history) {
@@ -553,7 +572,7 @@ export function redirectSQLLab(formData, history) {
   };
 }
 
-export function refreshChart(chartKey, force, dashboardId) {
+export function refreshChart(chartKey, force, dashboardId, cacheLevel) {
   return (dispatch, getState) => {
     const chart = (getState().charts || {})[chartKey];
     const timeout =
@@ -573,6 +592,7 @@ export function refreshChart(chartKey, force, dashboardId) {
         chart.id,
         dashboardId,
         getState().dataMask[chart.id]?.ownState,
+        cacheLevel,
       ),
     );
   };

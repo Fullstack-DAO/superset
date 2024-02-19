@@ -128,6 +128,7 @@ class QueryContextProcessor:
         cache_key = self.query_cache_key(query_obj)
         timeout = self.get_cache_timeout()
         force_query = self._query_context.force or timeout == -1
+        cache_level = self._query_context.cache_level
         cache = QueryCacheManager.get(
             key=cache_key,
             region=CacheRegion.DATA,
@@ -135,7 +136,7 @@ class QueryContextProcessor:
             force_cached=force_cached,
         )
 
-        if query_obj and cache_key and not cache.is_loaded:
+        if query_obj and cache_key and (not cache.is_loaded or cache_level == 1):
             try:
                 if invalid_columns := [
                     col
@@ -231,7 +232,7 @@ class QueryContextProcessor:
             # todo(hugh): add logic to manage all sip68 models here
             result = query_context.datasource.exc_query(query_object.to_dict())
         else:
-            result = query_context.datasource.query(query_object.to_dict())
+            result = query_context.datasource.query(query_object.to_dict(), self._query_context.force)
             query = result.query + ";\n\n"
 
         df = result.df

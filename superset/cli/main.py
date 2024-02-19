@@ -72,6 +72,12 @@ def datasetdown() -> None:
 
 @superset.command()
 @with_appcontext
+def datasetrefresh() -> None:
+    """Dynamically generate intermediate tables from data sets and initialize historical data at the same time"""
+    security_manager.refresh_data()
+
+@superset.command()
+@with_appcontext
 @click.option("--verbose", "-v", is_flag=True, help="Show extra information")
 def version(verbose: bool) -> None:
     """Prints the current version number"""

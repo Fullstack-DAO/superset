@@ -678,6 +678,7 @@ class QueryStringExtended(NamedTuple):
     labels_expected: list[str]
     prequeries: list[str]
     sql: str
+    sub_sql: str
 
 
 class SqlaQuery(NamedTuple):
@@ -689,6 +690,7 @@ class SqlaQuery(NamedTuple):
     labels_expected: list[str]
     prequeries: list[str]
     sqla_query: Select
+    sub_query: str
 
 
 class ExploreMixin:  # pylint: disable=too-many-public-methods
@@ -1752,7 +1754,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
         qry = sa.select(select_exprs)
 
         tbl, cte = self.get_from_clause(template_processor)
-
         if groupby_all_columns:
             qry = qry.group_by(*groupby_all_columns.values())
 
@@ -2143,5 +2144,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             labels_expected=labels_expected,
             sqla_query=qry,
             prequeries=prequeries,
+            sub_query=str(tbl),
         )
     

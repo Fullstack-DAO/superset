@@ -26,6 +26,7 @@ from superset.commands.report.exceptions import ReportScheduleUnexpectedError
 from superset.commands.report.execute import AsyncExecuteReportScheduleCommand
 from superset.commands.report.log_prune import AsyncPruneReportScheduleLogCommand
 from superset.daos.report import ReportScheduleDAO
+from superset.connectors.sqla.models import SqlaTable
 from superset.extensions import celery_app
 from superset.stats_logger import BaseStatsLogger
 from superset.tasks.cron_util import cron_schedule_window
@@ -119,3 +120,15 @@ def prune_log() -> None:
         logger.warning("A timeout occurred while pruning report schedule logs: %s", ex)
     except CommandException:
         logger.exception("An exception occurred while pruning report schedule logs")
+
+
+@celery_app.task(name="dynamic_table.refresh_datas")
+def refresh_datas() -> None:
+    stats_logger: BaseStatsLogger = app.config["STATS_LOGGER"]
+    stats_logger.incr("dynamic_table.refresh_datas")
+    logger.info("Refresh datas of dynamic tables Start.")
+    try:
+        SqlaTable.refresh_dataset_datas()
+    except CommandException:
+        logger.exception("An exception occurred while pruning report schedule logs")
+    logger.info("Refresh datas of dynamic tables end.")

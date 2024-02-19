@@ -150,6 +150,11 @@ const DATA_TYPES = [
   { value: 'BOOLEAN', label: t('BOOLEAN') },
 ];
 
+const DYNAMIC_REFRESH_WAYS = [
+  { value: 'increment', label: '增量' },
+  { value: 'full', label: '全量' },
+];
+
 const DATASOURCE_TYPES_ARR = [
   { key: 'physical', label: t('Physical (table or view)') },
   { key: 'virtual', label: t('Virtual (SQL)') },
@@ -617,6 +622,15 @@ class DatasourceEditor extends React.PureComponent {
       datasourceType: props.datasource.sql
         ? DATASOURCE_TYPES.virtual.key
         : DATASOURCE_TYPES.physical.key,
+      dynamicRefreshType: props.datasource.dynamic_refresh_type
+        ? DYNAMIC_REFRESH_WAYS.find(
+            item => item.value === props.datasource.dynamic_refresh_type,
+          )
+        : DYNAMIC_REFRESH_WAYS[0],
+      dynamicRefreshYearColumn:
+        props.datasource.dynamic_refresh_year_column || undefined,
+      dynamicRefreshMonthColumn:
+        props.datasource.dynamic_refresh_month_column || undefined,
     };
 
     this.onChange = this.onChange.bind(this);
@@ -635,6 +649,11 @@ class DatasourceEditor extends React.PureComponent {
         symbol: currencyCode,
       })} (${currencyCode})`,
     }));
+    this.changeDynamicRefreshType = this.changeDynamicRefreshType.bind(this);
+    this.changeDynamicRefreshYearColumn =
+      this.changeDynamicRefreshYearColumn.bind(this);
+    this.changeDynamicRefreshMonthColumn =
+      this.changeDynamicRefreshMonthColumn.bind(this);
   }
 
   onChange() {
@@ -648,6 +667,49 @@ class DatasourceEditor extends React.PureComponent {
       ...this.state.datasource,
       sql,
       columns: [...this.state.databaseColumns, ...this.state.calculatedColumns],
+    };
+    this.props.onChange(newDatasource, this.state.errors);
+  }
+
+  changeDynamicRefreshType(data) {
+    this.setState(prevState => ({
+      datasource: {
+        ...prevState.datasource,
+        dynamic_refresh_type: data.value || 'increment',
+      },
+    }));
+
+    const newDatasource = {
+      ...this.state.datasource,
+      dynamic_refresh_type: data.value || 'increment',
+    };
+
+    this.props.onChange(newDatasource, this.state.errors);
+  }
+  changeDynamicRefreshYearColumn(data) {
+    this.setState(prevState => ({
+      datasource: {
+        ...prevState.datasource,
+        dynamic_refresh_year_column: data || 'year',
+      },
+    }));
+    const newDatasource = {
+      ...this.state.datasource,
+      dynamic_refresh_year_column: data || 'year',
+    };
+    this.props.onChange(newDatasource, this.state.errors);
+  }
+  changeDynamicRefreshMonthColumn(data) {
+    this.setState(prevState => ({
+      datasource: {
+        ...prevState.datasource,
+        dynamic_refresh_month_column: data || 'month',
+      },
+    }));
+
+    const newDatasource = {
+      ...this.state.datasource,
+      dynamic_refresh_month_column: data || 'month',
     };
     this.props.onChange(newDatasource, this.state.errors);
   }
@@ -959,56 +1021,132 @@ class DatasourceEditor extends React.PureComponent {
   renderAdvancedFieldset() {
     const { datasource } = this.state;
     return (
-      <Fieldset
-        title={t('Advanced')}
-        item={datasource}
-        onChange={this.onDatasourceChange}
-      >
-        <Field
-          fieldKey="cache_timeout"
-          label={t('Cache timeout')}
-          description={t(
-            'The duration of time in seconds before the cache is invalidated. Set to -1 to bypass the cache.',
-          )}
-          control={<TextControl controlId="cache_timeout" />}
-        />
-        <Field
-          fieldKey="offset"
-          label={t('Hours offset')}
-          control={<TextControl controlId="offset" />}
-          description={t(
-            'The number of hours, negative or positive, to shift the time column. This can be used to move UTC time to local time.',
-          )}
-        />
-        {this.state.isSqla && (
+      <>
+        <Fieldset
+          title={t('Advanced')}
+          item={datasource}
+          onChange={this.onDatasourceChange}
+        >
           <Field
-            fieldKey="template_params"
-            label={t('Template parameters')}
+            fieldKey="cache_timeout"
+            label={t('Cache timeout')}
             description={t(
-              'A set of parameters that become available in the query using Jinja templating syntax',
+              'The duration of time in seconds before the cache is invalidated. Set to -1 to bypass the cache.',
             )}
-            control={<TextControl controlId="template_params" />}
+            control={<TextControl controlId="cache_timeout" />}
           />
-        )}
-        <Field
-          inline
-          fieldKey="normalize_columns"
-          label={t('Normalize column names')}
-          description={t(
-            'Allow column names to be changed to case insensitive format, if supported (e.g. Oracle, Snowflake).',
+          <Field
+            fieldKey="offset"
+            label={t('Hours offset')}
+            control={<TextControl controlId="offset" />}
+            description={t(
+              'The number of hours, negative or positive, to shift the time column. This can be used to move UTC time to local time.',
+            )}
+          />
+          {this.state.isSqla && (
+            <Field
+              fieldKey="template_params"
+              label={t('Template parameters')}
+              description={t(
+                'A set of parameters that become available in the query using Jinja templating syntax',
+              )}
+              control={<TextControl controlId="template_params" />}
+            />
           )}
-          control={<CheckboxControl controlId="normalize_columns" />}
+          <Field
+            inline
+            fieldKey="normalize_columns"
+            label={t('Normalize column names')}
+            description={t(
+              'Allow column names to be changed to case insensitive format, if supported (e.g. Oracle, Snowflake).',
+            )}
+            control={<CheckboxControl controlId="normalize_columns" />}
+          />
+          <Field
+            inline
+            fieldKey="always_filter_main_dttm"
+            label={t('Always filter main datetime column')}
+            description={t(
+              `When the secondary temporal columns are filtered, apply the same filter to the main datetime column.`,
+            )}
+            control={<CheckboxControl controlId="always_filter_main_dttm" />}
+          />
+        </Fieldset>
+        <div
+          style={{
+            textTransform: 'uppercase',
+            fontSize: '12px',
+            color: '#666666',
+            marginBottom: '7px',
+          }}
+        >
+          数据更新方式
+        </div>
+        <Select
+          labelInValue
+          value={this.state.dynamicRefreshType}
+          ariaLabel="更新方式"
+          options={DYNAMIC_REFRESH_WAYS}
+          name="dynamic_refresh_type"
+          allowClear
+          onChange={this.changeDynamicRefreshType}
         />
-        <Field
-          inline
-          fieldKey="always_filter_main_dttm"
-          label={t('Always filter main datetime column')}
-          description={t(
-            `When the secondary temporal columns are filtered, apply the same filter to the main datetime column.`,
-          )}
-          control={<CheckboxControl controlId="always_filter_main_dttm" />}
+        <div style={{ color: '#666666', marginTop: '4px' }}>
+          数据集数据定时更新方式，可选择增量更新或全量更新
+        </div>
+
+        <div
+          style={{
+            textTransform: 'uppercase',
+            fontSize: '12px',
+            color: '#666666',
+            marginBottom: '7px',
+            marginTop: '20px',
+          }}
+        >
+          更新粒度年列名
+        </div>
+        <Select
+          ariaLabel="请选择列名"
+          value={this.state.dynamicRefreshYearColumn}
+          options={this.state.databaseColumns.map(col => ({
+            value: col.column_name,
+            label: col.column_name,
+          }))}
+          name="dynamic_refresh_year_column"
+          allowClear
+          onChange={this.changeDynamicRefreshYearColumn}
         />
-      </Fieldset>
+        <div style={{ color: '#666666', marginTop: '4px' }}>
+          数据集数据定时增量更新将根据该字段过滤年度数，更新方式为全量时，该字段不生效
+        </div>
+
+        <div
+          style={{
+            textTransform: 'uppercase',
+            fontSize: '12px',
+            color: '#666666',
+            marginBottom: '7px',
+            marginTop: '20px',
+          }}
+        >
+          更新粒度月列名
+        </div>
+        <Select
+          ariaLabel="请选择列名"
+          value={this.state.dynamicRefreshMonthColumn}
+          options={this.state.databaseColumns.map(col => ({
+            value: col.column_name,
+            label: col.column_name,
+          }))}
+          name="dynamic_refresh_month_column"
+          allowClear
+          onChange={this.changeDynamicRefreshMonthColumn}
+        />
+        <div style={{ color: '#666666', marginTop: '4px' }}>
+          数据集数据定时增量更新将根据该字段过滤月度数据，更新方式为全量时，该字段不生效
+        </div>
+      </>
     );
   }
 

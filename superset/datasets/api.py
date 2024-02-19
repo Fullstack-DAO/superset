@@ -208,6 +208,10 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         "time_grain_sqla",
         "order_by_choices",
         "verbose_map",
+        "dynamic_ready",
+        "dynamic_refresh_type",
+        "dynamic_refresh_year_column",
+        "dynamic_refresh_month_column"
     ]
     add_model_schema = DatasetPostSchema()
     edit_model_schema = DatasetPutSchema()

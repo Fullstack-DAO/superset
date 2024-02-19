@@ -186,6 +186,11 @@ const DatasourceModal: FunctionComponent<DatasourceModalProps> = ({
         owners: currentDatasource.owners.map(
           (o: Record<string, number>) => o.value || o.id,
         ),
+        dynamic_refresh_type: currentDatasource.dynamic_refresh_type,
+        dynamic_refresh_year_column:
+          currentDatasource.dynamic_refresh_year_column,
+        dynamic_refresh_month_column:
+          currentDatasource.dynamic_refresh_month_column,
       },
     })
       .then(() => {

@@ -125,6 +125,9 @@ class DatasetPutSchema(Schema):
     extra = fields.String(allow_none=True)
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
+    dynamic_refresh_type = fields.String(allow_none=True)
+    dynamic_refresh_year_column = fields.String(allow_none=True)
+    dynamic_refresh_month_column = fields.String(allow_none=True)
 
     def handle_error(
         self,
@@ -282,6 +285,9 @@ class GetOrCreateDatasetSchema(Schema):
     )
     normalize_columns = fields.Boolean(load_default=False)
     always_filter_main_dttm = fields.Boolean(load_default=False)
+    dynamic_refresh_type = fields.String(allow_none=True)
+    dynamic_refresh_year_column = fields.String(allow_none=True)
+    dynamic_refresh_month_column = fields.String(allow_none=True)
 
 
 class DatasetSchema(SQLAlchemyAutoSchema):

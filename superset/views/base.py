@@ -420,6 +420,7 @@ def cached_common_bootstrap_data(  # pylint: disable=unused-argument
         "theme_overrides": conf["THEME_OVERRIDES"],
         "menu_data": menu_data(g.user),
         "copilot_url": conf["COPILOT_URL"],
+        "report_url": conf["REPORT_URL"],
     }
     bootstrap_data.update(conf["COMMON_BOOTSTRAP_OVERRIDES_FUNC"](bootstrap_data))
     return bootstrap_data

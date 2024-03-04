@@ -152,6 +152,7 @@ export interface CommonBootstrapData {
   menu_data: MenuData;
   d3_format: Partial<FormatLocaleDefinition>;
   copilot_url: string;
+  report_url: string;
 }
 
 export interface BootstrapData {

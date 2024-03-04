@@ -26,6 +26,11 @@ const Copilot = lazy(
   () => import(/* webpackChunkName: "Copilot" */ 'src/pages/Copilot'),
 );
 
+const Report = lazy(
+  () => import(/* webpackChunkName: "Report" */ 'src/pages/Report'),
+);
+
+
 const ChartCreation = lazy(
   () =>
     import(/* webpackChunkName: "ChartCreation" */ 'src/pages/ChartCreation'),
@@ -146,6 +151,10 @@ export const routes: Routes = [
   {
     path: '/copilot',
     Component: Copilot,
+  },
+  {
+    path: '/report',
+    Component: Report,
   },
   {
     path: '/dashboard/list/',

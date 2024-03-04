@@ -186,6 +186,7 @@ export const DEFAULT_COMMON_BOOTSTRAP_DATA: CommonBootstrapData = {
   },
   d3_format: DEFAULT_D3_FORMAT,
   copilot_url: '',
+  report_url: '',
 };
 
 export const DEFAULT_BOOTSTRAP_DATA: BootstrapData = {

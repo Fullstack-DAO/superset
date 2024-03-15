@@ -185,7 +185,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.views.log.views import LogModelView
         from superset.views.profile import ProfileView
         from superset.views.copilot import CopilotView
-        from superset.views.report import ReportView
+        from superset.views.report import WorkflowView
         from superset.views.redirects import R
         from superset.views.sql_lab.views import (
             SavedQueryView,
@@ -320,7 +320,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_view_no_menu(R)
         appbuilder.add_view_no_menu(ProfileView)
         appbuilder.add_view_no_menu(CopilotView)
-        appbuilder.add_view_no_menu(ReportView)
+        appbuilder.add_view_no_menu(WorkflowView)
         appbuilder.add_view_no_menu(SavedQueryView)
         appbuilder.add_view_no_menu(SavedQueryViewApi)
         appbuilder.add_view_no_menu(SliceAsync)
@@ -391,9 +391,9 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         )
 
         appbuilder.add_link(
-            "Report",
-            label=__("Report"),
-            href="/report",
+            "Workflow",
+            label=__("Workflow"),
+            href="/workflow",
             icon="fa-dashboard",
             category="",
             category_icon="",

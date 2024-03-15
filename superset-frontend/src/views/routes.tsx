@@ -26,8 +26,8 @@ const Copilot = lazy(
   () => import(/* webpackChunkName: "Copilot" */ 'src/pages/Copilot'),
 );
 
-const Report = lazy(
-  () => import(/* webpackChunkName: "Report" */ 'src/pages/Report'),
+const Workflow = lazy(
+  () => import(/* webpackChunkName: "Report" */ 'src/pages/Workflow'),
 );
 
 
@@ -153,8 +153,8 @@ export const routes: Routes = [
     Component: Copilot,
   },
   {
-    path: '/report',
-    Component: Report,
+    path: '/workflow',
+    Component: Workflow,
   },
   {
     path: '/dashboard/list/',

@@ -22,7 +22,7 @@ import getBootstrapData from 'src/utils/getBootstrapData';
 
 const bootstrapData = getBootstrapData();
 
-function Report() {
+function Workflow() {
   const [token, setToken] = useState();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ function Report() {
     <>
       {token && (
         <iframe
-          title="Report"
+          title="Workflow"
           src={`${bootstrapData.common.report_url}/reports?token=${token}`}
           style={{
             width: '100%',
@@ -49,4 +49,4 @@ function Report() {
   );
 }
 
-export default Report;
+export default Workflow;

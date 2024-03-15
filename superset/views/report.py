@@ -25,9 +25,9 @@ from superset.superset_typing import FlaskResponse
 from .base import BaseSupersetView
 
 
-class ReportView(BaseSupersetView):
-    route_base = "/report"
-    class_permission_name = "Report"
+class WorkflowView(BaseSupersetView):
+    route_base = "/workflow"
+    class_permission_name = "Workflow"
 
     @expose("/")
     @event_logger.log_this

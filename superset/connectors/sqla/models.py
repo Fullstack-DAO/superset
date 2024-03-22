@@ -53,6 +53,7 @@ from sqlalchemy import (
     Table,
     Text,
     update,
+    create_engine
 )
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.ext.declarative import declared_attr
@@ -1807,6 +1808,8 @@ class SqlaTable(
     @classmethod
     def refresh_dataset_datas(cls):
         datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready).all()
+        #先执行胶水还原表的函数处理
+        cls.refresh_glue_reduction_datas()
         for dataset in datasets:
             dv_table_name = "dv_" + str(dataset.uuid)
             logger.info("Schedule exec refresh dataset datas, table_name: %s, refresh_type: %s", dv_table_name, dataset.dynamic_refresh_type)
@@ -1823,7 +1826,20 @@ class SqlaTable(
                 dataset.dynamic_ready = True
                 db.session.commit()
 
-
+    @classmethod 
+    def refresh_glue_reduction_datas(cls):
+        now = datetime.now()
+        year = now.year
+        month = now.month
+        mssql_url = config["MSSQL_URL"]
+        engine = create_engine(mssql_url)
+        with engine.connect() as conn:
+            with conn.begin():
+              sql = f"EXECUTE CalculateMaterialConsumptionToResultSet_R @StartYear = {year}, @StartMonth = {month};"
+              logger.info("exec function: %s", sql)
+              result = conn.execute(sql)
+              print(result)
+        logger.info("Schedule exec refresh glue reduction datas finish, year: %s, month: %s", year, month)
     @classmethod
     def execute_query_and_get_datas_by_sql(cls, database, schema, sql):
         """

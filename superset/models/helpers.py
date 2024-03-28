@@ -28,6 +28,7 @@ from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
 from typing import Any, cast, NamedTuple, Optional, TYPE_CHECKING, Union
 
+from superset.utils.i18n import localized_naturaltime
 import dateutil.parser
 import humanize
 import numpy as np
@@ -541,12 +542,16 @@ class AuditMixinNullable(AuditMixin):
 
     @property
     def changed_on_humanized(self) -> str:
-        return humanize.naturaltime(datetime.now() - self.changed_on)
+        from flask_babel import get_locale
+        locale = str(get_locale())
+        return localized_naturaltime(datetime.now() - self.changed_on, locale)
 
     @property
     def created_on_humanized(self) -> str:
-        return humanize.naturaltime(datetime.now() - self.created_on)
-
+        from flask_babel import get_locale
+        locale = str(get_locale())
+        return localized_naturaltime(datetime.now() - self.created_on, locale)
+    
     @renders("changed_on")
     def modified(self) -> Markup:
         return Markup(f'<span class="no-wrap">{self.changed_on_humanized}</span>')

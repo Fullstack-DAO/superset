@@ -58,23 +58,29 @@ def upgrade():
                 default=False,
                 server_default=sa.false(),
             ),
+        )
+        op.add_column(
+            "tables",
             sa.Column(
-                'dynamic_refresh_type',
+                "dynamic_refresh_type",
                 sa.VARCHAR(10),
                 nullable=True,
-                autoincrement=False,
             ),
+        )
+        op.add_column(
+            "tables",
             sa.Column(
-                'dynamic_refresh_year_column',
+                "dynamic_refresh_year_column",
                 sa.VARCHAR(255),
                 nullable=True,
-                autoincrement=False,
             ),
+        )
+        op.add_column(
+            "tables",
             sa.Column(
-                'dynamic_refresh_month_column',
+                "dynamic_refresh_month_column",
                 sa.VARCHAR(255),
                 nullable=True,
-                autoincrement=False,
             ),
         )
 

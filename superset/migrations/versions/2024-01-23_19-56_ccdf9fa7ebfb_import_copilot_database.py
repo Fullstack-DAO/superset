@@ -61,6 +61,9 @@ def downgrade():
     op.drop_table('embedding_datas')
     op.drop_table('chat')
     op.drop_table('character')
+    op.drop_table('chatbot')
+    op.drop_table('analysis_report')
+    op.drop_table('analysis_task')
     # ### end Alembic commands ###
 
 
@@ -154,7 +157,7 @@ def upgrade():
     )
     op.create_table('embedding_character_rel',
     sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
-    sa.Column('character_id', sa.VARCHAR(length=11), autoincrement=False, nullable=False),
+    sa.Column('character_id', sa.VARCHAR(length=128), autoincrement=False, nullable=False),
     sa.Column('data_id', sa.INTEGER(), autoincrement=False, nullable=False),
     sa.PrimaryKeyConstraint('id', name='embedding_character_rel_pkey')
     )
@@ -450,4 +453,76 @@ def upgrade():
     sa.Column('is_important', sa.SMALLINT(), autoincrement=False, nullable=True),
     sa.PrimaryKeyConstraint('id', name='interpret_material_qas_pkey')
     )
+    op.create_table('chatbot',
+    sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
+    sa.Column('name', sa.VARCHAR(length=255), autoincrement=False, nullable=False),
+    sa.Column('token', sa.VARCHAR(length=255), autoincrement=False, nullable=False),
+    sa.Column('type', sa.SMALLINT(), autoincrement=False, nullable=False),
+    sa.Column('webhook', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('nickname', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('process_wait_message', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('error_fallback_message', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.PrimaryKeyConstraint('id', name='chatbot_pkey')    
+    )
+    # CREATE TABLE "public"."analysis_report" (
+    #   "id" int4 NOT NULL DEFAULT nextval('analysis_report_id_seq'::regclass),
+    #   "title" varchar(255) COLLATE "pg_catalog"."default",
+    #   "file_path" varchar(255) COLLATE "pg_catalog"."default",
+    #   "get_count" int4,
+    #   "ctime" timestamp(6),
+    #   "task_type" int2
+    # )
+    op.create_table('analysis_report',
+    sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
+    sa.Column('title', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('file_path', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('get_count', sa.INTEGER(), autoincrement=False, nullable=True),
+    sa.Column('ctime', postgresql.TIMESTAMP(timezone=True, precision=0), autoincrement=False, nullable=True),
+    sa.Column('task_type', sa.SMALLINT(), autoincrement=False, nullable=True),
+    sa.PrimaryKeyConstraint('id', name='analysis_report_pkey')
+    )
+    # CREATE TABLE "public"."analysis_report_task" (
+    #   "id" int4 NOT NULL DEFAULT nextval('analysis_report_task_id_seq'::regclass),
+    #   "task_name" varchar(255) COLLATE "pg_catalog"."default",
+    #   "task_type" int2,
+    #   "cron_expres" varchar(100) COLLATE "pg_catalog"."default",
+    #   "send_email" int2,
+    #   "receive_email" varchar(255) COLLATE "pg_catalog"."default",
+    #   "send_wx" int2,
+    #   "update_time" timestamp(6),
+    #   "req_data_param" json,
+    #   "exec_frequency_type" int2,
+    #   "receive_wechat_ids" json,
+    #   "receive_wechat_room_ids" json
+    # )
+    # ;
+    # ALTER TABLE "public"."analysis_report_task" OWNER TO "superset";
+    # COMMENT ON COLUMN "public"."analysis_report_task"."id" IS '主键ID';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."task_name" IS '任务名称';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."task_type" IS '任务类型';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."cron_expres" IS '执行表达式';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."send_email" IS '任务完成是否直接发送邮件';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."receive_email" IS '报告接收邮箱';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."send_wx" IS '是否发送微信机器人';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."update_time" IS '修改时间';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."req_data_param" IS '获取数据参数';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."exec_frequency_type" IS '执行周期类型；1：每日；2：每周；3：每月';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."receive_wechat_ids" IS '报告接收的 workpro id';
+    # COMMENT ON COLUMN "public"."analysis_report_task"."receive_wechat_room_ids" IS '报告接收的 workpro room id';
+    op.create_table('analysis_report_task',
+    sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
+    sa.Column('task_name', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('task_type', sa.SMALLINT(), autoincrement=False, nullable=True),
+    sa.Column('cron_expres', sa.VARCHAR(length=100), autoincrement=False, nullable=True),
+    sa.Column('send_email', sa.SMALLINT(), autoincrement=False, nullable=True),
+    sa.Column('receive_email', sa.VARCHAR(length=255), autoincrement=False, nullable=True),
+    sa.Column('send_wx', sa.SMALLINT(), autoincrement=False, nullable=True),
+    sa.Column('update_time', postgresql.TIMESTAMP(timezone=True, precision=0), autoincrement=False, nullable=True),
+    sa.Column('req_data_param', postgresql.JSON(astext_type=sa.Text()), autoincrement=False, nullable=True),
+    sa.Column('exec_frequency_type', sa.SMALLINT(), autoincrement=False, nullable=True),
+    sa.Column('receive_wechat_ids', postgresql.JSON(astext_type=sa.Text()), autoincrement=False, nullable=True),
+    sa.Column('receive_wechat_room_ids', postgresql.JSON(astext_type=sa.Text()), autoincrement=False, nullable=True),
+    sa.PrimaryKeyConstraint('id', name='analysis_report_task_pkey')
+    )
+
     # ### end Alembic commands ###

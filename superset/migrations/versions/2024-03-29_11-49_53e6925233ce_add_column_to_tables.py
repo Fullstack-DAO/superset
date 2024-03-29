@@ -14,18 +14,19 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""Added columns to tables
+"""add_column_to_tables
 
-Revision ID: dfa970b3300a
+Revision ID: 53e6925233ce
 Revises: ccdf9fa7ebfb
-Create Date: 2024-03-29 19:53:59.597259
+Create Date: 2024-03-29 11:49:17.806006
 
 """
 
 # revision identifiers, used by Alembic.
-revision = "dfa970b3300a"
-down_revision = "ccdf9fa7ebfb"
+revision = '53e6925233ce'
+down_revision = 'ccdf9fa7ebfb'
 
+from sqlalchemy.dialects import postgresql
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.ext.declarative import declarative_base
@@ -45,7 +46,6 @@ class SqlaTable(Base):
     dynamic_refresh_type = sa.Column(sa.VARCHAR(10))
     dynamic_refresh_year_column = sa.Column(sa.VARCHAR(255))
     dynamic_refresh_month_column = sa.Column(sa.VARCHAR(255))
-
 
 def upgrade():
     if not table_has_column("tables", "dynamic_ready"):
@@ -82,7 +82,8 @@ def upgrade():
         session = db.Session(bind=bind)
 
         for table in paginated_update(session.query(SqlaTable)):
-            table.always_filter_main_dttm = False
+            table.dynamic_ready = False
+
 
 
 def downgrade():

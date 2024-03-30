@@ -381,8 +381,11 @@ class ChartDataRestApi(ChartRestApi):
                     df1 = pd.read_excel(io.BytesIO(data1))
                     data2 = result["queries"][1]["data"]
                     df2 = pd.read_excel(io.BytesIO(data2))
-                    df2[first_query_columns[0]] = "合计"
-                    for col in first_query_columns[1:]:
+                    verbose_names_list = [
+                        col.verbose_name for col in datasource.columns if col.column_name in first_query_columns
+                    ]
+                    df2[verbose_names_list[0]] = "合计"
+                    for col in verbose_names_list[1:]:
                         df2[col] = " "
                     df2 = df2[df1.columns] 
                     combined_df = pd.concat([df1, df2], ignore_index=True)

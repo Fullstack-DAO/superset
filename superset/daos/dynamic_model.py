@@ -137,7 +137,7 @@ def reinit_dynamic_table(table_name: str, res_gen):
 
 def refresh_dynamic_table_datas_by_condition(table_name: str, conditions: list,  res_gen):
     conditions_str = [
-        condition['col'] + condition['op'] + str((','.join(condition['val']) if isinstance(condition['val'], list) else condition['val']))
+        condition['col'] + condition['op'] + ','.join([str(v) for v in condition['val']] if isinstance(condition['val'], list) else condition['val'])
         for condition in conditions
         if condition['op'] != utils.FilterOperator.TEMPORAL_RANGE.value
     ]
@@ -153,7 +153,7 @@ def refresh_dynamic_table_datas_by_condition(table_name: str, conditions: list, 
 
 def delete_dynamic_table_datas_by_condition(table_name: str, conditions: list):
     conditions_str = [
-        condition['col'] + condition['op'] + str((','.join(condition['val']) if isinstance(condition['val'], list) else condition['val']))
+        condition['col'] + condition['op'] + ','.join([str(v) for v in condition['val']] if isinstance(condition['val'], list) else condition['val'])
         for condition in conditions
         if condition['op'] != utils.FilterOperator.TEMPORAL_RANGE.value
     ]

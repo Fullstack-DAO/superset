@@ -50,7 +50,7 @@ from superset.models.sql_lab import Query
 from superset.utils.core import create_zip, get_user_id, json_int_dttm_ser
 from superset.views.base import CsvResponse, generate_download_headers, XlsxResponse
 from superset.views.base_api import statsd_metrics
-
+from superset.utils import csv, excel
 if TYPE_CHECKING:
     from superset.common.query_context import QueryContext
 
@@ -369,9 +369,28 @@ class ChartDataRestApi(ChartRestApi):
                 data = result["queries"][0]["data"]
                 if is_csv_format:
                     return CsvResponse(data, headers=generate_download_headers("csv"))
-
                 return XlsxResponse(data, headers=generate_download_headers("xlsx"))
-
+            
+            if len(result["queries"]) == 2:
+                first_query_columns = result["query_context"].queries[0].columns
+                second_query_columns = result["query_context"].queries[1].columns
+                if len(second_query_columns) == 0:
+                    import pandas as pd
+                    import io
+                    data1 = result["queries"][0]["data"]
+                    df1 = pd.read_excel(io.BytesIO(data1))
+                    data2 = result["queries"][1]["data"]
+                    df2 = pd.read_excel(io.BytesIO(data2))
+                    df2[first_query_columns[0]] = "合计"
+                    for col in first_query_columns[1:]:
+                        df2[col] = " "
+                    df2 = df2[df1.columns] 
+                    combined_df = pd.concat([df1, df2], ignore_index=True)
+                    combined_excel_data = excel.df_to_excel(combined_df)
+                    if is_csv_format:
+                        return CsvResponse(combined_excel_data, headers=generate_download_headers("csv"))
+                    return XlsxResponse(combined_excel_data, headers=generate_download_headers("xlsx"))
+                    
             # return multi-query results bundled as a zip file
             def _process_data(query_data: Any) -> Any:
                 if result_format == ChartDataResultFormat.CSV:

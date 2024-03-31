@@ -34,8 +34,8 @@ import {
   MenuObjectProps,
   MenuData,
 } from 'src/types/bootstrapTypes';
-import RightMenu from './RightMenu';
 import getBootstrapData from 'src/utils/getBootstrapData';
+import RightMenu from './RightMenu';
 
 const bootstrapData = getBootstrapData();
 
@@ -352,6 +352,7 @@ export function Menu({
               <a
                 role="button"
                 href={bootstrapData.common.docs_url}
+                rel='noreferrer noopener'
                 target="_blank"
               >
                 文档

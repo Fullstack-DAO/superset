@@ -38,6 +38,7 @@ function Copilot() {
       {token && (
         <iframe
           title="Copilot"
+          allow="microphone"
           src={`${bootstrapData.common.copilot_url}/chat?cid=1&model=chatgpt&token=${token}`}
           style={{
             width: '100%',

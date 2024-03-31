@@ -153,6 +153,7 @@ export interface CommonBootstrapData {
   d3_format: Partial<FormatLocaleDefinition>;
   copilot_url: string;
   report_url: string;
+  docs_url: string;
 }
 
 export interface BootstrapData {

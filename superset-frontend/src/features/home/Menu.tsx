@@ -24,7 +24,7 @@ import { getUrlParam } from 'src/utils/urlUtils';
 import { Row, Col, Grid } from 'src/components';
 import { MainNav as DropdownMenu, MenuMode } from 'src/components/Menu';
 import { Tooltip } from 'src/components/Tooltip';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { GenericLink } from 'src/components/GenericLink/GenericLink';
 import Icons from 'src/components/Icons';
 import { useUiConfig } from 'src/components/UiConfigContext';
@@ -35,6 +35,9 @@ import {
   MenuData,
 } from 'src/types/bootstrapTypes';
 import RightMenu from './RightMenu';
+import getBootstrapData from 'src/utils/getBootstrapData';
+
+const bootstrapData = getBootstrapData();
 
 interface MenuProps {
   data: MenuData;
@@ -345,6 +348,15 @@ export function Menu({
 
               return renderSubMenu(props);
             })}
+            <DropdownMenu.Item role="presentation">
+              <a
+                role="button"
+                href={bootstrapData.common.docs_url}
+                target="_blank"
+              >
+                文档
+              </a>
+            </DropdownMenu.Item>
           </DropdownMenu>
         </Col>
         <Col md={8} xs={24}>

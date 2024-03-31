@@ -30,7 +30,6 @@ const Workflow = lazy(
   () => import(/* webpackChunkName: "Report" */ 'src/pages/Workflow'),
 );
 
-
 const ChartCreation = lazy(
   () =>
     import(/* webpackChunkName: "ChartCreation" */ 'src/pages/ChartCreation'),

@@ -734,6 +734,8 @@ export default function TableChart<D extends DataRecord = DataRecord>(
         selectPageSize={pageSize !== null && SelectPageSize}
         // not in use in Superset, but needed for unit tests
         sticky={sticky}
+        totals={(totals as any) || {}}
+        columnMetas={columnsMeta}
       />
     </Styles>
   );

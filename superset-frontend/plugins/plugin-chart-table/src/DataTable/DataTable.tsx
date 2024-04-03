@@ -23,6 +23,7 @@ import React, {
   HTMLProps,
   MutableRefObject,
   CSSProperties,
+  useMemo,
 } from 'react';
 import {
   useTable,
@@ -48,6 +49,8 @@ import SimplePagination from './components/Pagination';
 import useSticky from './hooks/useSticky';
 import { PAGE_SIZE_OPTIONS } from '../consts';
 import { sortAlphanumericCaseInsensitive } from './utils/sortAlphanumericCaseInsensitive';
+import { DataColumnMeta } from '../types';
+import { formatColumnValue } from '../utils/formatValue';
 
 export interface DataTableProps<D extends object> extends TableOptions<D> {
   tableClassName?: string;
@@ -67,6 +70,8 @@ export interface DataTableProps<D extends object> extends TableOptions<D> {
   rowCount: number;
   wrapperRef?: MutableRefObject<HTMLDivElement>;
   onColumnOrderChange: () => void;
+  totals?: Map<string, number>;
+  columnMetas: DataColumnMeta[];
 }
 
 export interface RenderHTMLCellProps extends HTMLProps<HTMLTableCellElement> {
@@ -99,6 +104,8 @@ export default typedMemo(function DataTable<D extends object>({
   serverPagination,
   wrapperRef: userWrapperRef,
   onColumnOrderChange,
+  totals,
+  columnMetas,
   ...moreUseTableOptions
 }: DataTableProps<D>): JSX.Element {
   const tableHooks: PluginHook<D>[] = [
@@ -181,6 +188,7 @@ export default typedMemo(function DataTable<D extends object>({
     wrapStickyTable,
     setColumnOrder,
     allColumns,
+    rows,
     state: { pageIndex, pageSize, globalFilter: filterValue, sticky = {} },
   } = useTable<D>(
     {
@@ -205,6 +213,28 @@ export default typedMemo(function DataTable<D extends object>({
       setPageSize_(size === 0 ? resultsSize : size);
     }
   };
+
+  const filtedTotals = useMemo(() => {
+    if (!filterValue || !totals) {
+      return totals;
+    }
+
+    const totalKeys = Object.keys(totals);
+
+    const newTotals = totalKeys.reduce((acc, key) => {
+      const meta = columnMetas.find(c => c.key === key);
+      if (meta) {
+        const columnTotal = rows.reduce((acc, row) => {
+          const value = row.original[meta.key];
+          return +acc + (Number.isNaN(+value) ? 0 : +value);
+        }, 0);
+        acc[meta.key] = columnTotal;
+      }
+      return acc;
+    }, {} as Map<string, number>);
+
+    return newTotals;
+  }, [totals, filterValue, rows]);
 
   const noResults =
     typeof noResultsText === 'function'
@@ -246,6 +276,18 @@ export default typedMemo(function DataTable<D extends object>({
       onColumnOrderChange();
     }
     e.preventDefault();
+  };
+
+  const getSharedStyle = (column: DataColumnMeta): CSSProperties => {
+    const { isNumeric, config = {} } = column;
+    const textAlign = config.horizontalAlign
+      ? config.horizontalAlign
+      : isNumeric
+      ? 'right'
+      : 'left';
+    return {
+      textAlign,
+    };
   };
 
   const renderTable = () => (
@@ -296,9 +338,25 @@ export default typedMemo(function DataTable<D extends object>({
               footerGroup.getHeaderGroupProps();
             return (
               <tr key={footerGroupKey || footerGroup.id} {...footerGroupProps}>
-                {footerGroup.headers.map(column =>
-                  column.render('Footer', { key: column.id }),
-                )}
+                {footerGroup.headers.map(column => {
+                  const meta = columnMetas[+column.id];
+                  return (
+                    <td style={getSharedStyle(meta)}>
+                      {+column.id === 0 ? (
+                        '总计'
+                      ) : (
+                        <strong>
+                          {
+                            formatColumnValue(
+                              meta,
+                              filtedTotals ? filtedTotals[meta.key] : '',
+                            )[1]
+                          }
+                        </strong>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}

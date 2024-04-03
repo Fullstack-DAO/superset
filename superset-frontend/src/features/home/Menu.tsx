@@ -352,7 +352,7 @@ export function Menu({
               <a
                 role="button"
                 href={bootstrapData.common.docs_url}
-                rel='noreferrer noopener'
+                rel="noreferrer noopener"
                 target="_blank"
               >
                 文档

@@ -363,13 +363,20 @@ class ChartDataRestApi(ChartRestApi):
                 return self.response_400(_("Empty query result"))
 
             is_csv_format = result_format == ChartDataResultFormat.CSV
-
+            filename = None
+            if "slice_id" in form_data:
+                from superset import db
+                from superset.models.slice import Slice
+                slice_model = db.session.query(Slice).filter_by(id=form_data["slice_id"]).first()
+                if(slice):
+                    filename = slice_model.slice_name
+                    
             if len(result["queries"]) == 1:
                 # return single query results
                 data = result["queries"][0]["data"]
                 if is_csv_format:
-                    return CsvResponse(data, headers=generate_download_headers("csv"))
-                return XlsxResponse(data, headers=generate_download_headers("xlsx"))
+                    return CsvResponse(data, headers=generate_download_headers("csv", filename))
+                return XlsxResponse(data, headers=generate_download_headers("xlsx", filename))
             
             if len(result["queries"]) == 2:
                 first_query_columns = result["query_context"].queries[0].columns
@@ -391,8 +398,8 @@ class ChartDataRestApi(ChartRestApi):
                     combined_df = pd.concat([df1, df2], ignore_index=True)
                     combined_excel_data = excel.df_to_excel(combined_df)
                     if is_csv_format:
-                        return CsvResponse(combined_excel_data, headers=generate_download_headers("csv"))
-                    return XlsxResponse(combined_excel_data, headers=generate_download_headers("xlsx"))
+                        return CsvResponse(combined_excel_data, headers=generate_download_headers("csv", filename))
+                    return XlsxResponse(combined_excel_data, headers=generate_download_headers("xlsx", filename))
                     
             # return multi-query results bundled as a zip file
             def _process_data(query_data: Any) -> Any:
@@ -407,7 +414,7 @@ class ChartDataRestApi(ChartRestApi):
             }
             return Response(
                 create_zip(files),
-                headers=generate_download_headers("zip"),
+                headers=generate_download_headers("zip", filename),
                 mimetype="application/zip",
             )
 

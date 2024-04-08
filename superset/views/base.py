@@ -82,6 +82,7 @@ from superset.utils import core as utils
 from superset.utils.filters import get_dataset_access_filters
 
 from .utils import bootstrap_user_data
+from urllib.parse import quote
 
 FRONTEND_CONF_KEYS = (
     "SUPERSET_WEBSERVER_TIMEOUT",
@@ -182,8 +183,11 @@ def generate_download_headers(
     extension: str, filename: str | None = None
 ) -> dict[str, Any]:
     filename = filename if filename else datetime.now().strftime("%Y%m%d_%H%M%S")
-    content_disp = f"attachment; filename={filename}.{extension}"
+    encoded_filename = quote(filename)  
+    content_disp = f"attachment; filename*=UTF-8''{encoded_filename}.{extension}"
     headers = {"Content-Disposition": content_disp}
+    # content_disp = f"attachment; filename={filename}.{extension}"
+    # headers = {"Content-Disposition": content_disp}
     return headers
 
 

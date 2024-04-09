@@ -1901,7 +1901,9 @@ class SqlaTable(
                 datas = SqlaTable.execute_query_and_get_datas_by_sql(self.database, self.schema, sub_sql)
                 delete_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"])
                 refresh_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"], datas)
-
+                # 设置更新时间为当前时间
+                self.changed_on = datetime.now()
+                db.session.commit()
             if self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready:
                 df = pd.read_sql_query(sql, db.engine)
             else:

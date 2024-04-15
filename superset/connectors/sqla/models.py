@@ -126,6 +126,7 @@ from superset.utils.core import GenericDataType, MediumText
 from superset.daos.dynamic_model import reinit_dynamic_table, refresh_dynamic_table_datas_by_condition
 from superset.daos.dynamic_model import delete_dynamic_table_datas_by_condition
 import traceback
+from dateutil.relativedelta import relativedelta
 config = app.config
 metadata = Model.metadata  # pylint: disable=no-member
 logger = logging.getLogger(__name__)
@@ -1785,13 +1786,19 @@ class SqlaTable(
         month_column = dataset.dynamic_refresh_month_column
         year = now.year
         month = now.month
+
+        prev_month_date = now - relativedelta(months=1)
+        prev_month_year = prev_month_date.year
+        prev_month_month = prev_month_date.month
+
         dv_table_name = "dv_" + str(dataset.uuid)
+        years = list(set([year, prev_month_year]))
         try:
             exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
-            exe_sql = f"select * from ({exe_sql}) where {year_column}={str(year)} and {month_column} = {str(month)}"
+            exe_sql = f"select * from ({exe_sql}) where {year_column} in({', '.join(map(str, years))}) and {month_column} in({month},{prev_month_month}) "
             datas = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, exe_sql)
             ##remove old datas
-            conditions = [{'col': year_column, 'op': '==', 'val': year}, {'col': month_column, 'op': '==', 'val': month}]
+            conditions = [{'col': year_column, 'op': 'IN', 'val': years}, {'col': month_column, 'op': 'IN', 'val': [month, prev_month_month]}]
             delete_dynamic_table_datas_by_condition(dv_table_name, conditions)
             refresh_dynamic_table_datas_by_condition(dv_table_name, conditions, datas)
         except Exception as ex:  

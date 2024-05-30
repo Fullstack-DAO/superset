@@ -1912,6 +1912,7 @@ class SqlaTable(
                 self.changed_on = datetime.now()
                 db.session.commit()
             if self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready:
+                sql = sql.replace('%', '%%')
                 df = pd.read_sql_query(sql, db.engine)
             else:
                 df = self.database.get_df(sql, self.schema, mutator=assign_column_label)

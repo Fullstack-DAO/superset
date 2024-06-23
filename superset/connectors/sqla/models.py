@@ -1156,6 +1156,7 @@ class SqlaTable(
     normalize_columns = Column(Boolean, default=False)
     always_filter_main_dttm = Column(Boolean, default=False)
     dynamic_ready = Column(Boolean, default=False)
+    dynamic_refresh_time_type = Column(String(10), default="evening")
     dynamic_refresh_type = Column(String(10), default="increment")   
     dynamic_refresh_year_column = Column(String(250), default="year")
     dynamic_refresh_month_column = Column(String(250), default="month")
@@ -1814,12 +1815,33 @@ class SqlaTable(
 
     @classmethod
     def refresh_dataset_datas(cls):
-        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready).all()
+        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready, cls.dynamic_refresh_time_type == 'evening').all()
         #先执行胶水还原表的函数处理
         # cls.refresh_glue_reduction_datas()
         for dataset in datasets:
             dv_table_name = "dv_" + str(dataset.uuid)
             logger.info("Schedule exec refresh dataset datas, table_name: %s, refresh_type: %s", dv_table_name, dataset.dynamic_refresh_type)
+            if(dataset.dynamic_refresh_type == 'full'):
+                dataset.dynamic_ready = False
+                db.session.commit()
+                cls.down_single_dataset_datas(dataset)    
+                dataset.dynamic_ready = True
+                db.session.commit()
+            else:
+                dataset.dynamic_ready = False
+                db.session.commit()
+                cls.refresh_single_dataset_datas(dataset)
+                dataset.dynamic_ready = True
+                db.session.commit()
+
+    @classmethod
+    def refresh_dataset_datas_daily(cls):
+        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready, cls.dynamic_refresh_time_type == 'morning').all()
+        #先执行胶水还原表的函数处理
+        # cls.refresh_glue_reduction_datas()
+        for dataset in datasets:
+            dv_table_name = "dv_" + str(dataset.uuid)
+            logger.info("Schedule exec refresh dataset daily datas, table_name: %s, refresh_type: %s", dv_table_name, dataset.dynamic_refresh_type)
             if(dataset.dynamic_refresh_type == 'full'):
                 dataset.dynamic_ready = False
                 db.session.commit()

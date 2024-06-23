@@ -126,9 +126,20 @@ def prune_log() -> None:
 def refresh_datas() -> None:
     stats_logger: BaseStatsLogger = app.config["STATS_LOGGER"]
     stats_logger.incr("dynamic_table.refresh_datas")
-    logger.info("Refresh datas of dynamic tables Start.")
+    logger.info("Refresh daily datas of dynamic tables Start.")
     try:
         SqlaTable.refresh_dataset_datas()
+    except CommandException:
+        logger.exception("An exception occurred while pruning report schedule logs")
+    logger.info("Refresh datas of dynamic tables end.")
+
+@celery_app.task(name="dynamic_table.refresh_datas2")
+def refresh_datas2() -> None:
+    stats_logger: BaseStatsLogger = app.config["STATS_LOGGER"]
+    stats_logger.incr("dynamic_table.refresh_datas2")
+    logger.info("Refresh month datas of dynamic tables Start.")
+    try:
+        SqlaTable.refresh_dataset_datas_daily()
     except CommandException:
         logger.exception("An exception occurred while pruning report schedule logs")
     logger.info("Refresh datas of dynamic tables end.")

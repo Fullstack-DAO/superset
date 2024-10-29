@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 import sqlparse
-from flask import escape, Markup
+from flask import escape, Markup, g
 from flask_appbuilder import Model
 from flask_appbuilder.security.sqla.models import User
 from flask_babel import gettext as __, lazy_gettext as _
@@ -1795,13 +1795,35 @@ class SqlaTable(
         dv_table_name = "dv_" + str(dataset.uuid)
         years = list(set([year, prev_month_year]))
         try:
-            exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
-            exe_sql = f"select * from ({exe_sql}) where {year_column} in({', '.join(map(str, years))}) and {month_column} in({month},{prev_month_month}) "
-            datas = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, exe_sql)
-            ##remove old datas
+            query_obj = {
+              "columns": [year_column],
+              "filter": [ 
+                { "col": year_column, "op": "IN", "val": years },
+                { "col": month_column, "op": "IN", "val": [month, prev_month_month] },
+              ],
+              "is_timeseries": False,
+              "is_rowcount": False,
+            }
+            query_data = {
+              'filters': [
+                {'col': year_column, 'op': 'IN', 'val': years},
+                {'col': month_column, 'op': 'IN', 'val': [month, prev_month_month]}
+              ],
+              'columns': ['year'],
+            }
+            g.form_data = query_data
+            query_str_ext = dataset.get_query_str_extended(query_obj)
+            sub_sql = query_str_ext.sub_sql
+            logger.info("Refresh dataset datas processing, table_name: %s, sub_sql: %s", dv_table_name, sub_sql)
+            # 就方案无法将表函数中的jinja参数解析替换，因此导致查询时间过长，因此弃用掉，改成新方案
+            # exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
+            # exe_sql = f"select * from ({exe_sql}) where {year_column} in({', '.join(map(str, years))}) and {month_column} in({month},{prev_month_month}) "
+            datas = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, sub_sql)
+            # ##remove old datas
             conditions = [{'col': year_column, 'op': 'IN', 'val': years}, {'col': month_column, 'op': 'IN', 'val': [month, prev_month_month]}]
             delete_dynamic_table_datas_by_condition(dv_table_name, conditions)
             refresh_dynamic_table_datas_by_condition(dv_table_name, conditions, datas)
+
         except Exception as ex:  
             traceback.print_exc()
             error_message = utils.error_msg_from_exception(ex)
@@ -1886,8 +1908,6 @@ class SqlaTable(
                   if not records:
                       break
                   yield {'records': records}
-
-    
 
     def query(self, query_obj: QueryObjectDict, is_ad_hoc_refresh: bool = False) -> QueryResult:
         qry_start_dttm = datetime.now()

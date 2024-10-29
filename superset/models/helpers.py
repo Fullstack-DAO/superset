@@ -2140,6 +2140,10 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             and (col in self.column_names or col in applied_template_filters)
         ] + applied_adhoc_filters_columns
 
+        # 将更新数据集的sql生成并返回
+        tbl_sub_query = sa.select('*').select_from(tbl).where(and_(*(where_clause_and)))
+        tbl_sub_query_sql = tbl_sub_query.compile(compile_kwargs={"literal_binds": True})
+
         return SqlaQuery(
             applied_template_filters=applied_template_filters,
             cte=cte,
@@ -2149,6 +2153,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             labels_expected=labels_expected,
             sqla_query=qry,
             prequeries=prequeries,
-            sub_query=str(tbl),
+            sub_query=str(tbl_sub_query_sql),
         )
     

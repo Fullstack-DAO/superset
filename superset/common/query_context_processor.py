@@ -135,7 +135,7 @@ class QueryContextProcessor:
             force_query=force_query,
             force_cached=force_cached,
         )
-
+        ##改造缓存更新
         if query_obj and cache_key and (not cache.is_loaded or cache_level == 1):
             try:
                 if invalid_columns := [

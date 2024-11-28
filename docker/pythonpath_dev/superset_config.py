@@ -87,11 +87,15 @@ class CeleryConfig:
             "task": "reports.prune_log",
             "schedule": crontab(minute=10, hour=0),
         },
-        "dynamic_table.refresh_datas": {
+         "dynamic_table.refresh_datas": {
             "task": "dynamic_table.refresh_datas",
-            "schedule": crontab(minute=30, hour=0),
-            # "schedule": crontab(minute=30, hour="*"),
+            "schedule": crontab(minute=50, hour=23),
         },
+
+        "dynamic_table.refresh_datas2": {
+            "task": "dynamic_table.refresh_datas2",
+            "schedule": crontab(minute=40, hour=9),
+        }
     }
 
 

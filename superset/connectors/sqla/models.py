@@ -1947,6 +1947,7 @@ class SqlaTable(
             if is_ad_hoc_refresh and self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready:
                 # 如果是刷新缓存查询，则将结果增量添加到动态缓存表中，同时在添加之前需要根据条件将动态缓存表中的老数据删除
                 dv_table_name = "dv_" + str(self.uuid)
+                logger.info("Ad hoc refresh dataset datas processing, table_name: %s, sql: %s", dv_table_name, sub_sql)
                 datas = SqlaTable.execute_query_and_get_datas_by_sql(self.database, self.schema, sub_sql)
                 delete_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"])
                 refresh_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"], datas)

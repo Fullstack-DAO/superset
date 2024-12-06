@@ -54,6 +54,7 @@ from superset.charts.schemas import (
     screenshot_query_schema,
     thumbnail_query_schema,
 )
+from superset.charts.permissions import ChartPermissions
 from superset.commands.chart.create import CreateChartCommand
 from superset.commands.chart.delete import DeleteChartCommand
 from superset.commands.chart.exceptions import (
@@ -107,7 +108,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         if not is_feature_enabled("THUMBNAILS"):
             return self.response_404()
         return None
-
+    
     include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
         RouteMethod.EXPORT,
         RouteMethod.IMPORT,
@@ -319,11 +320,17 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        
         try:
             item = self.add_model_schema.load(request.json)
         # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
+        
+        chart = Slice(**item)
+        if not ChartPermissions.check_chart_permission(chart, edit=True):
+            return self.response_403()  # 权限不足
+        
         try:
             new_model = CreateChartCommand(item).run()
             return self.response(201, id=new_model.id, result=item)
@@ -391,6 +398,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        chart = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
+        if not chart:
+            return self.response_403()  # 权限不足
+        
         try:
             item = self.edit_model_schema.load(request.json)
         # This validates custom Schema with custom validations
@@ -455,6 +466,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        chart = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
+        if not chart:
+            return self.response_403()  # 权限不足
+        
         try:
             DeleteChartCommand([pk]).run()
             return self.response(200, message="OK")
@@ -514,6 +529,13 @@ class ChartRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         item_ids = kwargs["rison"]
+        for item_id in item_ids:
+            try:
+                ChartPermissions.get_chart_and_check_permission(self.datamodel, item_id)  # 检查每个图表的权限
+            except ChartForbiddenError:
+                return self.response_403()  # 如果没有权限，返回403
+            except ChartNotFoundError:
+                return self.response_404()  # 如果图表未找到，返回404
         try:
             DeleteChartCommand(item_ids).run()
             return self.response(
@@ -576,11 +598,13 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         # Don't shrink the image if thumb_size is not specified
         thumb_size = rison_dict.get("thumb_size") or window_size
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
+        if not permission:
+            return self.response_403()  # 权限不足
 
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
         if not chart:
             return self.response_404()
-
         chart_url = get_url_path("Superset.slice", slice_id=chart.id)
         screenshot_obj = ChartScreenshot(chart_url, chart.digest)
         cache_key = screenshot_obj.cache_key(window_size, thumb_size)
@@ -642,6 +666,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
+        if not permission:
+            return self.response_403()  # 权限不足
+        
         chart = self.datamodel.get(pk, self._base_filters)
 
         # Making sure the chart still exists
@@ -699,6 +727,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
+        if not permission:
+            return self.response_403()  # 权限不足
+        
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
         if not chart:
             return self.response_404()
@@ -895,6 +927,9 @@ class ChartRestApi(BaseSupersetModelRestApi):
         chart = ChartDAO.find_by_id(pk)
         if not chart:
             return self.response_404()
+        if not ChartPermissions.has_edit_permission(chart):
+            return safe.response_403()  # 权限不足
+            
 
         ChartDAO.add_favorite(chart)
         return self.response(200, result="OK")
@@ -938,6 +973,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
         chart = ChartDAO.find_by_id(pk)
         if not chart:
             return self.response_404()
+        if not ChartPermissions.has_edit_permission(chart):
+            return self.response_403()  # 权限不足
 
         ChartDAO.remove_favorite(chart)
         return self.response(200, result="OK")

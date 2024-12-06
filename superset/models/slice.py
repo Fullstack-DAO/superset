@@ -61,6 +61,20 @@ slice_user = Table(
     Column("user_id", Integer, ForeignKey("ab_user.id", ondelete="CASCADE")),
     Column("slice_id", Integer, ForeignKey("slices.id", ondelete="CASCADE")),
 )
+
+# 定义中间表
+slice_read_roles = Table(
+    'slice_read_roles', Model.metadata,
+    Column('slice_id', Integer, ForeignKey('slices.id')),
+    Column('role_id', Integer, ForeignKey('ab_role.id'))
+)
+
+slice_edit_roles = Table(
+    'slice_edit_roles', Model.metadata,
+    Column('slice_id', Integer, ForeignKey('slices.id')),
+    Column('role_id', Integer, ForeignKey('ab_role.id'))
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +106,7 @@ class Slice(  # pylint: disable=too-many-public-methods
     certification_details = Column(Text)
     is_managed_externally = Column(Boolean, nullable=False, default=False)
     external_url = Column(Text, nullable=True)
+    visibility_scope = Column(String(50), default='owner')  # 可见范围：owner, role, public
     last_saved_by = relationship(
         security_manager.user_model, foreign_keys=[last_saved_by_fk]
     )
@@ -117,6 +132,17 @@ class Slice(  # pylint: disable=too-many-public-methods
         remote_side="SqlaTable.id",
         lazy="subquery",
     )
+    read_roles = relationship(
+        "Role", 
+        secondary=slice_read_roles, 
+        backref="readable_slices",
+        )
+    edit_roles = relationship(
+        "Role", 
+        secondary=slice_edit_roles, 
+        backref="editable_slices",
+        )
+
 
     token = ""
 

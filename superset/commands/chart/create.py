@@ -47,6 +47,8 @@ class CreateChartCommand(CreateMixin, BaseCommand):
         try:
             self._properties["last_saved_at"] = datetime.now()
             self._properties["last_saved_by"] = g.user
+            # 默认将当前用户添加到可读角色
+            self._properties["read_roles"] = [g.user]
             return ChartDAO.create(attributes=self._properties)
         except DAOCreateFailedError as ex:
             logger.exception(ex.exception)

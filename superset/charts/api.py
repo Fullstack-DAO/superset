@@ -927,9 +927,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         chart = ChartDAO.find_by_id(pk)
         if not chart:
             return self.response_404()
-        if not ChartPermissions.has_edit_permission(chart):
-            return safe.response_403()  # 权限不足
-            
+        
 
         ChartDAO.add_favorite(chart)
         return self.response(200, result="OK")
@@ -973,8 +971,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         chart = ChartDAO.find_by_id(pk)
         if not chart:
             return self.response_404()
-        if not ChartPermissions.has_edit_permission(chart):
-            return self.response_403()  # 权限不足
+        
 
         ChartDAO.remove_favorite(chart)
         return self.response(200, result="OK")

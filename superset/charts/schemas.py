@@ -21,13 +21,14 @@ import inspect
 from typing import Any, TYPE_CHECKING
 
 from flask_babel import gettext as _
-from marshmallow import EXCLUDE, fields, post_load, Schema, validate
+from marshmallow import EXCLUDE, fields, post_load, Schema, validate, ValidationError
 from marshmallow.validate import Length, Range
 
 from superset import app
 from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
 from superset.db_engine_specs.base import builtin_time_grains
 from superset.tags.models import TagType
+from superset.charts.permissions import ChartPermissions
 from superset.utils import pandas_postprocessing, schema as utils
 from superset.utils.core import (
     AnnotationType,
@@ -230,6 +231,18 @@ class ChartPostSchema(Schema):
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
 
+    def validate_owners(self, owners):
+        # 假设您有一个方法来检查用户是否有权添加这些所有者
+        for owner in owners:
+            if not ChartPermissions.check_user_permission(owner):
+                raise ValidationError(f"User does not have permission to add owner {owner}.")
+
+    @post_load
+    def validate(self, data, **kwargs):
+        if 'owners' in data:
+            self.validate_owners(data['owners'])
+        return data
+
 
 class ChartPutSchema(Schema):
     """
@@ -285,6 +298,19 @@ class ChartPutSchema(Schema):
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
     tags = fields.Nested(TagSchema, many=True)
+
+
+    def validate_owners(self, owners):
+        # 假设您有一个方法来检查用户是否有权添加这些所有者
+        for owner in owners:
+            if not ChartPermissions.check_user_permission(owner):
+                raise ValidationError(f"User does not have permission to update owner {owner}.")
+
+    @post_load
+    def validate(self, data, **kwargs):
+        if 'owners' in data:
+            self.validate_owners(data['owners'])
+        return data
 
 
 class ChartGetDatasourceObjectDataResponseSchema(Schema):

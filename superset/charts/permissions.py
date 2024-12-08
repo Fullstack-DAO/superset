@@ -2,6 +2,7 @@ from flask import g
 from superset.models.slice import Slice
 from superset.tasks.utils import get_current_user
 from flask_appbuilder.models.sqla.interface import SQLAInterface
+from superset import security_manager
 from typing import Optional
 import logging
 
@@ -76,3 +77,13 @@ class ChartPermissions:
         logger.warning("User %s does not have read permission for chart %s.", g.user.username, chart.id)
         return False
 
+
+    @staticmethod
+    def check_user_permission(owner_id: int) -> bool:
+        """
+        Check if the current user has permission to add or update the specified owner.
+
+        :param owner_id: The ID of the owner to check permissions for.
+        :return: True if the user has permission, False otherwise.
+        """
+        return security_manager.can_access("can_edit", "Chart", owner_id)

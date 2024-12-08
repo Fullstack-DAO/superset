@@ -79,11 +79,12 @@ class ChartPermissions:
 
 
     @staticmethod
-    def check_user_permission(owner_id: int) -> bool:
+    def check_user_permission() -> bool:
         """
         Check if the current user has permission to add or update the specified owner.
 
         :param owner_id: The ID of the owner to check permissions for.
         :return: True if the user has permission, False otherwise.
         """
-        return security_manager.can_access("can_edit", "Chart", owner_id)
+        user = get_current_user()  # 获取当前用户
+        return "admin" in user.roles or security_manager.can_access("can_edit", "Chart")

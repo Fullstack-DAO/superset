@@ -235,12 +235,8 @@ class ChartDataRestApi(ChartRestApi):
         if json_body is None:
             return self.response_400(message=_("Request is not JSON"))
         
-        # 从请求体中提取 owner_id
-        owner_id = json_body.get("owner_id")
-        if owner_id is None:
-            owner_id = get_current_user().id  # 使用当前用户的 ID
         
-        if not ChartPermissions.check_user_permission(owner_id):
+        if not ChartPermissions.check_user_permission():
             return self.response_403()  # 权限不足
 
         try:

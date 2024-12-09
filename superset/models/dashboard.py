@@ -137,6 +137,24 @@ DashboardRoles = Table(
 )
 
 
+dashboard_editable_roles = Table(
+    "dashboard_editable_roles",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "dashboard_id",
+        Integer,
+        ForeignKey("dashboards.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column(
+        "role_id",
+        Integer,
+        ForeignKey("ab_role.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+)
+
 # pylint: disable=too-many-public-methods
 class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
     """The dashboard object!"""
@@ -159,6 +177,8 @@ class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
         secondary=dashboard_user,
         passive_deletes=True,
     )
+    visible_roles = relationship("Role", secondary=DashboardRoles, backref="visible_dashboards")
+    editable_roles = relationship("Role", secondary=dashboard_editable_roles, backref="editable_dashboards")
     tags = relationship(
         "Tag",
         overlaps="objects,tag,tags,tags",

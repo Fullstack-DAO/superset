@@ -72,6 +72,9 @@ class DashboardDAO(BaseDAO[Dashboard]):
             dashboard.raise_for_access()
         except SupersetSecurityException as ex:
             raise DashboardAccessDeniedError() from ex
+        user_roles = [role.id for role in g.user.roles]
+        if not any(role.id in user_roles for role in dashboard.visible_roles):
+            raise DashboardAccessDeniedError("You do not have access to this dashboard.")
 
         return dashboard
 

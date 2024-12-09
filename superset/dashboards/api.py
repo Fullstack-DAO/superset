@@ -494,13 +494,16 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        item = request.json
+        visible_roles = item.pop("visible_roles", [])
+        editable_roles = item.pop("editable_roles", [])
         try:
             item = self.add_model_schema.load(request.json)
         # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:
-            new_model = CreateDashboardCommand(item).run()
+            new_model = CreateDashboardCommand(item, visible_roles=visible_roles, editable_roles=editable_roles).run()
             return self.response(201, id=new_model.id, result=item)
         except DashboardInvalidError as ex:
             return self.response_422(message=ex.normalized_messages())
@@ -566,13 +569,16 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        item = request.json
+        visible_roles = item.pop("visible_roles", None)
+        editable_roles = item.pop("editable_roles", None)
         try:
             item = self.edit_model_schema.load(request.json)
         # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:
-            changed_model = UpdateDashboardCommand(pk, item).run()
+            changed_model = UpdateDashboardCommand(pk, item, visible_roles=visible_roles, editable_roles=editable_roles).run()
             last_modified_time = changed_model.changed_on.replace(
                 microsecond=0
             ).timestamp()

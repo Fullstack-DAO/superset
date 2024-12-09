@@ -305,6 +305,11 @@ class DashboardPostSchema(BaseDashboardSchema):
     )
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
+    # 新增字段
+    visible_roles = fields.List(fields.Integer(), metadata={"description": "可见角色的 ID 列表"})
+    editable_roles = fields.List(fields.Integer(), metadata={"description": "可编辑角色的 ID 列表"})
+
+
 
 
 class DashboardCopySchema(Schema):
@@ -365,6 +370,10 @@ class DashboardPutSchema(BaseDashboardSchema):
     )
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
+    # 新增字段
+    visible_roles = fields.List(fields.Integer(), allow_none=True, metadata={"description": "可见角色的 ID 列表"})
+    editable_roles = fields.List(fields.Integer(), allow_none=True, metadata={"description": "可编辑角色的 ID 列表"})
+
 
 
 class ChartFavStarResponseResult(Schema):

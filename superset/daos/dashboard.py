@@ -182,6 +182,18 @@ class DashboardDAO(BaseDAO[Dashboard]):
         new_filter_scopes = {}
         md = dashboard.params_dict
 
+        
+        # 验证用户是否有权设置可见角色和可编辑角色
+        if "visible_roles" in data:
+            user_roles = [role.id for role in g.user.roles]
+            if not all(role in user_roles for role in data["visible_roles"]):
+                raise DashboardForbiddenError("You do not have permission to set these visible roles.")
+
+        if "editable_roles" in data:
+            user_roles = [role.id for role in g.user.roles]
+            if not all(role in user_roles for role in data["editable_roles"]):
+                raise DashboardForbiddenError("You do not have permission to set these editable roles.")
+
         if (positions := data.get("positions")) is not None:
             # find slices in the position data
             slice_ids = [

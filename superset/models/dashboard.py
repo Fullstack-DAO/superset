@@ -57,6 +57,9 @@ from superset.thumbnails.digest import get_dashboard_digest
 from superset.utils import core as utils
 from superset.utils.decorators import debounce
 
+# 确保导入 EmbeddedDashboard
+from superset.models.embedded_dashboard import EmbeddedDashboard  # 添加这一行
+
 metadata = Model.metadata  # pylint: disable=no-member
 config = app.config
 logger = logging.getLogger(__name__)

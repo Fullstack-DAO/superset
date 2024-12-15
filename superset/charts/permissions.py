@@ -1,6 +1,6 @@
 from flask import g
 from superset.models.slice import Slice
-from superset.tasks.utils import get_current_user
+from superset.tasks.utils import get_current_user_object
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from superset import security_manager
 from typing import Optional
@@ -14,8 +14,8 @@ class ChartPermissions:
     
     @staticmethod
     def check_chart_permission(chart: Slice, edit: bool = False) -> bool:
-        user = get_current_user()  # 获取当前用户
-
+        user = get_current_user_object()  # 获取当前用户
+        logging.info(f"check_chart_permission User: {user}")
         if not user:
             logger.warning("Permission check failed: No user is currently logged in.")
             return False
@@ -53,7 +53,7 @@ class ChartPermissions:
             logger.warning("Chart with ID %s not found.", pk)
             return None
 
-        user = get_current_user()  # 获取当前用户
+        user = get_current_user_object()  # 获取当前用户
         edit_permission = any(role in chart.edit_roles for role in user.roles) if user else False
 
         if not ChartPermissions.check_chart_permission(chart, edit=edit_permission):
@@ -86,5 +86,5 @@ class ChartPermissions:
         :param owner_id: The ID of the owner to check permissions for.
         :return: True if the user has permission, False otherwise.
         """
-        user = get_current_user()  # 获取当前用户
+        user = get_current_user_object()  # 获取当前用户
         return "admin" in user.roles or security_manager.can_access("can_edit", "Chart")

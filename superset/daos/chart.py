@@ -111,6 +111,7 @@ class ChartDAO(BaseDAO[Slice]):
         skip_base_filter: bool = False,
     ) -> list[Slice]:
         charts = super().find_by_ids(model_ids, session, skip_base_filter)
+        logging.info(f"Found charts: {charts}")
         return [chart for chart in charts if ChartPermissions.check_chart_permission(chart)]
     
     @classmethod

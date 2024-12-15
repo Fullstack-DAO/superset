@@ -878,6 +878,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         requested_ids = kwargs["rison"]
+        logging.info(f"Requested IDs: {requested_ids}")
         charts = ChartDAO.find_by_ids(requested_ids)
         if not charts:
             return self.response_404()

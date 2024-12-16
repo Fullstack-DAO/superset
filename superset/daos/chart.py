@@ -25,7 +25,7 @@ from superset.charts.permissions import ChartPermissions
 from superset.daos.base import BaseDAO
 from superset.extensions import db
 from superset.models.core import FavStar, FavStarClassName
-from superset.models.slice import Slice
+from superset.models.slice import Slice, slice_read_roles, slice_edit_roles
 from superset.utils.core import get_user_id
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -171,3 +171,67 @@ class ChartDAO(BaseDAO[Slice]):
             if not ChartPermissions.check_chart_permission(item):
                 raise PermissionError(f"User does not have permission to delete chart {item.id}.")
         super().delete(items, commit)
+
+    
+    @staticmethod
+    def add_read_role_to_slice(slice_id: int, role_id: int, user_id: int) -> None:
+        """Add a read role to a slice."""
+        existing_role = db.session.query(slice_read_roles).filter_by(slice_id=slice_id, role_id=role_id, user_id=user_id).first()
+        if existing_role:
+            raise Exception("Read role already exists for this slice.")
+
+        new_role = slice_read_roles.insert().values(slice_id=slice_id, role_id=role_id, user_id=user_id)
+        db.session.execute(new_role)
+        db.session.commit()
+
+    @staticmethod
+    def remove_read_role_from_slice(slice_id: int, role_id: int, user_id: int) -> None:
+        """Remove a read role from a slice."""
+        delete_role = slice_read_roles.delete().where(
+            (slice_read_roles.c.slice_id == slice_id) & 
+            (slice_read_roles.c.role_id == role_id) & 
+            (slice_read_roles.c.user_id == user_id)
+        )
+        result = db.session.execute(delete_role)
+        db.session.commit()
+
+        if result.rowcount == 0:
+            raise Exception("Read role not found for this slice.")
+
+    @staticmethod
+    def get_read_roles_for_slice(slice_id: int) -> list:
+        """Get all read roles for a slice."""
+        roles = db.session.query(slice_read_roles).filter_by(slice_id=slice_id).all()
+        return [{"role_id": role.role_id, "user_id": role.user_id} for role in roles]
+
+    @staticmethod
+    def add_edit_role_to_slice(slice_id: int, role_id: int, user_id: int) -> None:
+        """Add an edit role to a slice."""
+        existing_role = db.session.query(slice_edit_roles).filter_by(slice_id=slice_id, role_id=role_id, user_id=user_id).first()
+        if existing_role:
+            raise Exception("Edit role already exists for this slice.")
+
+        new_role = slice_edit_roles.insert().values(slice_id=slice_id, role_id=role_id, user_id=user_id)
+        db.session.execute(new_role)
+        db.session.commit()
+
+
+    @staticmethod
+    def remove_edit_role_from_slice(slice_id: int, role_id: int, user_id: int) -> None:
+        """Remove an edit role from a slice."""
+        delete_role = slice_edit_roles.delete().where(
+            (slice_edit_roles.c.slice_id == slice_id) & 
+            (slice_edit_roles.c.role_id == role_id) & 
+            (slice_edit_roles.c.user_id == user_id)
+        )
+        result = db.session.execute(delete_role)
+        db.session.commit()
+
+        if result.rowcount == 0:
+            raise Exception("Edit role not found for this slice.")
+
+    @staticmethod
+    def get_edit_roles_for_slice(slice_id: int) -> list:
+        """Get all edit roles for a slice."""
+        roles = db.session.query(slice_edit_roles).filter_by(slice_id=slice_id).all()
+        return [{"role_id": role.role_id, "user_id": role.user_id} for role in roles]

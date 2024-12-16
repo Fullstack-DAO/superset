@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# pylint: disable=too-many-lines
 import json
 import logging
 from datetime import datetime
@@ -22,7 +5,7 @@ from io import BytesIO
 from typing import Any, cast, Optional
 from zipfile import is_zipfile, ZipFile
 
-from flask import redirect, request, Response, send_file, url_for
+from flask import redirect, request, Response, send_file, url_for, jsonify
 from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
@@ -929,7 +912,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         if not chart:
             return self.response_404()
         
-
         ChartDAO.add_favorite(chart)
         return self.response(200, result="OK")
 
@@ -973,7 +955,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         if not chart:
             return self.response_404()
         
-
         ChartDAO.remove_favorite(chart)
         return self.response(200, result="OK")
 
@@ -1154,3 +1135,264 @@ class ChartRestApi(BaseSupersetModelRestApi):
         )
         command.run()
         return self.response(200, message="OK")
+
+    # 新增角色权限管理接口
+    @expose("/<pk>/read_roles/add", methods=("POST",))
+    @protect()
+    @safe
+    @statsd_metrics
+    def add_read_role(self, pk: int) -> Response:
+        """Add a read role to a slice.
+        ---
+        post:
+          summary: Add a read role to a slice
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          requestBody:
+            description: Role ID to add
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    role_id:
+                      type: integer
+          responses:
+            200:
+              description: Role added
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        role_id = request.json.get("role_id")
+        user_id = request.json.get("user_id")
+        if not role_id or not user_id:
+            return self.response_400(message="Role ID and User ID are required.")
+
+        try:
+            ChartDAO.add_read_role_to_slice(pk, role_id, user_id)
+            return self.response(200, message="Read role added.")
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+    @expose("/<pk>/read_roles/delete", methods=("DELETE",))
+    @protect()
+    @safe
+    @statsd_metrics
+    def remove_read_role(self, pk: int) -> Response:
+        """Remove a read role from a slice.
+        ---
+        delete:
+          summary: Remove a read role from a slice
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          requestBody:
+            description: Role ID to remove
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    role_id:
+                      type: integer
+          responses:
+            200:
+              description: Role removed
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        role_id = request.json.get("role_id")
+        user_id = request.json.get("user_id")
+        if not role_id or not user_id:
+            return self.response_400(message="Role ID and User ID are required.")
+
+        try:
+            ChartDAO.remove_read_role_from_slice(pk, role_id, user_id)
+            return self.response(200, message="Read role removed.")
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+    @expose("/<pk>/read_roles/getReadRole", methods=("GET",))
+    @protect()
+    @safe
+    @statsd_metrics
+    def get_read_roles(self, pk: int) -> Response:
+        """Get all read roles for a slice.
+        ---
+        get:
+          summary: Get all read roles for a slice
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          responses:
+            200:
+              description: List of read roles
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role_id:
+                          type: integer
+                        role_name:
+                          type: string
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            roles = ChartDAO.get_read_roles_for_slice(pk)
+            return self.response(200, result=roles)
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+
+    @expose("/<pk>/edit_roles/add", methods=("POST",))
+    @protect()
+    @safe
+    def add_edit_role(self, pk: int) -> Response:
+        """Add an edit role to a slice.
+        ---
+        post:
+          summary: Add an edit role to a slice
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          requestBody:
+            description: Role ID and User ID to add
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    role_id:
+                      type: integer
+                    user_id:
+                      type: integer
+          responses:
+            200:
+              description: Edit role added
+            400:
+              description: Bad request
+            404:
+              description: Not found
+        """
+        role_id = request.json.get("role_id")
+        user_id = request.json.get("user_id")
+        if not role_id or not user_id:
+            return self.response_400(message="Role ID and User ID are required.")
+
+        try:
+            ChartDAO.add_edit_role_to_slice(pk, role_id, user_id)
+            return self.response(200, message="Edit role added.")
+        except Exception as e:
+            return self.response_400(message=str(e))    
+        
+
+
+    @expose("/<pk>/edit_roles/delete", methods=("DELETE",))
+    @protect()
+    @safe
+    def remove_edit_role(self, pk: int) -> Response:
+        """Remove an edit role from a slice.
+        ---
+        delete:
+          summary: Remove an edit role from a slice
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          requestBody:
+            description: Role ID and User ID to remove
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    role_id:
+                      type: integer
+                    user_id:
+                      type: integer
+          responses:
+            200:
+              description: Edit role removed
+            400:
+              description: Bad request
+            404:
+              description: Not found
+        """
+        role_id = request.json.get("role_id")
+        user_id = request.json.get("user_id")
+        if not role_id or not user_id:
+            return self.response_400(message="Role ID and User ID are required.")
+
+        try:
+            ChartDAO.remove_edit_role_from_slice(pk, role_id, user_id)
+            return self.response(200, message="Edit role removed.")
+        except Exception as e:
+            return self.response_400(message=str(e))
+  
+    @expose("/<pk>/edit_roles/getEditRole", methods=("GET",))
+    @protect()
+    @safe
+    def get_edit_roles(self, pk: int) -> Response:
+        """Get all edit roles for a slice.
+        ---
+        get:
+          summary: Get all edit roles for a slice
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          responses:
+            200:
+              description: List of edit roles
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role_id:
+                          type: integer
+                        user_id:
+                          type: integer
+            404:
+              description: Not found
+        """
+        try:
+            roles = ChartDAO.get_edit_roles_for_slice(pk)
+            return self.response(200, result=roles)
+        except Exception as e:
+            return self.response_400(message=str(e))

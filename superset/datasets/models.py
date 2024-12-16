@@ -39,6 +39,21 @@ from superset.models.helpers import (
 )
 from superset.tables.models import Table
 
+# 新增角色关联表
+dataset_read_roles = sa.Table(
+    "sl_dataset_read_roles",
+    Model.metadata,
+    sa.Column("dataset_id", sa.ForeignKey("sl_datasets.id"), primary_key=True),
+    sa.Column("role_id", sa.ForeignKey("ab_role.id"), primary_key=True),
+)
+
+dataset_edit_roles = sa.Table(
+    "sl_dataset_edit_roles",
+    Model.metadata,
+    sa.Column("dataset_id", sa.ForeignKey("sl_datasets.id"), primary_key=True),
+    sa.Column("role_id", sa.ForeignKey("ab_role.id"), primary_key=True),
+)
+
 dataset_column_association_table = sa.Table(
     "sl_dataset_columns",
     Model.metadata,  # pylint: disable=no-member
@@ -98,6 +113,19 @@ class Dataset(AuditMixinNullable, ExtraJSONMixin, ImportExportMixin, Model):
     )
     tables: list[Table] = relationship(
         "Table", secondary=dataset_table_association_table, backref="datasets"
+    )
+
+    # 新增可读角色和可编辑角色的关系
+    read_roles = relationship(
+        "Role", 
+        secondary=dataset_read_roles, 
+        backref="readable_datasets"
+    )
+    
+    edit_roles = relationship(
+        "Role", 
+        secondary=dataset_edit_roles, 
+        backref="editable_datasets"
     )
 
     # Does the dataset point directly to a ``Table``?

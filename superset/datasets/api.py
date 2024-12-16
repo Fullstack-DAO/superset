@@ -77,6 +77,7 @@ from superset.views.base_api import (
     statsd_metrics,
 )
 from superset.views.filters import BaseFilterRelatedUsers, FilterRelatedOwners
+from superset.charts.permissions import ChartPermissions  # charts权限模块
 
 logger = logging.getLogger(__name__)
 
@@ -325,9 +326,12 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         """
         try:
             item = self.add_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
+
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
 
         try:
             new_model = CreateDatasetCommand(item).run()
@@ -404,9 +408,13 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         )
         try:
             item = self.edit_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
+
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
+
         try:
             changed_model = UpdateDatasetCommand(pk, item, override_columns).run()
             if override_columns:
@@ -467,6 +475,10 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
+
         try:
             DeleteDatasetCommand([pk]).run()
             return self.response(200, message="OK")
@@ -614,9 +626,12 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         """
         try:
             item = self.duplicate_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
+
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
 
         try:
             new_model = DuplicateDatasetCommand(item).run()
@@ -675,6 +690,10 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
+
         try:
             RefreshDatasetCommand(pk).run()
             return self.response(200, message="OK")
@@ -711,7 +730,6 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             schema:
               type: integer
           responses:
-            200:
             200:
               description: Query result
               content:
@@ -797,6 +815,10 @@ class DatasetRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         item_ids = kwargs["rison"]
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
+
         try:
             DeleteDatasetCommand(item_ids).run()
             return self.response(
@@ -994,6 +1016,11 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             body = GetOrCreateDatasetSchema().load(request.json)
         except ValidationError as ex:
             return self.response(400, message=ex.messages)
+
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
+
         table_name = body["table_name"]
         database_id = body["database_id"]
         if table := DatasetDAO.get_table_by_name(database_id, table_name):
@@ -1060,6 +1087,11 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             body = DatasetCacheWarmUpRequestSchema().load(request.json)
         except ValidationError as error:
             return self.response_400(message=error.messages)
+
+        # 权限检查
+        if not ChartPermissions.check_dataset_permission(request.user.id):
+            return self.response_403()  # 如果没有权限，返回403
+
         try:
             result = DatasetWarmUpCacheCommand(
                 body["db_name"],

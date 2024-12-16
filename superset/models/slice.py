@@ -66,13 +66,15 @@ slice_user = Table(
 slice_read_roles = Table(
     'slice_read_roles', Model.metadata,
     Column('slice_id', Integer, ForeignKey('slices.id')),
-    Column('role_id', Integer, ForeignKey('ab_role.id'))
+    Column('role_id', Integer, ForeignKey('ab_role.id')),
+    Column('user_id', Integer, ForeignKey('ab_user.id'))  # 关联用户
 )
 
 slice_edit_roles = Table(
     'slice_edit_roles', Model.metadata,
     Column('slice_id', Integer, ForeignKey('slices.id')),
-    Column('role_id', Integer, ForeignKey('ab_role.id'))
+    Column('role_id', Integer, ForeignKey('ab_role.id')),
+    Column('user_id', Integer, ForeignKey('ab_user.id'))  # 关联用户
 )
 
 logger = logging.getLogger(__name__)

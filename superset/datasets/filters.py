@@ -26,11 +26,7 @@ class DatasetIsNullOrEmptyFilter(BaseFilter):  # pylint: disable=too-few-public-
     name = _("Null or Empty")
     arg_name = "dataset_is_null_or_empty"
 
-    def apply(self, query: Query, value: bool, user_id: int) -> Query:
-        # 权限检查
-        if not ChartPermissions.check_dataset_permission(user_id):
-            return query  # 如果没有权限，返回原始查询
-
+    def apply(self, query: Query, value: bool) -> Query:
         filter_clause = or_(SqlaTable.sql.is_(None), SqlaTable.sql == "")
 
         if not value:
@@ -43,11 +39,7 @@ class DatasetCertifiedFilter(BaseFilter):  # pylint: disable=too-few-public-meth
     name = _("Is certified")
     arg_name = "dataset_is_certified"
 
-    def apply(self, query: Query, value: bool, user_id: int) -> Query:
-        # 权限检查
-        if not ChartPermissions.check_dataset_permission(user_id):
-            return query  # 如果没有权限，返回原始查询
-
+    def apply(self, query: Query, value: bool) -> Query:
         check_value = '%"certification":%'
         if value is True:
             return query.filter(SqlaTable.extra.ilike(check_value))

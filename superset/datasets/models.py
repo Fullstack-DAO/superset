@@ -115,18 +115,18 @@ class Dataset(AuditMixinNullable, ExtraJSONMixin, ImportExportMixin, Model):
         "Table", secondary=dataset_table_association_table, backref="datasets"
     )
 
-    # 新增可读角色和可编辑角色的关系
-    read_roles = relationship(
-        "Role", 
-        secondary=dataset_read_roles, 
-        backref="readable_datasets"
-    )
-    
-    edit_roles = relationship(
-        "Role", 
-        secondary=dataset_edit_roles, 
-        backref="editable_datasets"
-    )
+    # # 新增可读角色和可编辑角色的关系
+    # read_roles = relationship(
+    #     "Role",
+    #     secondary=dataset_read_roles,
+    #     backref="readable_datasets"
+    # )
+    #
+    # edit_roles = relationship(
+    #     "Role",
+    #     secondary=dataset_edit_roles,
+    #     backref="editable_datasets"
+    # )
 
     # Does the dataset point directly to a ``Table``?
     is_physical = sa.Column(sa.Boolean, default=False)

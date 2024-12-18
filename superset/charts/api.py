@@ -312,6 +312,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         
         chart = Slice(**item)
         if not ChartPermissions.check_chart_permission(chart, edit=True):
+            logger.warning("User does not have permission to create chart %s", chart.id)
             return self.response_403()  # 权限不足
         
         try:
@@ -383,6 +384,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         chart = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
         if not chart:
+            logger.warning("User does not have permission to edit chart %s", chart.id)
             return self.response_403()  # 权限不足
         
         try:
@@ -451,6 +453,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         chart = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
         if not chart:
+            logger.warning("User does not have permission to delete chart %s", chart.id)
             return self.response_403()  # 权限不足
         
         try:
@@ -516,8 +519,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             try:
                 ChartPermissions.get_chart_and_check_permission(self.datamodel, item_id)  # 检查每个图表的权限
             except ChartForbiddenError:
+                logger.warning("User does not have permission to delete chart %s", item_id)
                 return self.response_403()  # 如果没有权限，返回403
             except ChartNotFoundError:
+                logger.warning("Chart with ID %s not found.", item_id)
                 return self.response_404()  # 如果图表未找到，返回404
         try:
             DeleteChartCommand(item_ids).run()
@@ -583,6 +588,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         thumb_size = rison_dict.get("thumb_size") or window_size
         permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
         if not permission:
+            logger.warning("User does not have permission to cache screenshot for chart %s", pk)
             return self.response_403()  # 权限不足
 
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
@@ -651,6 +657,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
         if not permission:
+            logger.warning("User does not have permission to get screenshot for chart %s", pk)
             return self.response_403()  # 权限不足
         
         chart = self.datamodel.get(pk, self._base_filters)
@@ -712,6 +719,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
         if not permission:
+            logger.warning("User does not have permission to get thumbnail for chart %s", pk)
             return self.response_403()  # 权限不足
         
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))

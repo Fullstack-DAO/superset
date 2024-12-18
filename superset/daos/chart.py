@@ -100,6 +100,7 @@ class ChartDAO(BaseDAO[Slice]):
     ) -> Slice | None:
         chart = super().find_by_id(model_id, session, skip_base_filter)
         if chart and not ChartPermissions.check_chart_permission(chart):
+            logger.warning("User does not have permission to access chart %s", chart.id)
             return None  # 或者抛出异常
         return chart
     

@@ -101,8 +101,8 @@ class DatasetPostSchema(Schema):
     external_url = fields.String(allow_none=True)
     normalize_columns = fields.Boolean(load_default=False)
     always_filter_main_dttm = fields.Boolean(load_default=False)
-    read_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可读角色字段
-    edit_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可编辑角色字段
+    # read_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可读角色字段
+    # edit_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可编辑角色字段
 
 
 class DatasetPutSchema(Schema):
@@ -130,8 +130,8 @@ class DatasetPutSchema(Schema):
     dynamic_refresh_type = fields.String(allow_none=True)
     dynamic_refresh_year_column = fields.String(allow_none=True)
     dynamic_refresh_month_column = fields.String(allow_none=True)
-    read_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可读角色字段
-    edit_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可编辑角色字段
+    # read_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可读角色字段
+    # edit_roles = fields.List(fields.Integer(), allow_none=True)  # 新增可编辑角色字段
 
     def handle_error(
         self,

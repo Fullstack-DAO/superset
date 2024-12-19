@@ -65,16 +65,18 @@ slice_user = Table(
 # 定义中间表
 slice_read_roles = Table(
     'slice_read_roles', Model.metadata,
-    Column('slice_id', Integer, ForeignKey('slices.id')),
-    Column('role_id', Integer, ForeignKey('ab_role.id')),
-    Column('user_id', Integer, ForeignKey('ab_user.id'))  # 关联用户
+    Column('slice_id', Integer, ForeignKey('slices.id', ondelete='CASCADE'),
+           primary_key=True),
+    Column('role_id', Integer, ForeignKey('ab_role.id', ondelete='CASCADE'),
+           primary_key=True)
 )
 
 slice_edit_roles = Table(
     'slice_edit_roles', Model.metadata,
-    Column('slice_id', Integer, ForeignKey('slices.id')),
-    Column('role_id', Integer, ForeignKey('ab_role.id')),
-    Column('user_id', Integer, ForeignKey('ab_user.id'))  # 关联用户
+    Column('slice_id', Integer, ForeignKey('slices.id', ondelete='CASCADE'),
+           primary_key=True),
+    Column('role_id', Integer, ForeignKey('ab_role.id', ondelete='CASCADE'),
+           primary_key=True)
 )
 
 logger = logging.getLogger(__name__)
@@ -109,6 +111,9 @@ class Slice(  # pylint: disable=too-many-public-methods
     is_managed_externally = Column(Boolean, nullable=False, default=False)
     external_url = Column(Text, nullable=True)
     visibility_scope = Column(String(50), default='owner')  # 可见范围：owner, role, public
+    # 所有者字段
+    created_by_fk = Column(Integer, ForeignKey("ab_user.id"), nullable=True)
+    created_by = relationship("User", foreign_keys=[created_by_fk], backref="owned_slices")
     last_saved_by = relationship(
         security_manager.user_model, foreign_keys=[last_saved_by_fk]
     )
@@ -123,28 +128,27 @@ class Slice(  # pylint: disable=too-many-public-methods
         overlaps="objects,tag,tags",
         primaryjoin="and_(Slice.id == TaggedObject.object_id)",
         secondaryjoin="and_(TaggedObject.tag_id == Tag.id, "
-        "TaggedObject.object_type == 'chart')",
+                      "TaggedObject.object_type == 'chart')",
     )
     table = relationship(
         "SqlaTable",
         foreign_keys=[datasource_id],
         overlaps="table",
         primaryjoin="and_(Slice.datasource_id == SqlaTable.id, "
-        "Slice.datasource_type == 'table')",
+                    "Slice.datasource_type == 'table')",
         remote_side="SqlaTable.id",
         lazy="subquery",
     )
     read_roles = relationship(
-        "Role", 
-        secondary=slice_read_roles, 
+        "Role",
+        secondary=slice_read_roles,
         backref="readable_slices",
-        )
+    )
     edit_roles = relationship(
-        "Role", 
-        secondary=slice_edit_roles, 
+        "Role",
+        secondary=slice_edit_roles,
         backref="editable_slices",
-        )
-
+    )
 
     token = ""
 

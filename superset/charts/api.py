@@ -223,7 +223,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "created_by": [ChartHasCreatedByFilter, ChartCreatedByMeFilter],
         "tags": [ChartTagFilter],
     }
-    # Will just affect _info endpoint
     edit_columns = ["slice_name"]
     add_columns = edit_columns
 
@@ -231,7 +230,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
     edit_model_schema = ChartPutSchema()
 
     openapi_spec_tag = "Charts"
-    """ Override the name set for this collection of endpoints """
     openapi_spec_component_schemas = CHART_SCHEMAS
 
     apispec_parameter_schemas = {
@@ -240,9 +238,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "get_export_ids_schema": get_export_ids_schema,
         "get_fav_star_ids_schema": get_fav_star_ids_schema,
     }
-    """ Add extra schemas to the OpenAPI components schema section """
     openapi_spec_methods = openapi_spec_methods_override
-    """ Overrides GET methods OpenApi descriptions """
 
     order_rel_fields = {
         "slices": ("slice_name", "asc"),
@@ -306,7 +302,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         
         try:
             item = self.add_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
         
@@ -382,14 +377,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
-        if not chart:
-            logger.warning("User does not have permission to edit chart %s", chart.id)
-            return self.response_403()  # 权限不足
-        
         try:
             item = self.edit_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:
@@ -1282,6 +1271,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @expose("/<pk>/edit_roles/add", methods=("POST",))
     @protect()
     @safe
+    @statsd_metrics
     def add_edit_role(self, pk: int) -> Response:
         """Add an edit role to a slice.
         ---
@@ -1324,10 +1314,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             return self.response_400(message=str(e))    
         
 
-
     @expose("/<pk>/edit_roles/delete", methods=("DELETE",))
     @protect()
     @safe
+    @statsd_metrics
     def remove_edit_role(self, pk: int) -> Response:
         """Remove an edit role from a slice.
         ---
@@ -1372,6 +1362,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @expose("/<pk>/edit_roles/getEditRole", methods=("GET",))
     @protect()
     @safe
+    @statsd_metrics
     def get_edit_roles(self, pk: int) -> Response:
         """Get all edit roles for a slice.
         ---

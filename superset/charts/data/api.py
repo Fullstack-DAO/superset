@@ -235,9 +235,9 @@ class ChartDataRestApi(ChartRestApi):
         if json_body is None:
             return self.response_400(message=_("Request is not JSON"))
         
-        
-        if not ChartPermissions.check_user_permission():
-            return self.response_403()  # 权限不足
+        #
+        # if not ChartPermissions.check_user_permission():
+        #     return self.response_403()  # 权限不足
 
         try:
             query_context = self._create_query_context_from_form(json_body)

@@ -91,7 +91,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         if not is_feature_enabled("THUMBNAILS"):
             return self.response_404()
         return None
-    
+
     include_route_methods = RouteMethod.REST_MODEL_VIEW_CRUD_SET | {
         RouteMethod.EXPORT,
         RouteMethod.IMPORT,
@@ -299,17 +299,17 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        
+
         try:
             item = self.add_model_schema.load(request.json)
         except ValidationError as error:
             return self.response_400(message=error.messages)
-        
+
         chart = Slice(**item)
         if not ChartPermissions.check_chart_permission(chart, edit=True):
             logger.warning("User does not have permission to create chart %s", chart.id)
             return self.response_403()  # 权限不足
-        
+
         try:
             new_model = CreateChartCommand(item).run()
             return self.response(201, id=new_model.id, result=item)
@@ -440,11 +440,12 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
+        chart = ChartPermissions.get_chart_and_check_permission(self.datamodel,
+                                                                pk)  # 权限检查
         if not chart:
             logger.warning("User does not have permission to delete chart %s", chart.id)
             return self.response_403()  # 权限不足
-        
+
         try:
             DeleteChartCommand([pk]).run()
             return self.response(200, message="OK")
@@ -506,9 +507,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
         item_ids = kwargs["rison"]
         for item_id in item_ids:
             try:
-                ChartPermissions.get_chart_and_check_permission(self.datamodel, item_id)  # 检查每个图表的权限
+                ChartPermissions.get_chart_and_check_permission(self.datamodel,
+                                                                item_id)  # 检查每个图表的权限
             except ChartForbiddenError:
-                logger.warning("User does not have permission to delete chart %s", item_id)
+                logger.warning("User does not have permission to delete chart %s",
+                               item_id)
                 return self.response_403()  # 如果没有权限，返回403
             except ChartNotFoundError:
                 logger.warning("Chart with ID %s not found.", item_id)
@@ -535,7 +538,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
-        f".cache_screenshot",
+                                             f".cache_screenshot",
         log_to_statsd=False,
     )
     def cache_screenshot(self, pk: int, **kwargs: Any) -> WerkzeugResponse:
@@ -575,9 +578,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         # Don't shrink the image if thumb_size is not specified
         thumb_size = rison_dict.get("thumb_size") or window_size
-        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel,
+                                                                     pk)  # 检查权限
         if not permission:
-            logger.warning("User does not have permission to cache screenshot for chart %s", pk)
+            logger.warning(
+                "User does not have permission to cache screenshot for chart %s", pk)
             return self.response_403()  # 权限不足
 
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
@@ -644,11 +649,13 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel,
+                                                                     pk)  # 检查权限
         if not permission:
-            logger.warning("User does not have permission to get screenshot for chart %s", pk)
+            logger.warning(
+                "User does not have permission to get screenshot for chart %s", pk)
             return self.response_403()  # 权限不足
-        
+
         chart = self.datamodel.get(pk, self._base_filters)
 
         # Making sure the chart still exists
@@ -706,11 +713,13 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 检查权限
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel,
+                                                                     pk)  # 检查权限
         if not permission:
-            logger.warning("User does not have permission to get thumbnail for chart %s", pk)
+            logger.warning(
+                "User does not have permission to get thumbnail for chart %s", pk)
             return self.response_403()  # 权限不足
-        
+
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
         if not chart:
             return self.response_404()
@@ -826,7 +835,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
-        f".favorite_status",
+                                             f".favorite_status",
         log_to_statsd=False,
     )
     def favorite_status(self, **kwargs: Any) -> Response:
@@ -875,7 +884,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
-        f".add_favorite",
+                                             f".add_favorite",
         log_to_statsd=False,
     )
     def add_favorite(self, pk: int) -> Response:
@@ -908,7 +917,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         chart = ChartDAO.find_by_id(pk)
         if not chart:
             return self.response_404()
-        
+
         ChartDAO.add_favorite(chart)
         return self.response(200, result="OK")
 
@@ -918,7 +927,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
-        f".remove_favorite",
+                                             f".remove_favorite",
         log_to_statsd=False,
     )
     def remove_favorite(self, pk: int) -> Response:
@@ -951,7 +960,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         chart = ChartDAO.find_by_id(pk)
         if not chart:
             return self.response_404()
-        
+
         ChartDAO.remove_favorite(chart)
         return self.response(200, result="OK")
 
@@ -961,7 +970,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @statsd_metrics
     @event_logger.log_this_with_context(
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
-        f".warm_up_cache",
+                                             f".warm_up_cache",
         log_to_statsd=False,
     )
     def warm_up_cache(self) -> Response:
@@ -1267,7 +1276,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as e:
             return self.response_400(message=str(e))
 
-
     @expose("/<pk>/edit_roles/add", methods=("POST",))
     @protect()
     @safe
@@ -1311,8 +1319,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             ChartDAO.add_edit_role_to_slice(pk, role_id, user_id)
             return self.response(200, message="Edit role added.")
         except Exception as e:
-            return self.response_400(message=str(e))    
-        
+            return self.response_400(message=str(e))
 
     @expose("/<pk>/edit_roles/delete", methods=("DELETE",))
     @protect()
@@ -1358,7 +1365,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             return self.response(200, message="Edit role removed.")
         except Exception as e:
             return self.response_400(message=str(e))
-  
+
     @expose("/<pk>/edit_roles/getEditRole", methods=("GET",))
     @protect()
     @safe
@@ -1393,5 +1400,117 @@ class ChartRestApi(BaseSupersetModelRestApi):
         try:
             roles = ChartDAO.get_edit_roles_for_slice(pk)
             return self.response(200, result=roles)
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+        # 增加权限管理的接口
+    @expose("/<int:chart_id>/permissions/user/add", methods=["POST"])
+    @protect()
+    @safe
+    @statsd_metrics
+    def add_permissions_to_user(self, chart_id: int) -> Response:
+        """
+        添加用户权限到某个图表。
+        请求体格式:
+        {
+            "user_id": 123,
+            "permissions": ["can_read", "can_edit"]
+        }
+        """
+        data = request.json
+        user_id = data.get("user_id")
+        permissions = data.get("permissions", [])
+
+        if not user_id or not permissions:
+            return self.response_400(
+                message="Missing required parameters: user_id or permissions")
+
+        try:
+            ChartPermissions.add_permission_to_user(chart_id, user_id, permissions)
+            return self.response(200,
+                                    message="Permissions successfully added to user.")
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+    @expose("/<int:chart_id>/permissions/role/add", methods=["POST"])
+    @protect()
+    @safe
+    @statsd_metrics
+    def add_permissions_to_role(self, chart_id: int) -> Response:
+        """
+        添加角色权限到某个图表。
+        请求体格式:
+        {
+            "role_id": 1,
+            "permissions": ["can_read", "can_edit"]
+        }
+        """
+        data = request.json
+        role_id = data.get("role_id")
+        permissions = data.get("permissions", [])
+
+        if not role_id or not permissions:
+            return self.response_400(
+                message="Missing required parameters: role_id or permissions")
+
+        try:
+            ChartPermissions.add_permission_to_role(chart_id, role_id, permissions)
+            return self.response(200, message="Permissions successfully added to role.")
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+    @expose("/<int:chart_id>/permissions/user/remove", methods=["POST"])
+    @protect()
+    @safe
+    @statsd_metrics
+    def remove_permissions_to_user(self, chart_id: int) -> Response:
+        """
+        移除用户权限从某个图表。
+        请求体格式:
+        {
+            "user_id": 123,
+            "permissions": ["can_read", "can_edit"]
+        }
+        """
+        data = request.json
+        user_id = data.get("user_id")
+        permissions = data.get("permissions", [])
+
+        if not user_id or not permissions:
+            return self.response_400(
+                message="Missing required parameters: user_id or permissions")
+
+        try:
+            ChartPermissions.remove_permission_to_user(chart_id, user_id, permissions)
+            return self.response(200,
+                                 message="Permissions successfully removed from user.")
+        except Exception as e:
+            return self.response_400(message=str(e))
+
+    @expose("/<int:chart_id>/permissions/role/remove", methods=["POST"])
+    @protect()
+    @safe
+    @statsd_metrics
+    def remove_permissions_to_role(self, chart_id: int) -> Response:
+        """
+        移除角色权限从某个图表。
+        请求体格式:
+        {
+            "role_id": 1,
+            "permissions": ["can_read", "can_edit"]
+        }
+        """
+        data = request.json
+        role_id = data.get("role_id")
+        permissions = data.get("permissions", [])
+
+        if not role_id or not permissions:
+            return self.response_400(
+                message="Missing required parameters: role_id or permissions")
+
+        try:
+            ChartPermissions.remove_permission_to_role(chart_id, role_id, permissions)
+            return self.response(200,
+                                 message="Permissions successfully removed from role.")
         except Exception as e:
             return self.response_400(message=str(e))

@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
@@ -228,7 +227,7 @@ class ChartPermissions:
 
     @staticmethod
     def add_permissions_to_user(chart_id: int, user_id: int,
-                                permissions: List[str]) -> None:
+                                permissions: list[str]) -> None:
         """
         为指定用户添加多个权限。
 
@@ -275,7 +274,7 @@ class ChartPermissions:
 
     @staticmethod
     def add_permissions_to_role(chart_id: int, role_id: int,
-                                permissions: List[str]) -> None:
+                                permissions: list[str]) -> None:
         """
         为指定角色添加多个权限。
 
@@ -322,7 +321,7 @@ class ChartPermissions:
 
     @staticmethod
     def remove_permissions_to_user(chart_id: int, user_id: int,
-                                   permissions: List[str]) -> None:
+                                   permissions: list[str]) -> None:
         """
         从指定用户移除多个权限。
 
@@ -365,7 +364,7 @@ class ChartPermissions:
 
     @staticmethod
     def remove_permissions_to_role(chart_id: int, role_id: int,
-                                   permissions: List[str]) -> None:
+                                   permissions: list[str]) -> None:
         """
         从指定角色移除多个权限。
 

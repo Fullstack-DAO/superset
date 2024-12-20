@@ -16,6 +16,7 @@ class UserPermission(Model):
     can_read = Column(Boolean, default=False)
     can_edit = Column(Boolean, default=False)
     can_delete = Column(Boolean, default=False)
+    can_add = Column(Boolean, default=False)
 
     user = relationship("User", backref="permissions", cascade="all, delete-orphan")
 

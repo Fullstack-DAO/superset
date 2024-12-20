@@ -49,6 +49,8 @@ class DashboardPermissions:
         permission_map = {
             'read': 'can_read',
             'edit': 'can_edit',
+            'delete': 'can_delete',
+            'add': 'can_add',
             # 如果需要，可以扩展更多权限类型，例如 delete
         }
 
@@ -98,7 +100,8 @@ class DashboardPermissions:
 
         if has_permission:
             logger.info(
-                f"User {user.username} has {'edit' if edit else 'read'} permission for dashboard {dashboard.id}.")
+                f"User {user.username} has {'edit' if edit else 'read'} permission "
+                f"for dashboard {dashboard.id}.")
         else:
             logger.warning(
                 f"User {user.username} does not have {'edit' if edit else 'read'} permission for dashboard {dashboard.id}.")

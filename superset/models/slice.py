@@ -42,6 +42,8 @@ from sqlalchemy.orm.mapper import Mapper
 from superset import db, is_feature_enabled, security_manager
 from superset.legacy import update_time_range
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin
+from superset.models.role_permission import RolePermission
+from superset.models.user_permission import UserPermission
 from superset.tasks.thumbnails import cache_chart_thumbnail
 from superset.tasks.utils import get_current_user
 from superset.thumbnails.digest import get_chart_digest
@@ -64,7 +66,7 @@ slice_user = Table(
 
 # 定义中间表
 slice_read_roles = Table(
-    'slice_read_roles', Model.metadata,
+    'slice_read_roles', metadata,
     Column('slice_id', Integer, ForeignKey('slices.id', ondelete='CASCADE'),
            primary_key=True),
     Column('role_id', Integer, ForeignKey('ab_role.id', ondelete='CASCADE'),
@@ -72,7 +74,7 @@ slice_read_roles = Table(
 )
 
 slice_edit_roles = Table(
-    'slice_edit_roles', Model.metadata,
+    'slice_edit_roles', metadata,
     Column('slice_id', Integer, ForeignKey('slices.id', ondelete='CASCADE'),
            primary_key=True),
     Column('role_id', Integer, ForeignKey('ab_role.id', ondelete='CASCADE'),
@@ -113,7 +115,11 @@ class Slice(  # pylint: disable=too-many-public-methods
     visibility_scope = Column(String(50), default='owner')  # 可见范围：owner, role, public
     # 所有者字段
     created_by_fk = Column(Integer, ForeignKey("ab_user.id"), nullable=True)
-    created_by = relationship("User", foreign_keys=[created_by_fk], backref="owned_slices")
+    created_by = relationship("User", foreign_keys=[created_by_fk],
+                              backref="owned_slices")
+    # 在 Slice 模型中
+    changed_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=True)
+    changed_by = relationship('User', foreign_keys=[changed_by_fk])
     last_saved_by = relationship(
         security_manager.user_model, foreign_keys=[last_saved_by_fk]
     )
@@ -279,6 +285,8 @@ class Slice(  # pylint: disable=too-many-public-methods
             "certified_by": self.certified_by,
             "certification_details": self.certification_details,
             "is_managed_externally": self.is_managed_externally,
+            "read_roles": [role.id for role in self.read_roles],
+            "edit_roles": [role.id for role in self.edit_roles],
         }
 
     @property
@@ -415,6 +423,82 @@ def event_after_chart_changed(
         chart_id=target.id,
         force=True,
     )
+
+
+def has_permission(self, user, permission_type: str) -> bool:
+    """
+    检查用户是否对 Slice 有指定权限。
+
+    :param user: 当前用户
+    :param permission_type: 权限类型（read 或 edit）
+    :return: 是否有权限
+    """
+    # 1. 检查用户直接权限（UserPermission 表）
+    user_permission = db.session.query(UserPermission).filter_by(
+        user_id=user.id,
+        resource_id=self.id,
+        resource_type="slice"
+    ).one_or_none()
+    if user_permission and getattr(user_permission, f"can_{permission_type}", False):
+        return True
+
+    # 2. 检查角色权限（RolePermission 表）
+    user_roles = {role.id for role in user.roles}
+    role_permissions = db.session.query(RolePermission).filter_by(
+        resource_id=self.id,
+        resource_type="slice"
+    ).all()
+    for perm in role_permissions:
+        if perm.role_id in user_roles and getattr(perm, f"can_{permission_type}",
+                                                  False):
+            return True
+
+    # 3. 检查中间表权限
+    if permission_type == "read" and any(
+        role.id in user_roles for role in self.read_roles):
+        return True
+    if permission_type == "edit" and any(
+        role.id in user_roles for role in self.edit_roles):
+        return True
+
+    return False
+
+
+# 设置相关权限
+def set_related_perm(_mapper, _connection, target: Slice) -> None:
+    """
+    自动设置与 Slice（图表）相关的权限字段（perm 和 schema_perm）。
+    此方法会在插入或更新 Slice 时触发。
+
+    :param _mapper: SQLAlchemy 的 Mapper 对象
+    :param _connection: SQLAlchemy 的 Connection 对象
+    :param target: 当前处理的 Slice（图表）对象
+    """
+    # 获取图表数据源的类和 ID
+    src_class = target.cls_model  # 数据源的类，例如 SqlaTable
+    datasource_id = target.datasource_id
+
+    # 如果图表绑定了有效的数据源
+    if datasource_id:
+        # 查询数据源对象
+        datasource = db.session.query(src_class).filter_by(
+            id=int(datasource_id)).one_or_none()
+        if datasource:
+            # 设置 Slice 的 perm 和 schema_perm
+            target.perm = datasource.perm  # 数据源的权限
+            target.schema_perm = datasource.schema_perm  # 数据源的 Schema 权限
+
+            logger.info(
+                "Set permission fields for Slice ID %s: perm=%s, schema_perm=%s",
+                target.id, target.perm, target.schema_perm
+            )
+        else:
+            logger.warning(
+                "Datasource with ID %s not found for Slice ID %s",
+                datasource_id, target.id
+            )
+    else:
+        logger.warning("Slice ID %s has no associated datasource.", target.id)
 
 
 sqla.event.listen(Slice, "before_insert", set_related_perm)

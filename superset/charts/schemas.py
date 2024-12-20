@@ -231,17 +231,17 @@ class ChartPostSchema(Schema):
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
 
-    def validate_owners(self, owners):
-        # 假设您有一个方法来检查用户是否有权添加这些所有者
-        for owner in owners:
-            if not ChartPermissions.check_user_permission(owner):
-                raise ValidationError(f"User does not have permission to add owner {owner}.")
-
-    @post_load
-    def validate(self, data, **kwargs):
-        if 'owners' in data:
-            self.validate_owners(data['owners'])
-        return data
+    # def validate_owners(self, owners):
+    #     # 假设您有一个方法来检查用户是否有权添加这些所有者
+    #     for owner in owners:
+    #         if not ChartPermissions.check_user_permission(owner):
+    #             raise ValidationError(f"User does not have permission to add owner {owner}.")
+    #
+    # @post_load
+    # def validate(self, data, **kwargs):
+    #     if 'owners' in data:
+    #         self.validate_owners(data['owners'])
+    #     return data
 
 
 class ChartPutSchema(Schema):
@@ -300,17 +300,17 @@ class ChartPutSchema(Schema):
     tags = fields.Nested(TagSchema, many=True)
 
 
-    def validate_owners(self, owners):
-        # 假设您有一个方法来检查用户是否有权添加这些所有者
-        for owner in owners:
-            if not ChartPermissions.check_user_permission(owner):
-                raise ValidationError(f"User does not have permission to update owner {owner}.")
-
-    @post_load
-    def validate(self, data, **kwargs):
-        if 'owners' in data:
-            self.validate_owners(data['owners'])
-        return data
+    # def validate_owners(self, owners):
+    #     # 假设您有一个方法来检查用户是否有权添加这些所有者
+    #     for owner in owners:
+    #         if not ChartPermissions.check_user_permission(owner):
+    #             raise ValidationError(f"User does not have permission to update owner {owner}.")
+    #
+    # @post_load
+    # def validate(self, data, **kwargs):
+    #     if 'owners' in data:
+    #         self.validate_owners(data['owners'])
+    #     return data
 
 
 class ChartGetDatasourceObjectDataResponseSchema(Schema):

@@ -5,17 +5,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, List
 
 from superset.charts.filters import ChartFilter
-from superset.charts.permissions import ChartPermissions
-from superset.daos.base import BaseDAO
 from superset.extensions import db
 from superset.models.core import FavStar, FavStarClassName
-from superset.models.slice import Slice, slice_read_roles, slice_edit_roles
+from superset.models.slice import Slice
+from superset.models.permissions import UserPermission, RolePermission
 from superset.utils.core import get_user_id
 from sqlalchemy.exc import SQLAlchemyError
 from superset.daos.exceptions import (
     DAOCreateFailedError,
     DAODeleteFailedError,
-    DAOUpdateFailedError,
 )
 
 if TYPE_CHECKING:
@@ -24,15 +22,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ChartDAO(BaseDAO[Slice]):
+class ChartDAO:
     base_filter = ChartFilter
 
     @staticmethod
-    def favorited_ids(charts: List[Slice]) -> List[FavStar]:
-        """获取用户收藏的图表 ID 列表。
-
-        :param charts: Slice 对象列表
-        :return: 收藏的图表 ID 列表
+    def favorited_ids(charts: List[Slice]) -> List[int]:
+        """
+        获取当前用户收藏的图表 ID 列表。
         """
         ids = [chart.id for chart in charts]
         return [
@@ -42,46 +38,209 @@ class ChartDAO(BaseDAO[Slice]):
                 FavStar.class_name == FavStarClassName.CHART,
                 FavStar.obj_id.in_(ids),
                 FavStar.user_id == get_user_id(),
-                )
+            )
             .all()
         ]
 
     @staticmethod
     def add_favorite(chart: Slice) -> None:
-        """将图表添加到用户的收藏中。
-
-        :param chart: 要添加到收藏的 Slice 对象
         """
-        ids = ChartDAO.favorited_ids([chart])
-        if chart.id not in ids:
-            db.session.add(
-                FavStar(
-                    class_name=FavStarClassName.CHART,
-                    obj_id=chart.id,
-                    user_id=get_user_id(),
-                    dttm=datetime.now(),
+        将图表添加到当前用户的收藏中。
+        """
+        if chart.id not in ChartDAO.favorited_ids([chart]):
+            try:
+                db.session.add(
+                    FavStar(
+                        class_name=FavStarClassName.CHART,
+                        obj_id=chart.id,
+                        user_id=get_user_id(),
+                        dttm=datetime.now(),
+                    )
                 )
-            )
-            db.session.commit()
+                db.session.commit()
+            except SQLAlchemyError as ex:
+                db.session.rollback()
+                logger.error(f"Error adding favorite chart: {ex}")
+                raise DAOCreateFailedError(exception=ex)
 
     @staticmethod
     def remove_favorite(chart: Slice) -> None:
-        """从用户的收藏中移除图表。
-
-        :param chart: 要移除的 Slice 对象
         """
-        fav = (
-            db.session.query(FavStar)
-            .filter(
-                FavStar.class_name == FavStarClassName.CHART,
-                FavStar.obj_id == chart.id,
-                FavStar.user_id == get_user_id(),
+        从当前用户的收藏中移除图表。
+        """
+        try:
+            fav = (
+                db.session.query(FavStar)
+                .filter(
+                    FavStar.class_name == FavStarClassName.CHART,
+                    FavStar.obj_id == chart.id,
+                    FavStar.user_id == get_user_id(),
                 )
-            .one_or_none()
-        )
-        if fav:
-            db.session.delete(fav)
+                .one_or_none()
+            )
+            if fav:
+                db.session.delete(fav)
+                db.session.commit()
+        except SQLAlchemyError as ex:
+            db.session.rollback()
+            logger.error(f"Error removing favorite chart: {ex}")
+            raise DAODeleteFailedError(exception=ex)
+
+    @staticmethod
+    def has_permission(chart_id: int, user, permission_type: str) -> bool:
+        """
+        检查用户是否有某种类型的权限（同时检查用户和角色权限）。
+
+        :param chart_id: 图表 ID
+        :param user: 当前用户对象
+        :param permission_type: 权限类型 ('read', 'edit', 'delete')
+        :return: 是否有权限
+        """
+        permission_map = {
+            'read': 'can_read',
+            'edit': 'can_edit',
+            'delete': 'can_delete',
+        }
+
+        if permission_type not in permission_map:
+            raise ValueError(f"Unknown permission type: {permission_type}")
+
+        # 检查用户直接权限
+        user_permissions = db.session.query(UserPermission).filter(
+            UserPermission.resource_type == "chart",
+            UserPermission.resource_id == chart_id,
+            UserPermission.user_id == user.id,
+            getattr(UserPermission, permission_map[permission_type]) == True,
+        ).count()
+
+        if user_permissions > 0:
+            return True
+
+        # 检查用户角色权限
+        role_permissions = db.session.query(RolePermission).filter(
+            RolePermission.resource_type == "chart",
+            RolePermission.resource_id == chart_id,
+            RolePermission.role_id.in_([role.id for role in user.roles]),
+            getattr(RolePermission, permission_map[permission_type]) == True,
+        ).count()
+
+        return role_permissions > 0
+
+    @staticmethod
+    def add_read_permission_to_user(chart_id: int, user_id: int) -> None:
+        """
+        为用户添加图表读取权限。
+
+        :param chart_id: 图表 ID
+        :param user_id: 用户 ID
+        """
+        try:
+            existing_permission = db.session.query(UserPermission).filter_by(
+                resource_type="chart",
+                resource_id=chart_id,
+                user_id=user_id,
+                can_read=True,
+            ).first()
+
+            if existing_permission:
+                raise Exception(
+                    "Read permission already exists for this user and chart.")
+
+            permission = UserPermission(
+                resource_type="chart",
+                resource_id=chart_id,
+                user_id=user_id,
+                can_read=True,
+            )
+            db.session.add(permission)
             db.session.commit()
+        except SQLAlchemyError as ex:
+            db.session.rollback()
+            logger.error(f"Error adding read permission to user: {ex}")
+            raise DAOCreateFailedError(exception=ex)
+
+    @staticmethod
+    def add_read_permission_to_role(chart_id: int, role_id: int) -> None:
+        """
+        为角色添加图表读取权限。
+
+        :param chart_id: 图表 ID
+        :param role_id: 角色 ID
+        """
+        try:
+            existing_permission = db.session.query(RolePermission).filter_by(
+                resource_type="chart",
+                resource_id=chart_id,
+                role_id=role_id,
+                can_read=True,
+            ).first()
+
+            if existing_permission:
+                raise Exception(
+                    "Read permission already exists for this role and chart.")
+
+            permission = RolePermission(
+                resource_type="chart",
+                resource_id=chart_id,
+                role_id=role_id,
+                can_read=True,
+            )
+            db.session.add(permission)
+            db.session.commit()
+        except SQLAlchemyError as ex:
+            db.session.rollback()
+            logger.error(f"Error adding read permission to role: {ex}")
+            raise DAOCreateFailedError(exception=ex)
+
+    @staticmethod
+    def get_read_permissions(chart_id: int) -> dict:
+        """
+        获取图表的所有读取权限（包括用户和角色）。
+
+        :param chart_id: 图表 ID
+        :return: 包含用户和角色权限的字典
+        """
+        user_permissions = db.session.query(UserPermission).filter_by(
+            resource_type="chart",
+            resource_id=chart_id,
+            can_read=True,
+        ).all()
+
+        role_permissions = db.session.query(RolePermission).filter_by(
+            resource_type="chart",
+            resource_id=chart_id,
+            can_read=True,
+        ).all()
+
+        return {
+            "users": [{"user_id": perm.user_id} for perm in user_permissions],
+            "roles": [{"role_id": perm.role_id} for perm in role_permissions],
+        }
+
+    @staticmethod
+    def get_edit_permissions(chart_id: int) -> dict:
+        """
+        获取图表的所有编辑权限（包括用户和角色）。
+
+        :param chart_id: 图表 ID
+        :return: 包含用户和角色权限的字典
+        """
+        user_permissions = db.session.query(UserPermission).filter_by(
+            resource_type="chart",
+            resource_id=chart_id,
+            can_edit=True,
+        ).all()
+
+        role_permissions = db.session.query(RolePermission).filter_by(
+            resource_type="chart",
+            resource_id=chart_id,
+            can_edit=True,
+        ).all()
+
+        return {
+            "users": [{"user_id": perm.user_id} for perm in user_permissions],
+            "roles": [{"role_id": perm.role_id} for perm in role_permissions],
+        }
 
     @classmethod
     def create(
@@ -100,8 +259,12 @@ class ChartDAO(BaseDAO[Slice]):
         if not item:
             item = cls.model_cls()  # type: ignore  # pylint: disable=not-callable
 
+        # 获取当前用户
+        user_id = get_user_id()
+        user = db.session.query(db.user_model).filter_by(id=user_id).one_or_none()
+
         # 权限检查
-        if not ChartPermissions.check_chart_permission(item, edit=True):
+        if not ChartDAO.has_permission(item.id, user, permission_type="edit"):
             raise PermissionError("User does not have permission to create this chart.")
 
         # 设置属性
@@ -126,8 +289,17 @@ class ChartDAO(BaseDAO[Slice]):
 
         :return: Slice 对象列表
         """
+        # 获取当前用户
+        user_id = get_user_id()
+        user = db.session.query(db.user_model).filter_by(id=user_id).one_or_none()
+
+        # 获取所有图表并进行权限过滤
         charts = super().find_all()
-        return [chart for chart in charts if ChartPermissions.check_chart_permission(chart)]
+        return [
+            chart
+            for chart in charts
+            if ChartDAO.has_permission(chart.id, user, permission_type="read")
+        ]
 
     @classmethod
     def update(
@@ -143,9 +315,15 @@ class ChartDAO(BaseDAO[Slice]):
         :param commit: 是否提交到数据库
         :return: 更新后的 Slice 对象
         """
-        if item and not ChartPermissions.check_chart_permission(item, edit=True):
+        # 获取当前用户
+        user_id = get_user_id()
+        user = db.session.query(db.user_model).filter_by(id=user_id).one_or_none()
+
+        # 权限检查
+        if item and not ChartDAO.has_permission(item.id, user, permission_type="edit"):
             raise PermissionError("User does not have permission to update this chart.")
 
+        # 调用父类方法更新图表
         return super().update(item, attributes, commit)
 
     @classmethod
@@ -155,97 +333,15 @@ class ChartDAO(BaseDAO[Slice]):
         :param items: 要删除的 Slice 对象列表
         :param commit: 是否提交到数据库
         """
+        # 获取当前用户
+        user_id = get_user_id()
+        user = db.session.query(db.user_model).filter_by(id=user_id).one_or_none()
+
+        # 对每个图表进行权限检查
         for item in items:
-            if not ChartPermissions.check_chart_permission(item):
-                raise PermissionError(f"User does not have permission to delete chart {item.id}.")
+            if not ChartDAO.has_permission(item.id, user, permission_type="delete"):
+                raise PermissionError(
+                    f"User does not have permission to delete chart {item.id}.")
+
+        # 调用父类方法删除图表
         super().delete(items, commit)
-
-    @staticmethod
-    def add_read_role_to_slice(slice_id: int, role_id: int, user_id: int) -> None:
-        """为图表添加读取角色。
-
-        :param slice_id: 图表 ID
-        :param role_id: 角色 ID
-        :param user_id: 用户 ID
-        """
-        existing_role = db.session.query(slice_read_roles).filter_by(slice_id=slice_id, role_id=role_id, user_id=user_id).first()
-        if existing_role:
-            raise Exception("Read role already exists for this slice.")
-
-        new_role = slice_read_roles.insert().values(slice_id=slice_id, role_id=role_id, user_id=user_id)
-        db.session.execute(new_role)
-        db.session.commit()
-
-    @staticmethod
-    def remove_read_role_from_slice(slice_id: int, role_id: int, user_id: int) -> None:
-        """从图表中移除读取角色。
-
-        :param slice_id: 图表 ID
-        :param role_id: 角色 ID
-        :param user_id: 用户 ID
-        """
-        delete_role = slice_read_roles.delete().where(
-            (slice_read_roles.c.slice_id == slice_id) &
-            (slice_read_roles.c.role_id == role_id) &
-            (slice_read_roles.c.user_id == user_id)
-        )
-        result = db.session.execute(delete_role)
-        db.session.commit()
-
-        if result.rowcount == 0:
-            raise Exception("Read role not found for this slice.")
-
-    @staticmethod
-    def get_read_roles_for_slice(slice_id: int) -> list:
-        """获取图表的所有读取角色。
-
-        :param slice_id: 图表 ID
-        :return: 角色列表
-        """
-        roles = db.session.query(slice_read_roles).filter_by(slice_id=slice_id).all()
-        return [{"role_id": role.role_id, "user_id": role.user_id} for role in roles]
-
-    @staticmethod
-    def add_edit_role_to_slice(slice_id: int, role_id: int, user_id: int) -> None:
-        """为图表添加编辑角色。
-
-        :param slice_id: 图表 ID
-        :param role_id: 角色 ID
-        :param user_id: 用户 ID
-        """
-        existing_role = db.session.query(slice_edit_roles).filter_by(slice_id=slice_id, role_id=role_id, user_id=user_id).first()
-        if existing_role:
-            raise Exception("Edit role already exists for this slice.")
-
-        new_role = slice_edit_roles.insert().values(slice_id=slice_id, role_id=role_id, user_id=user_id)
-        db.session.execute(new_role)
-        db.session.commit()
-
-    @staticmethod
-    def remove_edit_role_from_slice(slice_id: int, role_id: int, user_id: int) -> None:
-        """从图表中移除编辑角色。
-
-        :param slice_id: 图表 ID
-        :param role_id: 角色 ID
-        :param user_id: 用户 ID
-        """
-        delete_role = slice_edit_roles.delete().where(
-            (slice_edit_roles.c.slice_id == slice_id) &
-            (slice_edit_roles.c.role_id == role_id) &
-            (slice_edit_roles.c.user_id == user_id)
-        )
-        result = db.session.execute(delete_role)
-        db.session.commit()
-
-        if result.rowcount == 0:
-            raise Exception("Edit role not found for this slice.")
-
-    @staticmethod
-    def get_edit_roles_for_slice(slice_id: int) -> list:
-        """获取图表的所有编辑角色。
-
-        :param slice_id: 图表 ID
-        :return: 角色列表
-        """
-        roles = db.session.query(slice_edit_roles).filter_by(slice_id=slice_id).all()
-        return [{"role_id": role.role_id, "user_id": role.user_id} for role in roles]

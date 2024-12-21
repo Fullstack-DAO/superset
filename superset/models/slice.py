@@ -259,10 +259,6 @@ class Slice(  # pylint: disable=too-many-public-methods
             "certified_by": self.certified_by,
             "certification_details": self.certification_details,
             "is_managed_externally": self.is_managed_externally,
-            "read_roles": [role.id for role in self.read_roles],
-            "edit_roles": [role.id for role in self.edit_roles],
-            "read_users": [user.id for user in self.read_users],
-            "edit_users": [user.id for user in self.edit_users],
         }
 
     @property

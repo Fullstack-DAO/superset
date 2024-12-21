@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from superset.charts.filters import ChartFilter
 from superset.charts.permissions import ChartPermissions
@@ -232,6 +232,8 @@ class ChartDAO:
         item: Slice | None = None,
         attributes: dict[str, Any] | None = None,
         commit: bool = True,
+        roles: List[str] = None,  # 可选的角色列表
+        permissions: List[str] = None,  # 可选的权限列表
     ) -> Slice:
         """
         创建新的图表。
@@ -239,6 +241,8 @@ class ChartDAO:
         :param item: 要创建的 Slice 对象
         :param attributes: 要设置的属性字典
         :param commit: 是否提交到数据库
+        :param roles: 分配权限的角色列表，例如 ["Admin", "Editor"]
+        :param permissions: 分配的权限列表，例如 ["can_read", "can_edit"]
         :return: 创建的 Slice 对象
         """
         if not item:
@@ -254,26 +258,25 @@ class ChartDAO:
                                                permission_type="add"):
             raise PermissionError("User does not have permission to create a chart.")
 
-        # 设置图表的默认属性
+        # 设置图表的属性
         if attributes:
             for key, value in attributes.items():
                 setattr(item, key, value)
 
-        # 默认设置当前用户为图表 owner
-        if user not in item.owners:
-            item.owners.append(user)
-
-        # 设置图表默认可见性（如仅限 owner 可见）
-        if not hasattr(item, "visibility_scope") or not item.visibility_scope:
-            item.visibility_scope = "owner"  # 默认可见范围
-
-        # 初始化图表权限（设置当前用户为可读、可编辑）
+        # 初始化图表权限
         try:
             db.session.add(item)
             if commit:
                 db.session.commit()
-            # 添加权限：当前用户自动获得 read 和 edit 权限
-            ChartPermissions.set_default_permissions(item, user)
+
+            # 添加默认权限：当前用户和指定角色自动获得相应权限
+            ChartPermissions.set_default_permissions(
+                chart=item,
+                user=user,
+                roles=roles,  # 如果 roles 为 None，默认会分配给 "Admin"
+                permissions=permissions,
+                # 如果 permissions 为 None，默认分配 "can_read" 和 "can_edit"
+            )
         except SQLAlchemyError as ex:  # pragma: no cover
             db.session.rollback()
             raise DAOCreateFailedError(exception=ex) from ex
@@ -281,14 +284,16 @@ class ChartDAO:
         return item  # type: ignore
 
     @classmethod
-    def find_all(cls, check_permission: bool = True) -> List[Slice]:
+    def find_all(cls, permission_type: str = "read", check_permission: bool = True) -> \
+    List[Slice]:
         """
         查找所有图表，同时可选地校验用户权限。
 
-        :param check_permission: 是否校验用户 `read` 权限，默认为 True
+        :param permission_type: 动态指定权限类型（'read', 'edit', 'delete', 'add'），默认为 'read'
+        :param check_permission: 是否校验用户权限，默认为 True
         :return: 符合条件的图表列表
         """
-        user = ChartDAO._get_current_user()
+        user = cls._get_current_user()
 
         # 如果未登录用户直接返回空列表
         if check_permission and not user:
@@ -302,13 +307,12 @@ class ChartDAO:
         if not check_permission:
             return charts
 
-        # 进行权限校验（结合用户和角色权限）
-        result = []
-        for chart in charts:
-            if ChartPermissions.has_permission(chart.id, user, permission_type="read"):
-                result.append(chart)
+        # 获取用户有权限的图表 ID 列表
+        allowed_chart_ids = ChartPermissions.get_allowed_chart_ids(user,
+                                                                   permission_type)
 
-        return result
+        # 过滤出用户有权限的图表
+        return [chart for chart in charts if chart.id in allowed_chart_ids]
 
     @classmethod
     def update(
@@ -356,7 +360,7 @@ class ChartDAO:
         return item
 
     @classmethod
-    def delete(cls, items: List[Slice], commit: bool = True) -> None:
+    def delete(cls, items: list[Slice], commit: bool = True) -> None:
         """
         删除图表，同时检查用户和角色的删除权限。
 

@@ -14,42 +14,65 @@ class ChartPermissions:
     datamodel = SQLAInterface(Slice)  # 创建 datamodel 实例
 
     @staticmethod
-    def set_default_permissions(chart: Slice, user) -> None:
+    def set_default_permissions(
+        chart: Slice,
+        user,
+        roles: list[str] = None,
+        permissions: list[str] = None,
+    ) -> None:
         """
         为新创建的图表设置默认权限。
-        当前用户默认获得 can_read 和 can_edit 权限。
+        支持为用户和指定角色动态分配权限。
+
+        :param chart: 图表对象
+        :param user: 当前用户
+        :param roles: 需要分配权限的角色名称列表，例如 ["Admin", "Editor"]
+        :param permissions: 要分配的权限列表，例如 ["can_read", "can_edit"]
+                           默认为 ["can_read", "can_edit"]
         """
         if not user:
             raise ValueError("User cannot be None when setting default permissions.")
 
+        # 如果未指定权限，默认为 can_read 和 can_edit
+        if permissions is None:
+            permissions = ["can_read", "can_edit"]
+
+        # 如果未指定角色，默认为 Admin
+        if roles is None:
+            roles = ["Admin"]
+
         try:
-            # 添加用户权限
+            # 初始化用户权限
             user_permission = UserPermission(
                 resource_type="chart",
-                resource_id=chart.id,  # 使用传递的 chart 对象的 ID
+                resource_id=chart.id,
                 user_id=user.id,
-                can_read=True,
-                can_edit=True,
-                can_add=True,
-                can_delete=True,
+                can_read="can_read" in permissions,
+                can_edit="can_edit" in permissions,
+                can_add="can_add" in permissions,
+                can_delete="can_delete" in permissions,
             )
             db.session.add(user_permission)
 
-            # 可选：为默认角色（如 Admin）添加权限
-            admin_role = db.session.query(db.role_model).filter_by(name="Admin").first()
-            if admin_role:
+            # 为指定角色分配权限
+            role_objects = db.session.query(db.role_model).filter(
+                db.role_model.name.in_(roles)
+            ).all()
+
+            for role in role_objects:
                 role_permission = RolePermission(
                     resource_type="chart",
-                    resource_id=chart.id,  # 使用传递的 chart 对象的 ID
-                    role_id=admin_role.id,
-                    can_read=True,
-                    can_edit=True,
-                    can_add=True,
-                    can_delete=True,
+                    resource_id=chart.id,
+                    role_id=role.id,
+                    can_read="can_read" in permissions,
+                    can_edit="can_edit" in permissions,
+                    can_add="can_add" in permissions,
+                    can_delete="can_delete" in permissions,
                 )
                 db.session.add(role_permission)
 
             db.session.commit()
+
         except Exception as ex:
             db.session.rollback()
             logger.error(f"Failed to set default permissions: {str(ex)}")
@@ -406,3 +429,48 @@ class ChartPermissions:
             logger.error(
                 f"Failed to remove permissions {permissions} from role {role_id} for chart {chart_id}: {ex}")
             raise
+
+    @staticmethod
+    def get_allowed_chart_ids(user, permission_type: str) -> List[int]:
+        """
+        获取用户有指定权限的所有图表 ID 列表。
+
+        :param user: 当前用户
+        :param permission_type: 动态指定权限类型（'read', 'edit', 'delete', 'add'）
+        :return: 用户有权限的图表 ID 列表
+        """
+        permission_map = {
+            "read": "can_read",
+            "edit": "can_edit",
+            "delete": "can_delete",
+            "add": "can_add",
+        }
+
+        if permission_type not in permission_map:
+            raise ValueError(f"Unknown permission type: {permission_type}")
+
+        # 获取用户直接权限的图表 ID
+        user_chart_ids = [
+            perm.resource_id
+            for perm in db.session.query(UserPermission).filter_by(
+                user_id=user.id,
+                resource_type="chart",
+                **{permission_map[permission_type]: True},
+            ).all()
+        ]
+
+        # 获取用户角色权限的图表 ID
+        user_roles = [role.id for role in user.roles]
+        role_chart_ids = [
+            perm.resource_id
+            for perm in db.session.query(RolePermission).filter(
+                RolePermission.role_id.in_(user_roles),
+                RolePermission.resource_type == "chart",
+                getattr(RolePermission, permission_map[permission_type]) == True,
+                ).all()
+        ]
+
+        # 合并去重
+        return list(set(user_chart_ids + role_chart_ids))
+
+

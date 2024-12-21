@@ -503,7 +503,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:
-            new_model = CreateDashboardCommand(item, visible_roles=visible_roles, editable_roles=editable_roles).run()
+            new_model = CreateDashboardCommand(item).run()
+#            new_model = CreateDashboardCommand(item, visible_roles=visible_roles, editable_roles=editable_roles).run()
             return self.response(201, id=new_model.id, result=item)
         except DashboardInvalidError as ex:
             return self.response_422(message=ex.normalized_messages())
@@ -578,7 +579,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:
-            changed_model = UpdateDashboardCommand(pk, item, visible_roles=visible_roles, editable_roles=editable_roles).run()
+            changed_model = UpdateDashboardCommand(pk, item).run()
+            # changed_model = UpdateDashboardCommand(pk, item, visible_roles=visible_roles, editable_roles=editable_roles).run()
             last_modified_time = changed_model.changed_on.replace(
                 microsecond=0
             ).timestamp()

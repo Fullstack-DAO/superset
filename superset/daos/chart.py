@@ -91,30 +91,6 @@ class ChartDAO:
             raise DAODeleteFailedError(exception=ex)
 
     @staticmethod
-    def add_permissions_to_user(chart_id: int, user_id: int,
-                                permissions: list[str]) -> None:
-        """
-        为用户添加图表权限（代理到 ChartPermissions）。
-
-        :param chart_id: 图表 ID
-        :param user_id: 用户 ID
-        :param permissions: 权限列表（如 ['can_read', 'can_edit', 'can_delete']）
-        """
-        ChartPermissions.add_permissions_to_user(chart_id, user_id, permissions)
-
-    @staticmethod
-    def add_permissions_to_role(chart_id: int, role_id: int,
-                                permissions: list[str]) -> None:
-        """
-        为角色添加图表权限（代理到 ChartPermissions）。
-
-        :param chart_id: 图表 ID
-        :param role_id: 角色 ID
-        :param permissions: 权限列表（如 ['can_read', 'can_edit', 'can_delete']）
-        """
-        ChartPermissions.add_permissions_to_role(chart_id, role_id, permissions)
-
-    @staticmethod
     def get_permissions(chart_id: int, permission_type: str) -> dict:
         """
         获取图表的指定权限（包括用户和角色）。
@@ -148,8 +124,8 @@ class ChartDAO:
         item: Slice | None = None,
         attributes: dict[str, Any] | None = None,
         commit: bool = True,
-        roles: list[str] = None,  # 可选的角色列表
-        permissions: list[str] = None,  # 可选的权限列表
+        roles: list[str] | None = None,
+        permissions: list[str] | None = None,
     ) -> Slice:
         """
         创建新的图表。
@@ -179,20 +155,17 @@ class ChartDAO:
             for key, value in attributes.items():
                 setattr(item, key, value)
 
-        # 初始化图表权限
+        # 保存图表到数据库
         try:
             db.session.add(item)
             if commit:
                 db.session.commit()
 
-            # 添加默认权限：当前用户和指定角色自动获得相应权限
-            ChartPermissions.set_default_permissions(
-                chart=item,
-                user=user,
-                roles=roles,  # 如果 roles 为 None，默认会分配给 "Admin"
-                permissions=permissions,
-                # 如果 permissions 为 None，默认分配 "can_read" 和 "can_edit"
-            )
+            # 如果 roles 和 permissions 不为空，则设置默认权限
+            if roles or permissions:
+                ChartPermissions.set_default_permissions(
+                    chart=item, user=user, roles=roles, permissions=permissions
+                )
         except SQLAlchemyError as ex:  # pragma: no cover
             db.session.rollback()
             raise DAOCreateFailedError(exception=ex) from ex
@@ -313,25 +286,36 @@ class ChartDAO:
             raise DAODeleteFailedError(exception=ex) from ex
 
     @staticmethod
-    def remove_permissions_from_user(chart_id: int, user_id: int,
-                                     permissions: list[str]) -> None:
+    def modify_permissions(
+        chart_id: int, entity_type: str, entity_id: int, permissions: list[str],
+        action: str
+    ) -> None:
         """
-        代理方法：从指定用户移除多个权限。
+        修改图表的权限。
 
         :param chart_id: 图表 ID
-        :param user_id: 用户 ID
-        :param permissions: 权限列表，例如 ['can_read', 'can_edit']
+        :param entity_type: 实体类型 ('user' 或 'role')
+        :param entity_id: 用户或角色 ID
+        :param permissions: 权限列表
+        :param action: 操作类型 ('add' 或 'remove')
         """
-        ChartPermissions.remove_permissions_to_user(chart_id, user_id, permissions)
+        if action not in ["add", "remove"]:
+            raise ValueError("Invalid action type: must be 'add' or 'remove'.")
+        if entity_type not in ["user", "role"]:
+            raise ValueError("Invalid entity type: must be 'user' or 'role'.")
 
-    @staticmethod
-    def remove_permissions_from_role(chart_id: int, role_id: int,
-                                     permissions: list[str]) -> None:
-        """
-        代理方法：从指定角色移除多个权限。
-
-        :param chart_id: 图表 ID
-        :param role_id: 角色 ID
-        :param permissions: 权限列表，例如 ['can_read', 'can_edit']
-        """
-        ChartPermissions.remove_permissions_to_role(chart_id, role_id, permissions)
+        # 调用 ChartPermissions 处理权限逻辑
+        if action == "add":
+            if entity_type == "user":
+                ChartPermissions.add_permissions_to_user(chart_id, entity_id,
+                                                         permissions)
+            elif entity_type == "role":
+                ChartPermissions.add_permissions_to_role(chart_id, entity_id,
+                                                         permissions)
+        elif action == "remove":
+            if entity_type == "user":
+                ChartPermissions.remove_permissions_to_user(chart_id, entity_id,
+                                                            permissions)
+            elif entity_type == "role":
+                ChartPermissions.remove_permissions_to_role(chart_id, entity_id,
+                                                            permissions)

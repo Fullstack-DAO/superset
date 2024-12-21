@@ -1142,375 +1142,47 @@ class ChartRestApi(BaseSupersetModelRestApi):
         command.run()
         return self.response(200, message="OK")
 
-    # 新增角色权限管理接口
-    @expose("/<pk>/read_roles/add", methods=("POST",))
+    # 增加权限管理的接口
+    @expose("/<pk>/permissions/modify", methods=["POST"])
     @protect()
     @safe
     @statsd_metrics
-    def add_read_role(self, pk: int) -> Response:
-        """Add a read role to a slice.
-        ---
-        post:
-          summary: Add a read role to a slice
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-          requestBody:
-            description: Role ID to add
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    role_id:
-                      type: integer
-          responses:
-            200:
-              description: Role added
-            400:
-              $ref: '#/components/responses/400'
-            401:
-              $ref: '#/components/responses/401'
-            404:
-              $ref: '#/components/responses/404'
-            500:
-              $ref: '#/components/responses/500'
+    def modify_permissions(self, pk: int) -> Response:
         """
-        role_id = request.json.get("role_id")
-        user_id = request.json.get("user_id")
-        if not role_id or not user_id:
-            return self.response_400(message="Role ID and User ID are required.")
-
-        try:
-            ChartDAO.add_read_role_to_slice(pk, role_id, user_id)
-            return self.response(200, message="Read role added.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<pk>/read_roles/delete", methods=("DELETE",))
-    @protect()
-    @safe
-    @statsd_metrics
-    def remove_read_role(self, pk: int) -> Response:
-        """Remove a read role from a slice.
-        ---
-        delete:
-          summary: Remove a read role from a slice
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-          requestBody:
-            description: Role ID to remove
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    role_id:
-                      type: integer
-          responses:
-            200:
-              description: Role removed
-            400:
-              $ref: '#/components/responses/400'
-            401:
-              $ref: '#/components/responses/401'
-            404:
-              $ref: '#/components/responses/404'
-            500:
-              $ref: '#/components/responses/500'
-        """
-        role_id = request.json.get("role_id")
-        user_id = request.json.get("user_id")
-        if not role_id or not user_id:
-            return self.response_400(message="Role ID and User ID are required.")
-
-        try:
-            ChartDAO.remove_read_role_from_slice(pk, role_id, user_id)
-            return self.response(200, message="Read role removed.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<pk>/read_roles/getReadRole", methods=("GET",))
-    @protect()
-    @safe
-    @statsd_metrics
-    def get_read_roles(self, pk: int) -> Response:
-        """Get all read roles for a slice.
-        ---
-        get:
-          summary: Get all read roles for a slice
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-          responses:
-            200:
-              description: List of read roles
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        role_id:
-                          type: integer
-                        role_name:
-                          type: string
-            404:
-              $ref: '#/components/responses/404'
-            500:
-              $ref: '#/components/responses/500'
-        """
-        try:
-            roles = ChartDAO.get_read_roles_for_slice(pk)
-            return self.response(200, result=roles)
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<pk>/edit_roles/add", methods=("POST",))
-    @protect()
-    @safe
-    @statsd_metrics
-    def add_edit_role(self, pk: int) -> Response:
-        """Add an edit role to a slice.
-        ---
-        post:
-          summary: Add an edit role to a slice
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-          requestBody:
-            description: Role ID and User ID to add
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    role_id:
-                      type: integer
-                    user_id:
-                      type: integer
-          responses:
-            200:
-              description: Edit role added
-            400:
-              description: Bad request
-            404:
-              description: Not found
-        """
-        role_id = request.json.get("role_id")
-        user_id = request.json.get("user_id")
-        if not role_id or not user_id:
-            return self.response_400(message="Role ID and User ID are required.")
-
-        try:
-            ChartDAO.add_edit_role_to_slice(pk, role_id, user_id)
-            return self.response(200, message="Edit role added.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<pk>/edit_roles/delete", methods=("DELETE",))
-    @protect()
-    @safe
-    @statsd_metrics
-    def remove_edit_role(self, pk: int) -> Response:
-        """Remove an edit role from a slice.
-        ---
-        delete:
-          summary: Remove an edit role from a slice
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-          requestBody:
-            description: Role ID and User ID to remove
-            required: true
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    role_id:
-                      type: integer
-                    user_id:
-                      type: integer
-          responses:
-            200:
-              description: Edit role removed
-            400:
-              description: Bad request
-            404:
-              description: Not found
-        """
-        role_id = request.json.get("role_id")
-        user_id = request.json.get("user_id")
-        if not role_id or not user_id:
-            return self.response_400(message="Role ID and User ID are required.")
-
-        try:
-            ChartDAO.remove_edit_role_from_slice(pk, role_id, user_id)
-            return self.response(200, message="Edit role removed.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<pk>/edit_roles/getEditRole", methods=("GET",))
-    @protect()
-    @safe
-    @statsd_metrics
-    def get_edit_roles(self, pk: int) -> Response:
-        """Get all edit roles for a slice.
-        ---
-        get:
-          summary: Get all edit roles for a slice
-          parameters:
-          - in: path
-            schema:
-              type: integer
-            name: pk
-          responses:
-            200:
-              description: List of edit roles
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        role_id:
-                          type: integer
-                        user_id:
-                          type: integer
-            404:
-              description: Not found
-        """
-        try:
-            roles = ChartDAO.get_edit_roles_for_slice(pk)
-            return self.response(200, result=roles)
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-        # 增加权限管理的接口
-    @expose("/<int:chart_id>/permissions/user/add", methods=["POST"])
-    @protect()
-    @safe
-    @statsd_metrics
-    def add_permissions_to_user(self, chart_id: int) -> Response:
-        """
-        添加用户权限到某个图表。
+        修改图表的权限，支持添加和移除权限。
         请求体格式:
         {
-            "user_id": 123,
-            "permissions": ["can_read", "can_edit"]
+            "entity_id": 123,  # 用户或角色的 ID
+            "entity_type": "user" 或 "role",  # 实体类型
+            "permissions": ["can_read", "can_edit", "can_add", "can_delete"],  # 权限列表
+            "action": "add" 或 "remove"  # 操作类型
         }
         """
         data = request.json
-        user_id = data.get("user_id")
+        entity_id = data.get("entity_id")
+        entity_type = data.get("entity_type")  # 从请求体获取 entity_type
         permissions = data.get("permissions", [])
+        action = data.get("action")
+        chart_id = pk
 
-        if not user_id or not permissions:
+        # 验证参数完整性
+        if not entity_id or not entity_type or not permissions or action not in ["add",
+                                                                                 "remove"]:
             return self.response_400(
-                message="Missing required parameters: user_id or permissions")
+                message="Missing or invalid parameters: entity_id, entity_type, "
+                        "permissions, or action."
+            )
+
+        # 验证 entity_type 是否有效
+        if entity_type not in ["user", "role"]:
+            return self.response_400(
+                message=f"Invalid entity_type: {entity_type}. Must be 'user' or 'role'."
+            )
 
         try:
-            ChartPermissions.add_permission_to_user(chart_id, user_id, permissions)
-            return self.response(200,
-                                    message="Permissions successfully added to user.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<int:chart_id>/permissions/role/add", methods=["POST"])
-    @protect()
-    @safe
-    @statsd_metrics
-    def add_permissions_to_role(self, chart_id: int) -> Response:
-        """
-        添加角色权限到某个图表。
-        请求体格式:
-        {
-            "role_id": 1,
-            "permissions": ["can_read", "can_edit"]
-        }
-        """
-        data = request.json
-        role_id = data.get("role_id")
-        permissions = data.get("permissions", [])
-
-        if not role_id or not permissions:
-            return self.response_400(
-                message="Missing required parameters: role_id or permissions")
-
-        try:
-            ChartPermissions.add_permission_to_role(chart_id, role_id, permissions)
-            return self.response(200, message="Permissions successfully added to role.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<int:chart_id>/permissions/user/remove", methods=["POST"])
-    @protect()
-    @safe
-    @statsd_metrics
-    def remove_permissions_to_user(self, chart_id: int) -> Response:
-        """
-        移除用户权限从某个图表。
-        请求体格式:
-        {
-            "user_id": 123,
-            "permissions": ["can_read", "can_edit"]
-        }
-        """
-        data = request.json
-        user_id = data.get("user_id")
-        permissions = data.get("permissions", [])
-
-        if not user_id or not permissions:
-            return self.response_400(
-                message="Missing required parameters: user_id or permissions")
-
-        try:
-            ChartPermissions.remove_permission_to_user(chart_id, user_id, permissions)
-            return self.response(200,
-                                 message="Permissions successfully removed from user.")
-        except Exception as e:
-            return self.response_400(message=str(e))
-
-    @expose("/<int:chart_id>/permissions/role/remove", methods=["POST"])
-    @protect()
-    @safe
-    @statsd_metrics
-    def remove_permissions_to_role(self, chart_id: int) -> Response:
-        """
-        移除角色权限从某个图表。
-        请求体格式:
-        {
-            "role_id": 1,
-            "permissions": ["can_read", "can_edit"]
-        }
-        """
-        data = request.json
-        role_id = data.get("role_id")
-        permissions = data.get("permissions", [])
-
-        if not role_id or not permissions:
-            return self.response_400(
-                message="Missing required parameters: role_id or permissions")
-
-        try:
-            ChartPermissions.remove_permission_to_role(chart_id, role_id, permissions)
-            return self.response(200,
-                                 message="Permissions successfully removed from role.")
+            # 调用 ChartDAO 来完成权限管理
+            ChartDAO.modify_permissions(chart_id, entity_type, entity_id, permissions,
+                                        action)
+            return self.response(200, message=f"Permissions successfully {action}ed.")
         except Exception as e:
             return self.response_400(message=str(e))

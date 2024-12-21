@@ -29,7 +29,7 @@ class ChartDAO:
     base_filter = ChartFilter
 
     @staticmethod
-    def favorited_ids(charts: List[Slice]) -> List[int]:
+    def favorited_ids(charts: list[Slice]) -> list[int]:
         """
         获取当前用户收藏的图表 ID 列表。
         """
@@ -91,134 +91,50 @@ class ChartDAO:
             raise DAODeleteFailedError(exception=ex)
 
     @staticmethod
-    def add_permission_to_user(chart_id: int, user_id: int,
-                               permission_type: str) -> None:
+    def add_permissions_to_user(chart_id: int, user_id: int,
+                                permissions: list[str]) -> None:
         """
-        为用户添加图表权限（动态支持权限类型）。
+        为用户添加图表权限（代理到 ChartPermissions）。
 
         :param chart_id: 图表 ID
         :param user_id: 用户 ID
-        :param permission_type: 权限类型 ('can_read', 'can_edit', 'can_delete')
+        :param permissions: 权限列表（如 ['can_read', 'can_edit', 'can_delete']）
         """
-        if permission_type not in ["can_read", "can_edit", "can_delete"]:
-            raise ValueError(f"Invalid permission type: {permission_type}")
-
-        try:
-            existing_permission = db.session.query(UserPermission).filter_by(
-                resource_type="chart",
-                resource_id=chart_id,
-                user_id=user_id,
-                **{permission_type: True},  # 动态检查指定的权限类型
-            ).first()
-
-            if existing_permission:
-                raise Exception(
-                    f"{permission_type} permission already exists for this user and "
-                    f"chart."
-                )
-
-            permission = UserPermission(
-                resource_type="chart",
-                resource_id=chart_id,
-                user_id=user_id,
-                **{permission_type: True},  # 动态设置指定的权限类型
-            )
-            db.session.add(permission)
-            db.session.commit()
-        except SQLAlchemyError as ex:
-            db.session.rollback()
-            logger.error(f"Error adding {permission_type} permission to user: {ex}")
-            raise DAOCreateFailedError(exception=ex)
+        ChartPermissions.add_permissions_to_user(chart_id, user_id, permissions)
 
     @staticmethod
-    def add_permission_to_role(chart_id: int, role_id: int,
-                               permission_type: str) -> None:
+    def add_permissions_to_role(chart_id: int, role_id: int,
+                                permissions: list[str]) -> None:
         """
-        为角色添加图表权限（动态支持权限类型）。
+        为角色添加图表权限（代理到 ChartPermissions）。
 
         :param chart_id: 图表 ID
         :param role_id: 角色 ID
-        :param permission_type: 权限类型 ('can_read', 'can_edit', 'can_delete')
+        :param permissions: 权限列表（如 ['can_read', 'can_edit', 'can_delete']）
         """
-        if permission_type not in ["can_read", "can_edit", "can_delete"]:
+        ChartPermissions.add_permissions_to_role(chart_id, role_id, permissions)
+
+    @staticmethod
+    def get_permissions(chart_id: int, permission_type: str) -> dict:
+        """
+        获取图表的指定权限（包括用户和角色）。
+
+        :param chart_id: 图表 ID
+        :param permission_type: 权限类型 ('can_read', 'can_edit', 'can_delete', 'can_add')
+        :return: 包含用户和角色权限的字典
+        """
+        # 验证权限类型是否有效
+        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
+        if permission_type not in valid_permissions:
             raise ValueError(f"Invalid permission type: {permission_type}")
 
+        # 调用 ChartPermissions.get_permissions
         try:
-            existing_permission = db.session.query(RolePermission).filter_by(
-                resource_type="chart",
-                resource_id=chart_id,
-                role_id=role_id,
-                **{permission_type: True},  # 动态检查指定的权限类型
-            ).first()
-
-            if existing_permission:
-                raise Exception(
-                    f"{permission_type} permission already exists for this role and "
-                    f"chart."
-                )
-
-            permission = RolePermission(
-                resource_type="chart",
-                resource_id=chart_id,
-                role_id=role_id,
-                **{permission_type: True},  # 动态设置指定的权限类型
-            )
-            db.session.add(permission)
-            db.session.commit()
-        except SQLAlchemyError as ex:
-            db.session.rollback()
-            logger.error(f"Error adding {permission_type} permission to role: {ex}")
-            raise DAOCreateFailedError(exception=ex)
-
-    @staticmethod
-    def get_read_permissions(chart_id: int) -> dict:
-        """
-        获取图表的所有读取权限（包括用户和角色）。
-
-        :param chart_id: 图表 ID
-        :return: 包含用户和角色权限的字典
-        """
-        user_permissions = db.session.query(UserPermission).filter_by(
-            resource_type="chart",
-            resource_id=chart_id,
-            can_read=True,
-        ).all()
-
-        role_permissions = db.session.query(RolePermission).filter_by(
-            resource_type="chart",
-            resource_id=chart_id,
-            can_read=True,
-        ).all()
-
-        return {
-            "users": [{"user_id": perm.user_id} for perm in user_permissions],
-            "roles": [{"role_id": perm.role_id} for perm in role_permissions],
-        }
-
-    @staticmethod
-    def get_edit_permissions(chart_id: int) -> dict:
-        """
-        获取图表的所有编辑权限（包括用户和角色）。
-
-        :param chart_id: 图表 ID
-        :return: 包含用户和角色权限的字典
-        """
-        user_permissions = db.session.query(UserPermission).filter_by(
-            resource_type="chart",
-            resource_id=chart_id,
-            can_edit=True,
-        ).all()
-
-        role_permissions = db.session.query(RolePermission).filter_by(
-            resource_type="chart",
-            resource_id=chart_id,
-            can_edit=True,
-        ).all()
-
-        return {
-            "users": [{"user_id": perm.user_id} for perm in user_permissions],
-            "roles": [{"role_id": perm.role_id} for perm in role_permissions],
-        }
+            permissions = ChartPermissions.get_permissions(chart_id, permission_type)
+            return permissions
+        except Exception as ex:
+            logger.error(f"Error fetching permissions for chart {chart_id}: {str(ex)}")
+            raise
 
     @staticmethod
     def _get_current_user():
@@ -232,8 +148,8 @@ class ChartDAO:
         item: Slice | None = None,
         attributes: dict[str, Any] | None = None,
         commit: bool = True,
-        roles: List[str] = None,  # 可选的角色列表
-        permissions: List[str] = None,  # 可选的权限列表
+        roles: list[str] = None,  # 可选的角色列表
+        permissions: list[str] = None,  # 可选的权限列表
     ) -> Slice:
         """
         创建新的图表。
@@ -285,7 +201,7 @@ class ChartDAO:
 
     @classmethod
     def find_all(cls, permission_type: str = "read", check_permission: bool = True) -> \
-    List[Slice]:
+        list[Slice]:
         """
         查找所有图表，同时可选地校验用户权限。
 
@@ -395,3 +311,27 @@ class ChartDAO:
         except SQLAlchemyError as ex:
             db.session.rollback()
             raise DAODeleteFailedError(exception=ex) from ex
+
+    @staticmethod
+    def remove_permissions_from_user(chart_id: int, user_id: int,
+                                     permissions: list[str]) -> None:
+        """
+        代理方法：从指定用户移除多个权限。
+
+        :param chart_id: 图表 ID
+        :param user_id: 用户 ID
+        :param permissions: 权限列表，例如 ['can_read', 'can_edit']
+        """
+        ChartPermissions.remove_permissions_to_user(chart_id, user_id, permissions)
+
+    @staticmethod
+    def remove_permissions_from_role(chart_id: int, role_id: int,
+                                     permissions: list[str]) -> None:
+        """
+        代理方法：从指定角色移除多个权限。
+
+        :param chart_id: 图表 ID
+        :param role_id: 角色 ID
+        :param permissions: 权限列表，例如 ['can_read', 'can_edit']
+        """
+        ChartPermissions.remove_permissions_to_role(chart_id, role_id, permissions)

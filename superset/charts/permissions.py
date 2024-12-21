@@ -1,5 +1,7 @@
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
 from superset.models.slice import Slice
@@ -119,57 +121,54 @@ class ChartPermissions:
     @staticmethod
     def get_permissions(chart_id: int, permission_type: str) -> dict:
         """
-        获取图表的所有权限（包括用户和角色），支持动态权限类型。
+        获取图表的所有权限（包括用户和角色）。
 
         :param chart_id: 图表 ID
-        :param permission_type: 权限类型 ('can_read', 'can_edit', 'can_delete')
-        :return: 包含用户和角色权限的字典，结构更易读。
+        :param permission_type: 权限类型 ('can_read', 'can_edit', 'can_delete', 'can_add')
+        :return: 包含用户和角色权限的字典
         """
-        if permission_type not in ["can_read", "can_edit", "can_delete", "can_add"]:
+        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
+
+        if permission_type not in valid_permissions:
             raise ValueError(f"Invalid permission type: {permission_type}")
 
         # 获取用户权限
         user_permissions = (
-            db.session.query(UserPermission, db.user_model)
-            .join(db.user_model, UserPermission.user_id == db.user_model.id)
-            .filter(
-                UserPermission.resource_type == "chart",
-                UserPermission.resource_id == chart_id,
-                getattr(UserPermission, permission_type) == True,
+            db.session.query(UserPermission)
+            .filter_by(
+                resource_type="chart",
+                resource_id=chart_id,
+                **{permission_type: True},  # 动态查询指定的权限类型
             )
             .all()
         )
 
         # 获取角色权限
         role_permissions = (
-            db.session.query(RolePermission, db.role_model)
-            .join(db.role_model, RolePermission.role_id == db.role_model.id)
-            .filter(
-                RolePermission.resource_type == "chart",
-                RolePermission.resource_id == chart_id,
-                getattr(RolePermission, permission_type) == True,
+            db.session.query(RolePermission)
+            .filter_by(
+                resource_type="chart",
+                resource_id=chart_id,
+                **{permission_type: True},  # 动态查询指定的权限类型
             )
             .all()
         )
 
-        # 构建更易理解的返回格式
+        # 构建返回格式
         return {
             "user_permissions": [
                 {
-                    "user_id": user.id,
-                    "user_name": f"{user.first_name} {user.last_name}".strip(),
-                    # 获取用户全名
+                    "user_id": perm.user_id,
                     "permission_type": permission_type,
                 }
-                for _, user in user_permissions
+                for perm in user_permissions
             ],
             "role_permissions": [
                 {
-                    "role_id": role.id,
-                    "role_name": role.name,  # 获取角色名称
+                    "role_id": perm.role_id,
                     "permission_type": permission_type,
                 }
-                for _, role in role_permissions
+                for perm in role_permissions
             ],
         }
 
@@ -251,97 +250,117 @@ class ChartPermissions:
         return chart
 
     @staticmethod
-    def add_permissions_to_user(chart_id: int, user_id: int,
-                                permissions: list[str]) -> None:
+    def _add_permissions(
+        chart_id: int, entity_id: int, permissions: list[str], entity_type: str
+    ) -> None:
         """
-        为指定用户添加多个权限。
+        通用方法，为用户或角色添加权限。
 
         :param chart_id: 图表 ID
-        :param user_id: 用户 ID
-        :param permissions: 权限列表，例如 ['can_read', 'can_edit']
+        :param entity_id: 用户或角色 ID
+        :param permissions: 权限列表
+        :param entity_type: 实体类型 ('user' 或 'role')
         """
         valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
+        invalid_permissions = [perm for perm in permissions if
+                               perm not in valid_permissions]
+        if invalid_permissions:
+            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
 
-        # 验证权限类型是否合法
-        for permission in permissions:
-            if permission not in valid_permissions:
-                raise ValueError(f"Invalid permission type: {permission}")
+        permission_model = UserPermission if entity_type == "user" else RolePermission
 
         try:
-            # 检查是否已有权限记录
-            existing_permission = db.session.query(UserPermission).filter_by(
+            existing_permission = db.session.query(permission_model).filter_by(
                 resource_type="chart",
                 resource_id=chart_id,
-                user_id=user_id,
+                **{f"{entity_type}_id": entity_id},
             ).first()
 
             if not existing_permission:
-                # 创建新的用户权限记录
-                permission_data = {permission: True for permission in permissions}
-                permission = UserPermission(
+                permission_data = {perm: True for perm in permissions}
+                permission = permission_model(
                     resource_type="chart",
                     resource_id=chart_id,
-                    user_id=user_id,
+                    **{f"{entity_type}_id": entity_id},
                     **permission_data,
                 )
                 db.session.add(permission)
             else:
-                # 更新已有的权限记录
-                for permission in permissions:
-                    setattr(existing_permission, permission, True)
+                for perm in permissions:
+                    setattr(existing_permission, perm, True)
 
             db.session.commit()
-        except Exception as ex:
+        except SQLAlchemyError as ex:
             db.session.rollback()
             logger.error(
-                f"Failed to add permissions {permissions} to user {user_id} for chart {chart_id}: {ex}")
+                f"Failed to add permissions {permissions} to {entity_type} {entity_id} for chart {chart_id}: {ex}"
+            )
             raise
 
     @staticmethod
-    def add_permissions_to_role(chart_id: int, role_id: int,
-                                permissions: list[str]) -> None:
+    def add_permissions_to_user(chart_id: int, user_id: int, permissions: list[str]) -> None:
         """
-        为指定角色添加多个权限。
+        为用户添加权限，使用通用方法。
+        """
+        ChartPermissions._add_permissions(chart_id, user_id, permissions, "user")
+
+    @staticmethod
+    def add_permissions_to_role(chart_id: int, role_id: int, permissions: list[str]) -> None:
+        """
+        为角色添加权限，使用通用方法。
+        """
+        ChartPermissions._add_permissions(chart_id, role_id, permissions, "role")
+
+    @staticmethod
+    def _remove_permissions(
+        chart_id: int, entity_id: int, permissions: list[str], entity_type: str
+    ) -> None:
+        """
+        通用方法，从用户或角色移除多个权限。
 
         :param chart_id: 图表 ID
-        :param role_id: 角色 ID
+        :param entity_id: 用户或角色 ID
         :param permissions: 权限列表，例如 ['can_read', 'can_edit']
+        :param entity_type: 实体类型 ('user' 或 'role')
         """
         valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
 
         # 验证权限类型是否合法
-        for permission in permissions:
-            if permission not in valid_permissions:
-                raise ValueError(f"Invalid permission type: {permission}")
+        invalid_permissions = [permission for permission in permissions if
+                               permission not in valid_permissions]
+        if invalid_permissions:
+            raise ValueError(f"Invalid permission(s): {', '.join(invalid_permissions)}")
+
+        permission_model = UserPermission if entity_type == "user" else RolePermission
 
         try:
-            # 检查是否已有权限记录
-            existing_permission = db.session.query(RolePermission).filter_by(
+            # 查找权限记录
+            existing_permission = db.session.query(permission_model).filter_by(
                 resource_type="chart",
                 resource_id=chart_id,
-                role_id=role_id,
+                **{f"{entity_type}_id": entity_id},
             ).first()
 
-            if not existing_permission:
-                # 创建新的角色权限记录
-                permission_data = {permission: True for permission in permissions}
-                permission = RolePermission(
-                    resource_type="chart",
-                    resource_id=chart_id,
-                    role_id=role_id,
-                    **permission_data,
-                )
-                db.session.add(permission)
-            else:
-                # 更新已有的权限记录
+            if existing_permission:
+                # 移除指定的权限
                 for permission in permissions:
-                    setattr(existing_permission, permission, True)
+                    setattr(existing_permission, permission, False)
 
-            db.session.commit()
+                # 如果所有权限都被移除，则删除该记录
+                if not (
+                    existing_permission.can_read
+                    or existing_permission.can_edit
+                    or existing_permission.can_delete
+                    or existing_permission.can_add
+                ):
+                    db.session.delete(existing_permission)
+
+                db.session.commit()
         except Exception as ex:
             db.session.rollback()
             logger.error(
-                f"Failed to add permissions {permissions} to role {role_id} for chart {chart_id}: {ex}")
+                f"Failed to remove permissions {permissions} from {entity_type} {entity_id} for chart {chart_id}: {ex}"
+            )
             raise
 
     @staticmethod
@@ -354,38 +373,7 @@ class ChartPermissions:
         :param user_id: 用户 ID
         :param permissions: 权限列表，例如 ['can_read', 'can_edit']
         """
-        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-
-        # 验证权限类型是否合法
-        for permission in permissions:
-            if permission not in valid_permissions:
-                raise ValueError(f"Invalid permission type: {permission}")
-
-        try:
-            # 查找权限记录
-            existing_permission = db.session.query(UserPermission).filter_by(
-                resource_type="chart",
-                resource_id=chart_id,
-                user_id=user_id,
-            ).first()
-
-            if existing_permission:
-                # 移除指定的权限
-                for permission in permissions:
-                    setattr(existing_permission, permission, False)
-
-                # 如果所有权限都被移除，则删除该记录
-                if not (
-                    existing_permission.can_read or existing_permission.can_edit or
-                    existing_permission.can_delete or existing_permission.can_add):
-                    db.session.delete(existing_permission)
-
-                db.session.commit()
-        except Exception as ex:
-            db.session.rollback()
-            logger.error(
-                f"Failed to remove permissions {permissions} from user {user_id} for chart {chart_id}: {ex}")
-            raise
+        ChartPermissions._remove_permissions(chart_id, user_id, permissions, "user")
 
     @staticmethod
     def remove_permissions_to_role(chart_id: int, role_id: int,
@@ -397,38 +385,7 @@ class ChartPermissions:
         :param role_id: 角色 ID
         :param permissions: 权限列表，例如 ['can_read', 'can_edit']
         """
-        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-
-        # 验证权限类型是否合法
-        for permission in permissions:
-            if permission not in valid_permissions:
-                raise ValueError(f"Invalid permission type: {permission}")
-
-        try:
-            # 查找权限记录
-            existing_permission = db.session.query(RolePermission).filter_by(
-                resource_type="chart",
-                resource_id=chart_id,
-                role_id=role_id,
-            ).first()
-
-            if existing_permission:
-                # 移除指定的权限
-                for permission in permissions:
-                    setattr(existing_permission, permission, False)
-
-                # 如果所有权限都被移除，则删除该记录
-                if not (
-                    existing_permission.can_read or existing_permission.can_edit or
-                    existing_permission.can_delete or existing_permission.can_add):
-                    db.session.delete(existing_permission)
-
-                db.session.commit()
-        except Exception as ex:
-            db.session.rollback()
-            logger.error(
-                f"Failed to remove permissions {permissions} from role {role_id} for chart {chart_id}: {ex}")
-            raise
+        ChartPermissions._remove_permissions(chart_id, role_id, permissions, "role")
 
     @staticmethod
     def get_allowed_chart_ids(user, permission_type: str) -> list[int]:
@@ -467,10 +424,8 @@ class ChartPermissions:
                 RolePermission.role_id.in_(user_roles),
                 RolePermission.resource_type == "chart",
                 getattr(RolePermission, permission_map[permission_type]) == True,
-                ).all()
+            ).all()
         ]
 
         # 合并去重
         return list(set(user_chart_ids + role_chart_ids))
-
-

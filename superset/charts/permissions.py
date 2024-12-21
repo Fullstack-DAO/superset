@@ -431,7 +431,7 @@ class ChartPermissions:
             raise
 
     @staticmethod
-    def get_allowed_chart_ids(user, permission_type: str) -> List[int]:
+    def get_allowed_chart_ids(user, permission_type: str) -> list[int]:
         """
         获取用户有指定权限的所有图表 ID 列表。
 

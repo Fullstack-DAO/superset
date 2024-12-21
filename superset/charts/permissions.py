@@ -31,6 +31,7 @@ class ChartPermissions:
                 can_read=True,
                 can_edit=True,
                 can_add=True,
+                can_delete=True,
             )
             db.session.add(user_permission)
 
@@ -44,6 +45,7 @@ class ChartPermissions:
                     can_read=True,
                     can_edit=True,
                     can_add=True,
+                    can_delete=True,
                 )
                 db.session.add(role_permission)
 

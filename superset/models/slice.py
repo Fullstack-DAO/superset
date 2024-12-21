@@ -40,6 +40,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.mapper import Mapper
 
 from superset import db, is_feature_enabled, security_manager
+from superset.charts.permissions import ChartPermissions
 from superset.legacy import update_time_range
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin
 from superset.models.role_permission import RolePermission
@@ -62,23 +63,6 @@ slice_user = Table(
     Column("id", Integer, primary_key=True),
     Column("user_id", Integer, ForeignKey("ab_user.id", ondelete="CASCADE")),
     Column("slice_id", Integer, ForeignKey("slices.id", ondelete="CASCADE")),
-)
-
-# 定义中间表
-slice_read_roles = Table(
-    'slice_read_roles', metadata,
-    Column('slice_id', Integer, ForeignKey('slices.id', ondelete='CASCADE'),
-           primary_key=True),
-    Column('role_id', Integer, ForeignKey('ab_role.id', ondelete='CASCADE'),
-           primary_key=True)
-)
-
-slice_edit_roles = Table(
-    'slice_edit_roles', metadata,
-    Column('slice_id', Integer, ForeignKey('slices.id', ondelete='CASCADE'),
-           primary_key=True),
-    Column('role_id', Integer, ForeignKey('ab_role.id', ondelete='CASCADE'),
-           primary_key=True)
 )
 
 logger = logging.getLogger(__name__)
@@ -144,16 +128,6 @@ class Slice(  # pylint: disable=too-many-public-methods
                     "Slice.datasource_type == 'table')",
         remote_side="SqlaTable.id",
         lazy="subquery",
-    )
-    read_roles = relationship(
-        "Role",
-        secondary=slice_read_roles,
-        backref="readable_slices",
-    )
-    edit_roles = relationship(
-        "Role",
-        secondary=slice_edit_roles,
-        backref="editable_slices",
     )
 
     token = ""
@@ -287,6 +261,8 @@ class Slice(  # pylint: disable=too-many-public-methods
             "is_managed_externally": self.is_managed_externally,
             "read_roles": [role.id for role in self.read_roles],
             "edit_roles": [role.id for role in self.edit_roles],
+            "read_users": [user.id for user in self.read_users],
+            "edit_users": [user.id for user in self.edit_users],
         }
 
     @property
@@ -406,15 +382,6 @@ class Slice(  # pylint: disable=too-many-public-methods
         return qry.one_or_none()
 
 
-def set_related_perm(_mapper: Mapper, _connection: Connection, target: Slice) -> None:
-    src_class = target.cls_model
-    if id_ := target.datasource_id:
-        ds = db.session.query(src_class).filter_by(id=int(id_)).first()
-        if ds:
-            target.perm = ds.perm
-            target.schema_perm = ds.schema_perm
-
-
 def event_after_chart_changed(
     _mapper: Mapper, _connection: Connection, target: Slice
 ) -> None:
@@ -427,41 +394,15 @@ def event_after_chart_changed(
 
 def has_permission(self, user, permission_type: str) -> bool:
     """
-    检查用户是否对 Slice 有指定权限。
+    检查用户是否对当前 Slice（图表）有指定权限。
 
-    :param user: 当前用户
-    :param permission_type: 权限类型（read 或 edit）
+    :param user: 当前用户对象
+    :param permission_type: 权限类型（read, edit, delete, add 等）
     :return: 是否有权限
     """
-    # 1. 检查用户直接权限（UserPermission 表）
-    user_permission = db.session.query(UserPermission).filter_by(
-        user_id=user.id,
-        resource_id=self.id,
-        resource_type="slice"
-    ).one_or_none()
-    if user_permission and getattr(user_permission, f"can_{permission_type}", False):
-        return True
-
-    # 2. 检查角色权限（RolePermission 表）
-    user_roles = {role.id for role in user.roles}
-    role_permissions = db.session.query(RolePermission).filter_by(
-        resource_id=self.id,
-        resource_type="slice"
-    ).all()
-    for perm in role_permissions:
-        if perm.role_id in user_roles and getattr(perm, f"can_{permission_type}",
-                                                  False):
-            return True
-
-    # 3. 检查中间表权限
-    if permission_type == "read" and any(
-        role.id in user_roles for role in self.read_roles):
-        return True
-    if permission_type == "edit" and any(
-        role.id in user_roles for role in self.edit_roles):
-        return True
-
-    return False
+    # 直接调用 ChartPermissions 的 has_permission 方法
+    return ChartPermissions.has_permission(chart_id=self.id, user=user,
+                                           permission_type=permission_type)
 
 
 # 设置相关权限
@@ -474,31 +415,31 @@ def set_related_perm(_mapper, _connection, target: Slice) -> None:
     :param _connection: SQLAlchemy 的 Connection 对象
     :param target: 当前处理的 Slice（图表）对象
     """
-    # 获取图表数据源的类和 ID
+    # 获取数据源的类和 ID
     src_class = target.cls_model  # 数据源的类，例如 SqlaTable
     datasource_id = target.datasource_id
 
-    # 如果图表绑定了有效的数据源
-    if datasource_id:
-        # 查询数据源对象
-        datasource = db.session.query(src_class).filter_by(
-            id=int(datasource_id)).one_or_none()
-        if datasource:
-            # 设置 Slice 的 perm 和 schema_perm
-            target.perm = datasource.perm  # 数据源的权限
-            target.schema_perm = datasource.schema_perm  # 数据源的 Schema 权限
-
-            logger.info(
-                "Set permission fields for Slice ID %s: perm=%s, schema_perm=%s",
-                target.id, target.perm, target.schema_perm
-            )
-        else:
-            logger.warning(
-                "Datasource with ID %s not found for Slice ID %s",
-                datasource_id, target.id
-            )
-    else:
+    if not datasource_id:
         logger.warning("Slice ID %s has no associated datasource.", target.id)
+        return
+
+    # 查询数据源对象
+    datasource = db.session.query(src_class).filter_by(id=datasource_id).one_or_none()
+    if not datasource:
+        logger.warning(
+            "Datasource with ID %s not found for Slice ID %s",
+            datasource_id, target.id
+        )
+        return
+
+    # 设置权限字段
+    target.perm = datasource.perm  # 数据源的权限
+    target.schema_perm = datasource.schema_perm  # 数据源的 Schema 权限
+
+    logger.info(
+        "Set permission fields for Slice ID %s: perm=%s, schema_perm=%s",
+        target.id, target.perm, target.schema_perm
+    )
 
 
 sqla.event.listen(Slice, "before_insert", set_related_perm)

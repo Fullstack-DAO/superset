@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from superset.charts.filters import ChartFilter
 from superset.charts.permissions import ChartPermissions
+from superset.daos.base import BaseDAO
 from superset.extensions import db
 from superset.models.core import FavStar, FavStarClassName
 from superset.models.slice import Slice
@@ -17,7 +18,7 @@ from superset.daos.exceptions import (
     DAOCreateFailedError,
     DAODeleteFailedError, DAOUpdateFailedError,
 )
-from functools import wraps
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from superset.connectors.sqla.models import BaseDatasource
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ChartDAO:
+class ChartDAO(BaseDAO[Slice]):
     base_filter = ChartFilter
 
     @staticmethod
@@ -113,7 +114,7 @@ class ChartDAO:
             raise
 
     @staticmethod
-    def _get_current_user():
+    def get_current_user():
         """获取当前用户对象"""
         user_id = get_user_id()
         return db.session.query(db.user_model).filter_by(id=user_id).one_or_none()
@@ -144,8 +145,11 @@ class ChartDAO:
             raise DAOCreateFailedError(exception=ex) from ex
 
     @classmethod
-    def find_all(cls, permission_type: str = "read", check_permission: bool = True) -> \
-        list[Slice]:
+    def find_all(
+        cls,
+        permission_type: str = "read",
+        check_permission: bool = True
+    ) -> list[Slice]:
         """
         查找所有图表，同时可选地校验用户权限。
 
@@ -153,7 +157,7 @@ class ChartDAO:
         :param check_permission: 是否校验用户权限，默认为 True
         :return: 符合条件的图表列表
         """
-        user = cls._get_current_user()
+        user = cls.get_current_user()
 
         # 如果未登录用户直接返回空列表
         if check_permission and not user:
@@ -212,7 +216,7 @@ class ChartDAO:
         :param commit: 是否提交到数据库，默认为 True
         """
         # 获取当前用户
-        user = cls._get_current_user()
+        user = cls.get_current_user()
         if not user:
             raise PermissionError("No user is currently logged in.")
 
@@ -285,3 +289,98 @@ class ChartDAO:
         :return: 图表对象，如果没有权限则返回 None
         """
         return ChartPermissions.get_chart_and_check_permission(pk, permission_type)
+
+    @classmethod
+    def find_by_ids(
+        cls,
+        model_ids: list[str] | list[int],
+        session: Session = None,
+        skip_base_filter: bool = False,
+        permission_type: str = "read",  # 权限类型，默认为 "read"
+        check_permission: bool = True,  # 是否进行权限校验
+    ) -> list[Slice]:
+        """
+        Find a List of charts by a list of ids, if defined applies base_filter.
+        Optionally checks for permissions before returning results.
+
+        :param model_ids: List of chart IDs to search for.
+        :param session: Database session.
+        :param skip_base_filter: Whether to skip applying the base filter.
+        :param permission_type: Type of permission (read, edit, etc.)
+        :param check_permission: Whether to perform permission checks.
+        :return: List of charts that match the IDs and pass the permission check.
+        """
+        # Step 1: Get the base result using the inherited method
+        session = db.session
+        charts = super().find_by_ids(model_ids, session=session,
+                                     skip_base_filter=skip_base_filter)
+
+        # Step 2: If no permission check is needed, return the results
+        if not check_permission:
+            return charts
+
+        # Step 3: Get the current user
+        user = cls.get_current_user()
+
+        # If the user is not logged in and permission check is required, return an
+        # empty list
+        if user is None:
+            logger.warning(f"Permission check failed: No user is currently logged in.")
+            return []
+
+        # Step 4: Filter charts by user permissions
+        allowed_chart_ids = ChartPermissions.get_allowed_chart_ids(user,
+                                                                   permission_type)
+
+        # Step 5: Filter charts based on allowed IDs
+        return [chart for chart in charts if chart.id in allowed_chart_ids]
+
+    @classmethod
+    def find_by_id(
+        cls,
+        model_id: str | int,
+        session: Session = None,
+        skip_base_filter: bool = False,
+        permission_type: str = "read",  # 权限类型，默认为 "read"
+        check_permission: bool = True,  # 是否校验权限
+    ) -> Slice | None:
+        """
+        Find a chart by id, optionally applies `base_filter` and permission checks.
+
+        :param model_id: The ID of the chart to retrieve.
+        :param session: Database session.
+        :param skip_base_filter: Whether to skip the base filter.
+        :param permission_type: The type of permission to check (e.g., "read").
+        :param check_permission: Whether to perform permission checks.
+        :return: The chart object if found and permission check passes; otherwise None.
+        """
+        # Step 1: 调用父类方法获取对象
+        session = db.session
+        chart = super().find_by_id(
+            model_id, session=session, skip_base_filter=skip_base_filter
+        )
+
+        # Step 2: 如果没有找到对象，直接返回 None
+        if not chart:
+            return None
+
+        # Step 3: 检查权限（如果需要）
+        if check_permission:
+            user = cls.get_current_user()
+
+            # 如果用户未登录，返回 None
+            if not user:
+                logger.warning(
+                    f"Permission check failed: No user is currently logged in.")
+                return None
+
+            # 检查用户是否有权限访问该图表
+            allowed_chart_ids = ChartPermissions.get_allowed_chart_ids(user,
+                                                                       permission_type)
+            if chart.id not in allowed_chart_ids:
+                logger.warning(
+                    f"Permission check failed for user {user.id} on chart {chart.id}.")
+                return None
+
+        # Step 4: 返回对象
+        return chart

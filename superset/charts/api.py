@@ -13,7 +13,6 @@ from flask_babel import ngettext
 from marshmallow import ValidationError
 from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
-
 from superset import app, is_feature_enabled, thumbnail_cache
 from superset.charts.filters import (
     ChartAllTextFilter,
@@ -557,12 +556,18 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         # Don't shrink the image if thumb_size is not specified
         thumb_size = rison_dict.get("thumb_size") or window_size
-        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel,
-                                                                     pk)  # 检查权限
-        if not permission:
+        # 检查权限：用户是否具有 can_read 权限
+        user = get_current_user()
+        if not user:
+            logger.warning("No user is currently logged in.")
+            return self.response_403()
+
+        if not ChartPermissions.has_permission(chart_id=pk, user=user,
+                                               permission_type="read"):
             logger.warning(
-                "User does not have permission to cache screenshot for chart %s", pk)
-            return self.response_403()  # 权限不足
+                "User %s does not have read permission for chart %s", user.username, pk
+            )
+            return self.response_403()
 
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
         if not chart:
@@ -628,12 +633,19 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel,
-                                                                     pk)  # 检查权限
-        if not permission:
+        # 获取当前用户
+        user = get_current_user()
+        if not user:
+            logger.warning("No user is currently logged in.")
+            return self.response_403()
+
+        # 检查用户是否具有 can_read 权限
+        if not ChartPermissions.has_permission(chart_id=pk, user=user,
+                                               permission_type="read"):
             logger.warning(
-                "User does not have permission to get screenshot for chart %s", pk)
-            return self.response_403()  # 权限不足
+                "User %s does not have read permission for chart %s", user.username, pk
+            )
+            return self.response_403()
 
         chart = self.datamodel.get(pk, self._base_filters)
 
@@ -692,13 +704,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel,
-                                                                     pk)  # 检查权限
-        if not permission:
-            logger.warning(
-                "User does not have permission to get thumbnail for chart %s", pk)
-            return self.response_403()  # 权限不足
-
         chart = cast(Slice, self.datamodel.get(pk, self._base_filters))
         if not chart:
             return self.response_404()
@@ -847,7 +852,12 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         requested_ids = kwargs["rison"]
         logging.info(f"Requested IDs: {requested_ids}")
-        charts = ChartDAO.find_by_ids(requested_ids)
+        # 调用 ChartDAO.find_by_ids 时，检查权限
+        charts = ChartDAO.find_by_ids(
+            requested_ids,
+            check_permission=False,  # 校验权限
+            permission_type="read"  # 权限类型为 'read'，可以根据需要调整
+        )
         if not charts:
             return self.response_404()
         favorited_chart_ids = ChartDAO.favorited_ids(charts)
@@ -893,7 +903,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartDAO.find_by_id(pk)
+        chart = ChartDAO.find_by_id(
+            pk,
+            check_permission=False,
+            permission_type="read"  # 读取权限
+        )
         if not chart:
             return self.response_404()
 

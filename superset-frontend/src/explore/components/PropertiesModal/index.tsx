@@ -23,6 +23,7 @@ import Button from 'src/components/Button';
 import { AsyncSelect, Row, Col, AntdForm } from 'src/components';
 import { SelectValue } from 'antd/lib/select';
 import rison from 'rison';
+import { Checkbox } from 'antd';
 import {
   t,
   SupersetClient,
@@ -41,6 +42,7 @@ import {
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
 import TagType from 'src/types/TagType';
+import 'antd/dist/antd.css';
 
 export type PropertiesModalProps = {
   slice: Slice;
@@ -78,6 +80,15 @@ function PropertiesModal({
   );
 
   const [tags, setTags] = useState<TagType[]>([]);
+
+  // 新增状态：用户和角色权限
+  const [userPermissions, setUserPermissions] = useState<
+    { userId: number; permissions: ('read' | 'edit')[] }[]
+  >([]);
+
+  const [rolePermissions, setRolePermissions] = useState<
+    { roleId: number; permissions: ('read' | 'edit')[] }[]
+  >([]);
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map(tag => ({
@@ -121,25 +132,50 @@ function PropertiesModal({
     [slice.slice_id],
   );
 
-  const loadOptions = useMemo(
+  const loadRoleOptions = useMemo(
     () =>
-      (input = '', page: number, pageSize: number) => {
+      async (input = '', page: number, pageSize: number) => {
         const query = rison.encode({
           filter: input,
           page,
           page_size: pageSize,
         });
-        return SupersetClient.get({
+        const response = await SupersetClient.get({
+          endpoint: `/api/v1/chart/related/roles?q=${query}`,
+        });
+        return {
+          data: response.json.result.map(
+            (item: { id: number; name: string }) => ({
+              value: item.id,
+              label: item.name,
+            }),
+          ),
+          totalCount: response.json.count,
+        };
+      },
+    [],
+  );
+
+  const loadOptions = useMemo(
+    () =>
+      async (input = '', page: number, pageSize: number) => {
+        const query = rison.encode({
+          filter: input,
+          page,
+          page_size: pageSize,
+        });
+        const response = await SupersetClient.get({
           endpoint: `/api/v1/chart/related/owners?q=${query}`,
-        }).then(response => ({
+        });
+        return {
           data: response.json.result
             .filter((item: { extra: { active: boolean } }) => item.extra.active)
-            .map((item: { value: number; text: string }) => ({
-              value: item.value,
-              label: item.text,
+            .map((item_1: { value: number; text: string }) => ({
+              value: item_1.value,
+              label: item_1.text,
             })),
           totalCount: response.json.count,
-        }));
+        };
       },
     [],
   );
@@ -227,19 +263,43 @@ function PropertiesModal({
       }
     }
 
+
+    // 根据状态动态添加用户和角色权限
+    if (userPermissions.length > 0) {
+      payload.user_permissions = userPermissions.map(up => ({
+        userId: up.userId,
+        permissions: up.permissions,
+      }));
+    }
+
+    if (rolePermissions.length > 0) {
+      payload.role_permissions = rolePermissions.map(rp => ({
+        roleId: rp.roleId,
+        permissions: rp.permissions,
+      }));
+    }
+
+    // 如果两者都为空，提示用户
+    if (!payload.user_permissions && !payload.role_permissions) {
+      addSuccessToast(t('No permissions selected'));
+      setSubmitting(false);
+      return;
+    }
+
+
     try {
       const res = await SupersetClient.put({
         endpoint: `/api/v1/chart/${slice.slice_id}`,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      // update the redux state
+      // 构建更新后的图表数据
       const updatedChart = {
-        ...payload,
-        ...res.json.result,
-        tags,
-        id: slice.slice_id,
-        owners: selectedOwners,
+        ...payload, // 将提交的所有数据合并到 updatedChart 中
+        ...res.json.result, // 从后端返回的更新数据
+        tags, // 保留标签
+        id: slice.slice_id, // 图表 ID
+        owners: selectedOwners, // 图表的拥有者
       };
       onSave(updatedChart);
       addSuccessToast(t('Chart properties updated'));
@@ -408,23 +468,95 @@ function PropertiesModal({
                 )}
               </StyledHelpBlock>
             </FormItem>
-            <h3 style={{ marginTop: '1em' }}>{t('Access')}</h3>
-            <FormItem label={ownersLabel}>
+            <h3 style={{ marginTop: '1em' }}>{t('User Permissions')}</h3>
+            <FormItem label={t('Users')}>
               <AsyncSelect
-                ariaLabel={ownersLabel}
                 mode="multiple"
-                name="owners"
-                value={selectedOwners || []}
-                onChange={setSelectedOwners}
-                options={loadOptions}
-                disabled={!selectedOwners}
-                allowClear
+                ariaLabel={t('Select users')}
+                options={loadOptions} // 动态加载用户选项
+                value={userPermissions.map(up => ({
+                  value: up.userId,
+                  label: `User ${up.userId} (${up.permissions.join(', ')})`,
+                }))}
+                onChange={(values: { value: number; label: string }[]) => {
+                  const updatedPermissions = values.map(v => {
+                    // 如果用户已存在，保留原有的权限配置
+                    const existing = userPermissions.find(up => up.userId === v.value);
+                    return {
+                      userId: v.value,
+                      permissions: existing?.permissions || [], // 默认空权限
+                    };
+                  });
+                  setUserPermissions(updatedPermissions); // 更新状态
+                }}
               />
               <StyledHelpBlock className="help-block">
-                {t(
-                  'A list of users who can alter the chart. Searchable by name or username.',
-                )}
+                {t('Select users and assign read/edit permissions below.')}
               </StyledHelpBlock>
+              <div>
+                {userPermissions.map((user, index) => (
+                  <div key={user.userId} style={{ marginBottom: '8px' }}>
+                    <span>{`User ID: ${user.userId}`}</span>
+                    <Checkbox.Group
+                      options={[
+                        { label: 'Read', value: 'read' },
+                        { label: 'Edit', value: 'edit' },
+                      ]}
+                      value={user.permissions} // 绑定到用户的权限数组
+                      onChange={(checkedValues: ('read' | 'edit')[]) => {
+                        const updated = [...userPermissions];
+                        updated[index] = { ...updated[index], permissions: checkedValues }; // 更新权限
+                        setUserPermissions(updated); // 更新状态
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </FormItem>
+
+            <h3 style={{ marginTop: '1em' }}>{t('Role Permissions')}</h3>
+            <FormItem label={t('Roles')}>
+              <AsyncSelect
+                mode="multiple"
+                ariaLabel={t('Select roles')}
+                options={loadRoleOptions} // 动态加载角色选项
+                value={rolePermissions.map(rp => ({
+                  value: rp.roleId,
+                  label: `Role ${rp.roleId} (${rp.permissions.join(', ')})`,
+                }))}
+                onChange={(values: { value: number; label: string }[]) => {
+                  const updatedPermissions = values.map(v => {
+                    const existing = rolePermissions.find(rp => rp.roleId === v.value);
+                    return {
+                      roleId: v.value,
+                      permissions: existing?.permissions || [], // 默认空权限
+                    };
+                  });
+                  setRolePermissions(updatedPermissions); // 更新角色权限
+                }}
+              />
+              <StyledHelpBlock className="help-block">
+                {t('Select roles and assign read/edit permissions below.')}
+              </StyledHelpBlock>
+              <div>
+                {rolePermissions.map((role, index) => (
+                  <div key={role.roleId} style={{ marginBottom: '8px' }}>
+                    <span>{`Role ID: ${role.roleId}`}</span>
+                    <Checkbox.Group
+                      options={[
+                        { label: 'Read', value: 'read' },
+                        { label: 'Edit', value: 'edit' },
+                      ]}
+                      value={role.permissions} // 绑定到角色权限
+                      onChange={(checkedValues: ('read' | 'edit')[]) => {
+                        const updated = [...rolePermissions];
+                        updated[index] = { ...updated[index], permissions: checkedValues }; // 更新权限
+                        setRolePermissions(updated); // 更新状态
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             </FormItem>
             {isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && (
               <h3 css={{ marginTop: '1em' }}>{t('Tags')}</h3>

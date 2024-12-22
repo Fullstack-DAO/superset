@@ -23,6 +23,7 @@ from flask_appbuilder.models.sqla import Model
 from marshmallow import ValidationError
 
 from superset import security_manager
+from superset.charts.permissions import ChartPermissions
 from superset.commands.base import BaseCommand, CreateMixin
 from superset.commands.chart.exceptions import (
     ChartCreateFailedError,
@@ -43,32 +44,52 @@ class CreateChartCommand(CreateMixin, BaseCommand):
         self._properties = data.copy()
 
     def run(self) -> Model:
+        """
+        执行创建图表的主逻辑。
+        """
         self.validate()
         try:
+            # 设置最后保存时间和当前用户
             self._properties["last_saved_at"] = datetime.now()
             self._properties["last_saved_by"] = g.user
-            # 默认将当前用户添加到可读角色
-            self._properties["read_roles"] = [g.user]
-            return ChartDAO.create(attributes=self._properties)
+
+            # 设置所有者和角色权限
+            self._properties["owners"] = self.populate_owners(self._properties.get("owners"))
+            self._properties["roles"] = self.populate_roles(self._properties.get("roles"))
+
+            # 调用 ChartDAO.create
+            new_chart = ChartDAO.create(attributes=self._properties)
+
+            # 添加用户和角色的默认权限
+            ChartPermissions.set_default_permissions(
+                chart=new_chart,
+                user=g.user,
+                roles=self._properties["roles"],
+                permissions=["can_read", "can_edit"],
+            )
+            return new_chart
         except DAOCreateFailedError as ex:
             logger.exception(ex.exception)
             raise ChartCreateFailedError() from ex
 
     def validate(self) -> None:
+        """
+        验证图表创建的输入数据。
+        """
         exceptions = []
         datasource_type = self._properties["datasource_type"]
         datasource_id = self._properties["datasource_id"]
         dashboard_ids = self._properties.get("dashboards", [])
         owner_ids: Optional[list[int]] = self._properties.get("owners")
 
-        # Validate/Populate datasource
+        # 验证数据源
         try:
             datasource = get_datasource_by_id(datasource_id, datasource_type)
             self._properties["datasource_name"] = datasource.name
         except ValidationError as ex:
             exceptions.append(ex)
 
-        # Validate/Populate dashboards
+        # 验证和填充仪表盘
         dashboards = DashboardDAO.find_by_ids(dashboard_ids)
         if len(dashboards) != len(dashboard_ids):
             exceptions.append(DashboardsNotFoundValidationError())
@@ -77,10 +98,12 @@ class CreateChartCommand(CreateMixin, BaseCommand):
                 raise DashboardsForbiddenError()
         self._properties["dashboards"] = dashboards
 
+        # 验证所有者
         try:
-            owners = self.populate_owners(owner_ids)
-            self._properties["owners"] = owners
+            self._properties["owners"] = self.populate_owners(owner_ids)
         except ValidationError as ex:
             exceptions.append(ex)
+
         if exceptions:
             raise ChartInvalidError(exceptions=exceptions)
+

@@ -15,7 +15,7 @@ from superset.utils.core import get_user_id
 from sqlalchemy.exc import SQLAlchemyError
 from superset.daos.exceptions import (
     DAOCreateFailedError,
-    DAODeleteFailedError,
+    DAODeleteFailedError, DAOUpdateFailedError,
 )
 from functools import wraps
 
@@ -121,56 +121,27 @@ class ChartDAO:
     @classmethod
     def create(
         cls,
-        item: Slice | None = None,
-        attributes: dict[str, Any] | None = None,
+        attributes: dict[str, Any],
         commit: bool = True,
-        roles: list[str] | None = None,
-        permissions: list[str] | None = None,
     ) -> Slice:
         """
-        创建新的图表。
-
-        :param item: 要创建的 Slice 对象
-        :param attributes: 要设置的属性字典
-        :param commit: 是否提交到数据库
-        :param roles: 分配权限的角色列表，例如 ["Admin", "Editor"]
-        :param permissions: 分配的权限列表，例如 ["can_read", "can_edit"]
-        :return: 创建的 Slice 对象
+        创建新的图表，同时支持动态角色和权限。
         """
-        if not item:
-            item = cls.model_cls()  # type: ignore  # pylint: disable=not-callable
-
-        # 获取当前用户
-        user = cls._get_current_user()
-        if not user:
-            raise PermissionError("No user is currently logged in.")
-
-        # 检查当前用户是否有创建图表的权限
-        if not ChartPermissions.has_permission(chart_id=None, user=user,
-                                               permission_type="add"):
-            raise PermissionError("User does not have permission to create a chart.")
-
-        # 设置图表的属性
-        if attributes:
-            for key, value in attributes.items():
-                setattr(item, key, value)
-
-        # 保存图表到数据库
         try:
+            # 初始化 Slice 对象
+            item = Slice(**attributes)
+
+            # 保存到数据库
             db.session.add(item)
             if commit:
                 db.session.commit()
 
-            # 如果 roles 和 permissions 不为空，则设置默认权限
-            if roles or permissions:
-                ChartPermissions.set_default_permissions(
-                    chart=item, user=user, roles=roles, permissions=permissions
-                )
-        except SQLAlchemyError as ex:  # pragma: no cover
+            # 返回创建的图表对象
+            return item
+        except SQLAlchemyError as ex:
             db.session.rollback()
+            logger.error(f"Error creating chart: {ex}")
             raise DAOCreateFailedError(exception=ex) from ex
-
-        return item  # type: ignore
 
     @classmethod
     def find_all(cls, permission_type: str = "read", check_permission: bool = True) -> \
@@ -211,40 +182,24 @@ class ChartDAO:
         commit: bool = True,
     ) -> Slice:
         """
-        更新图表，同时检查用户和角色的编辑权限。
-
-        :param item: 要更新的图表对象 (Slice)
-        :param attributes: 更新的属性字典
-        :param commit: 是否提交到数据库，默认为 True
-        :return: 更新后的图表对象
+        更新图表逻辑。
         """
-        # 获取当前用户
-        user = ChartDAO._get_current_user()
-        if not user:
-            raise PermissionError("No user is currently logged in.")
-
-        # 校验 item 是否存在
         if not item:
             raise ValueError("The chart to be updated cannot be None.")
 
-        # 检查当前用户是否有更新该图表的权限
-        if not ChartPermissions.has_permission(chart_id=item.id, user=user,
-                                               permission_type="edit"):
-            raise PermissionError(
-                f"User {user.username} does not have edit permission for chart {item.id}.")
-
-        # 如果有权限，更新属性
+        # 更新属性
         if attributes:
             for key, value in attributes.items():
                 setattr(item, key, value)
 
-        # 提交更新
+        # 提交数据库更改
         try:
             if commit:
                 db.session.commit()
         except SQLAlchemyError as ex:
             db.session.rollback()
-            raise DAOCreateFailedError(exception=ex) from ex
+            logger.error(f"Error updating chart {item.id}: {ex}")
+            raise DAOUpdateFailedError(exception=ex) from ex
 
         return item
 

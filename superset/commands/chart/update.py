@@ -23,6 +23,7 @@ from flask_appbuilder.models.sqla import Model
 from marshmallow import ValidationError
 
 from superset import security_manager
+from superset.charts.permissions import ChartPermissions
 from superset.commands.base import BaseCommand, UpdateMixin
 from superset.commands.chart.exceptions import (
     ChartForbiddenError,
@@ -55,18 +56,23 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
         self._model: Optional[Slice] = None
 
     def run(self) -> Model:
+        """
+        执行图表更新逻辑。
+        """
         self.validate()
         assert self._model
 
         try:
-            if self._properties.get("query_context_generation") is None:
-                self._properties["last_saved_at"] = datetime.now()
-                self._properties["last_saved_by"] = g.user
+            # 更新最后保存时间和用户信息
+            self._properties["last_saved_at"] = datetime.now()
+            self._properties["last_saved_by"] = g.user
+
+            # 调用 ChartDAO 更新图表
             chart = ChartDAO.update(self._model, self._properties)
+            return chart
         except DAOUpdateFailedError as ex:
             logger.exception(ex.exception)
             raise ChartUpdateFailedError() from ex
-        return chart
 
     def validate(self) -> None:
         exceptions: list[ValidationError] = []
@@ -84,6 +90,13 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
         self._model = ChartDAO.find_by_id(self._model_id)
         if not self._model:
             raise ChartNotFoundError()
+
+        # 验证权限：编辑权限
+        if not ChartPermissions.has_permission(
+            chart_id=self._model_id, user=g.user, permission_type="edit"
+        ):
+            raise ChartForbiddenError()
+
 
         # Check and update ownership; when only updating query context we ignore
         # ownership so the update can be performed by report workers

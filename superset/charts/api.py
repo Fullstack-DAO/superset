@@ -305,11 +305,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except ValidationError as error:
             return self.response_400(message=error.messages)
 
-        chart = Slice(**item)
-        if not ChartPermissions.check_chart_permission(chart, edit=True):
-            logger.warning("User does not have permission to create chart %s", chart.id)
-            return self.response_403()  # 权限不足
-
         try:
             new_model = CreateChartCommand(item).run()
             return self.response(201, id=new_model.id, result=item)
@@ -440,11 +435,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartPermissions.get_chart_and_check_permission(self.datamodel,
-                                                                pk)  # 权限检查
-        if not chart:
-            logger.warning("User does not have permission to delete chart %s", chart.id)
-            return self.response_403()  # 权限不足
 
         try:
             DeleteChartCommand([pk]).run()
@@ -505,17 +495,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         item_ids = kwargs["rison"]
-        for item_id in item_ids:
-            try:
-                ChartPermissions.get_chart_and_check_permission(self.datamodel,
-                                                                item_id)  # 检查每个图表的权限
-            except ChartForbiddenError:
-                logger.warning("User does not have permission to delete chart %s",
-                               item_id)
-                return self.response_403()  # 如果没有权限，返回403
-            except ChartNotFoundError:
-                logger.warning("Chart with ID %s not found.", item_id)
-                return self.response_404()  # 如果图表未找到，返回404
         try:
             DeleteChartCommand(item_ids).run()
             return self.response(

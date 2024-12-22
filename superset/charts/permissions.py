@@ -8,6 +8,7 @@ from superset.models.slice import Slice
 from superset.tasks.utils import get_current_user_object
 from superset.extensions import db
 from flask_appbuilder.models.sqla.interface import SQLAInterface
+from flask_appbuilder.security.sqla.models import User, Role
 
 logger = logging.getLogger(__name__)
 
@@ -18,66 +19,25 @@ class ChartPermissions:
     @staticmethod
     def set_default_permissions(
         chart: Slice,
-        user,
-        roles: list[str] = None,
+        user: User,
+        roles: list[Role] = None,
         permissions: list[str] = None,
     ) -> None:
         """
-        为新创建的图表设置默认权限。
-        支持为用户和指定角色动态分配权限。
-
-        :param chart: 图表对象
-        :param user: 当前用户
-        :param roles: 需要分配权限的角色名称列表，例如 ["Admin", "Editor"]
-        :param permissions: 要分配的权限列表，例如 ["can_read", "can_edit"]
-                           默认为 ["can_read", "can_edit"]
+        设置图表的默认权限。
         """
-        if not user:
-            raise ValueError("User cannot be None when setting default permissions.")
-
-        # 如果未指定权限，默认为 can_read 和 can_edit
-        if permissions is None:
-            permissions = ["can_read", "can_edit"]
-
-        # 如果未指定角色，默认为 Admin
-        if roles is None:
-            roles = ["Admin"]
+        roles = roles or []  # 如果没有传入角色，默认使用空列表
+        permissions = permissions or ["can_read", "can_edit"]  # 默认权限
 
         try:
-            # 初始化用户权限
-            user_permission = UserPermission(
-                resource_type="chart",
-                resource_id=chart.id,
-                user_id=user.id,
-                can_read="can_read" in permissions,
-                can_edit="can_edit" in permissions,
-                can_add="can_add" in permissions,
-                can_delete="can_delete" in permissions,
-            )
-            db.session.add(user_permission)
+            # 为用户分配权限
+            ChartPermissions.add_permissions_to_user(chart.id, user.id, permissions)
 
-            # 为指定角色分配权限
-            role_objects = db.session.query(db.role_model).filter(
-                db.role_model.name.in_(roles)
-            ).all()
-
-            for role in role_objects:
-                role_permission = RolePermission(
-                    resource_type="chart",
-                    resource_id=chart.id,
-                    role_id=role.id,
-                    can_read="can_read" in permissions,
-                    can_edit="can_edit" in permissions,
-                    can_add="can_add" in permissions,
-                    can_delete="can_delete" in permissions,
-                )
-                db.session.add(role_permission)
-
-            db.session.commit()
-
+            # 为每个角色分配权限
+            for role in roles:
+                ChartPermissions.add_permissions_to_role(chart.id, role.id, permissions)
         except Exception as ex:
-            db.session.rollback()
-            logger.error(f"Failed to set default permissions: {str(ex)}")
+            logger.error(f"Error setting default permissions for chart {chart.id}: {ex}")
             raise
 
     @staticmethod

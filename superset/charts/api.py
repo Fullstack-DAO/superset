@@ -950,7 +950,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartDAO.find_by_id(pk)
+        chart = ChartDAO.ChartDAO.find_by_id(
+            pk,
+            check_permission=False,
+            permission_type="delete"  # 删除权限
+        )
         if not chart:
             return self.response_404()
 

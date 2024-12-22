@@ -379,7 +379,8 @@ class ChartDAO(BaseDAO[Slice]):
                                                                        permission_type)
             if chart.id not in allowed_chart_ids:
                 logger.warning(
-                    f"Permission check failed for user {user.id} on chart {chart.id}.")
+                    f"Permission check failed for user {user.id} on chart {chart.id}. "
+                    f"You have not {permission_type} access.")
                 return None
 
         # Step 4: 返回对象

@@ -480,14 +480,13 @@ function PropertiesModal({
                 }))}
                 onChange={(values: { value: number; label: string }[]) => {
                   const updatedPermissions = values.map(v => {
-                    // 如果用户已存在，保留原有的权限配置
                     const existing = userPermissions.find(up => up.userId === v.value);
                     return {
                       userId: v.value,
                       permissions: existing?.permissions || [], // 默认空权限
                     };
                   });
-                  setUserPermissions(updatedPermissions); // 更新状态
+                  setUserPermissions(updatedPermissions); // 更新用户权限
                 }}
               />
               <StyledHelpBlock className="help-block">
@@ -502,10 +501,13 @@ function PropertiesModal({
                         { label: 'Read', value: 'read' },
                         { label: 'Edit', value: 'edit' },
                       ]}
-                      value={user.permissions} // 绑定到用户的权限数组
+                      value={user.permissions} // 确保绑定到用户的权限数组
                       onChange={(checkedValues: ('read' | 'edit')[]) => {
                         const updated = [...userPermissions];
-                        updated[index] = { ...updated[index], permissions: checkedValues }; // 更新权限
+                        updated[index] = {
+                          ...updated[index],
+                          permissions: checkedValues, // 更新权限
+                        };
                         setUserPermissions(updated); // 更新状态
                       }}
                     />
@@ -513,6 +515,7 @@ function PropertiesModal({
                 ))}
               </div>
             </FormItem>
+
 
             <h3 style={{ marginTop: '1em' }}>{t('Role Permissions')}</h3>
             <FormItem label={t('Roles')}>
@@ -547,10 +550,13 @@ function PropertiesModal({
                         { label: 'Read', value: 'read' },
                         { label: 'Edit', value: 'edit' },
                       ]}
-                      value={role.permissions} // 绑定到角色权限
+                      value={role.permissions} // 确保绑定到角色的权限数组
                       onChange={(checkedValues: ('read' | 'edit')[]) => {
                         const updated = [...rolePermissions];
-                        updated[index] = { ...updated[index], permissions: checkedValues }; // 更新权限
+                        updated[index] = {
+                          ...updated[index],
+                          permissions: checkedValues, // 更新权限
+                        };
                         setRolePermissions(updated); // 更新状态
                       }}
                     />
@@ -558,6 +564,7 @@ function PropertiesModal({
                 ))}
               </div>
             </FormItem>
+
             {isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && (
               <h3 css={{ marginTop: '1em' }}>{t('Tags')}</h3>
             )}

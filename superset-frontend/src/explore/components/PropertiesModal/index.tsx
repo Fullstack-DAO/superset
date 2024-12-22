@@ -75,9 +75,9 @@ function PropertiesModal({
   const [form] = AntdForm.useForm();
   // values of form inputs
   const [name, setName] = useState(slice.slice_name || '');
-  const [selectedOwners, setSelectedOwners] = useState<SelectValue | null>(
-    null,
-  );
+  const [selectedOwners, setSelectedOwners] = useState<
+    { value: number; label: string }[] | { value: number; label: string } | null
+  >(null);
 
   const [tags, setTags] = useState<TagType[]>([]);
 
@@ -222,28 +222,31 @@ function PropertiesModal({
     cache_timeout?: number;
   }) => {
     setSubmitting(true);
+
     const {
       certified_by: certifiedBy,
       certification_details: certificationDetails,
       description,
       cache_timeout: cacheTimeout,
     } = values;
+
     const payload: { [key: string]: any } = {
-      slice_name: name || null,
+      slice_name: name || 'Default Name',
       description: description || null,
       cache_timeout: cacheTimeout || null,
       certified_by: certifiedBy || null,
       certification_details:
         certifiedBy && certificationDetails ? certificationDetails : null,
     };
-    if (selectedOwners) {
-      payload.owners = (
-        selectedOwners as {
-          value: number;
-          label: string;
-        }[]
-      ).map(o => o.value);
+
+    if (Array.isArray(selectedOwners)) {
+      payload.owners = selectedOwners.map(o => o.value);
+    } else if (selectedOwners) {
+      payload.owners = [selectedOwners.value];
+    } else {
+      payload.owners = [];
     }
+
     if (isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM)) {
       // update tags
       try {
@@ -263,29 +266,28 @@ function PropertiesModal({
       }
     }
 
-
-    // 根据状态动态添加用户和角色权限
     if (userPermissions.length > 0) {
       payload.user_permissions = userPermissions.map(up => ({
         userId: up.userId,
-        permissions: up.permissions,
+        permissions: up.permissions.filter(p => p === 'read' || p === 'edit'), // 确保权限格式正确
       }));
     }
 
     if (rolePermissions.length > 0) {
       payload.role_permissions = rolePermissions.map(rp => ({
         roleId: rp.roleId,
-        permissions: rp.permissions,
+        permissions: rp.permissions.filter(p => p === 'read' || p === 'edit'),
       }));
     }
 
-    // 如果两者都为空，提示用户
-    if (!payload.user_permissions && !payload.role_permissions) {
-      addSuccessToast(t('No permissions selected'));
-      setSubmitting(false);
-      return;
-    }
+    // 移除空字段
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === null || payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
 
+    console.log('Payload:', payload);
 
     try {
       const res = await SupersetClient.put({
@@ -293,25 +295,30 @@ function PropertiesModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      // 构建更新后的图表数据
+      console.log('Response:', res);
+
       const updatedChart = {
-        ...payload, // 将提交的所有数据合并到 updatedChart 中
-        ...res.json.result, // 从后端返回的更新数据
-        tags, // 保留标签
-        id: slice.slice_id, // 图表 ID
-        owners: selectedOwners, // 图表的拥有者
+        ...payload,
+        ...res.json.result,
+        tags,
+        id: slice.slice_id,
+        owners: selectedOwners,
       };
+
       onSave(updatedChart);
       addSuccessToast(t('Chart properties updated'));
       onHide();
-    } catch (res) {
-      const clientError = await getClientErrorObject(res);
+    } catch (error) {
+      const clientError = await getClientErrorObject(error);
+      console.error('Request failed:', clientError);
       showError(clientError);
     }
+
     setSubmitting(false);
   };
 
-  const ownersLabel = t('Owners');
+
+  // const ownersLabel = t('Owners');
 
   // get the owners of this slice
   useEffect(() => {

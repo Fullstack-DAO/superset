@@ -319,3 +319,14 @@ class ChartDAO:
             elif entity_type == "role":
                 ChartPermissions.remove_permissions_to_role(chart_id, entity_id,
                                                             permissions)
+
+    @staticmethod
+    def get_chart_and_check_permission(pk: int, permission_type: str) -> Slice | None:
+        """
+        获取图表并检查用户权限（代理到 ChartPermissions）。
+
+        :param pk: 图表主键
+        :param permission_type: 权限类型 ('read', 'edit', 'delete')
+        :return: 图表对象，如果没有权限则返回 None
+        """
+        return ChartPermissions.get_chart_and_check_permission(pk, permission_type)

@@ -1199,9 +1199,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         # 第一步：检查用户是否有权限访问图表
         current_user = get_current_user_object()
-
+        logger.info(f"current login user is: {current_user}")
+        logger.info(f"current login user's role is: {current_user.roles}")
         # 第二步：获取图表列表，根据解析后的 rison 参数
         response = self._get_charts_list(rison)
+        logger.info(f"response‘s all content: {response}")
 
         if response.status_code != 200:
             return response  # 如果原始列表获取失败，直接返回响应
@@ -1233,27 +1235,32 @@ class ChartRestApi(BaseSupersetModelRestApi):
         根据用户和角色权限，过滤图表数据。
         现在支持多个权限类型（例如：'read' 和 'edit'）。
         """
+
         # 获取用户的 'read' 和 'edit' 权限
         user_read_permissions = ChartPermissions.get_user_permissions(current_user.id, 'read')
+        logger.info(f"current user's read userpermission chart_id: {user_read_permissions}")
         user_edit_permissions = ChartPermissions.get_user_permissions(current_user.id, 'edit')
+        logger.info(f"current user's edit userpermission chart_id: {user_edit_permissions}")
         user_permissions = user_read_permissions + user_edit_permissions
 
         # 获取角色的 'read' 和 'edit' 权限
         role_read_permissions = ChartPermissions.get_role_permissions(current_user.roles, 'read')
+        logger.info(f"current user's read rolepermission chart_id: {role_read_permissions}")
         role_edit_permissions = ChartPermissions.get_role_permissions(current_user.roles, 'edit')
+        logger.info(f"current user's edit rolepermission chart_id: {role_edit_permissions}")
         role_permissions = role_read_permissions + role_edit_permissions
 
         # 合并用户和角色的权限
         all_permissions = set(user_permissions + role_permissions)
-
+        logger.info(f"current user's all_permissions: {all_permissions}")
         # 过滤用户有权限访问的图表ID
+        logger.info(f"current user's original_ids: {original_ids}")
         allowed_ids = [
             chart_id
             for chart_id in original_ids
-            if f"read:chart:{chart_id}" in all_permissions
-               or f"edit:chart:{chart_id}" in all_permissions
+            if chart_id in all_permissions
         ]
-
+        logger.info(f"current user's allowed_ids: {allowed_ids}")
         # 过滤结果，只返回用户有权限的图表
         filtered_result = [
             chart for chart in original_result if chart["id"] in allowed_ids

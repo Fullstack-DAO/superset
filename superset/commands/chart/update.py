@@ -63,12 +63,17 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
         assert self._model
 
         try:
-            # 更新最后保存时间和用户信息
-            self._properties["last_saved_at"] = datetime.now()
+            # 分离 Slice 表字段和权限字段
+            slice_fields = {key: value for key, value in self._properties.items() if hasattr(Slice, key)}
+            additional_fields = {key: value for key, value in self._properties.items() if not hasattr(Slice, key)}
+            self._properties["last_saved_at"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             self._properties["last_saved_by"] = g.user
-
+            logger.info(f"Updating slice fields: {slice_fields}")
+            logger.info(f"Additional fields: {additional_fields}")
             # 调用 ChartDAO 更新图表
             chart = ChartDAO.update(self._model, self._properties)
+            # 更新 user_permissions 和 role_permissions
+            ChartDAO.update_permissions(chart.id, additional_fields)
             return chart
         except DAOUpdateFailedError as ex:
             logger.exception(ex.exception)
@@ -85,18 +90,11 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
             datasource_type = self._properties.get("datasource_type", "")
             if not datasource_type:
                 exceptions.append(DatasourceTypeUpdateRequiredValidationError())
-
+        logger.info(f"the model_id is : {self._model_id}")
         # Validate/populate model exists
-        self._model = ChartDAO.find_by_id(self._model_id)
+        self._model = ChartDAO.find_by_id_with_no_permission(self._model_id)
         if not self._model:
             raise ChartNotFoundError()
-
-        # 验证权限：编辑权限
-        if not ChartPermissions.has_permission(
-            chart_id=self._model_id, user=g.user, permission_type="edit"
-        ):
-            raise ChartForbiddenError()
-
 
         # Check and update ownership; when only updating query context we ignore
         # ownership so the update can be performed by report workers

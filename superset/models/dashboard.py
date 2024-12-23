@@ -138,25 +138,6 @@ DashboardRoles = Table(
     UniqueConstraint("dashboard_id", "role_id"),
 )
 
-dashboard_editable_roles = Table(
-    "dashboard_editable_roles",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column(
-        "dashboard_id",
-        Integer,
-        ForeignKey("dashboards.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "role_id",
-        Integer,
-        ForeignKey("ab_role.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    UniqueConstraint("dashboard_id", "role_id"),
-)
-
 
 # pylint: disable=too-many-public-methods
 class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
@@ -180,31 +161,26 @@ class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
         secondary=dashboard_user,
         passive_deletes=True,
     )
-    visible_roles = relationship("Role", secondary=DashboardRoles,
-                                 backref="visible_dashboards",
-                                 cascade="all, delete", )
-    editable_roles = relationship("Role", secondary=dashboard_editable_roles,
-                                  backref="editable_dashboards",
-                                  cascade="all, delete", )
-    users = relationship(
-        "User",
-        secondary=dashboard_user,
-        backref="accessible_dashboards",
-        cascade="all, delete",
-    )
-    # 复杂权限模型关系
-    user_permissions = relationship(
-        "UserPermission",
-        primaryjoin="and_(UserPermission.resource_type=='dashboard', "
-                    "Dashboard.id==UserPermission.resource_id)",
-        cascade="all, delete-orphan",
-    )
-    role_permissions = relationship(
-        "RolePermission",
-        primaryjoin="and_(RolePermission.resource_type=='dashboard', "
-                    "Dashboard.id==RolePermission.resource_id)",
-        cascade="all, delete-orphan",
-    )
+
+    # users = relationship(
+    #     "User",
+    #     secondary=dashboard_user,
+    #     backref="accessible_dashboards",
+    #     cascade="all, delete",
+    # )
+    # # 复杂权限模型关系
+    # user_permissions = relationship(
+    #     "UserPermission",
+    #     primaryjoin="and_(UserPermission.resource_type=='dashboard', "
+    #                 "Dashboard.id==UserPermission.resource_id)",
+    #     cascade="all, delete-orphan",
+    # )
+    # role_permissions = relationship(
+    #     "RolePermission",
+    #     primaryjoin="and_(RolePermission.resource_type=='dashboard', "
+    #                 "Dashboard.id==RolePermission.resource_id)",
+    #     cascade="all, delete-orphan",
+    # )
     tags = relationship(
         "Tag",
         overlaps="objects,tag,tags,tags",

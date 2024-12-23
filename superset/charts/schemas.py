@@ -248,7 +248,10 @@ class ChartPutSchema(Schema):
     """
     Schema to update or patch a chart
     """
-
+    slice_id = fields.Integer(
+        required=True,
+        metadata={"description": "The unique ID of the chart slice."},
+    )
     slice_name = fields.String(
         metadata={"description": slice_name_description},
         allow_none=True,
@@ -298,6 +301,52 @@ class ChartPutSchema(Schema):
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
     tags = fields.Nested(TagSchema, many=True)
+
+    # Add user_permissions field
+    user_permissions = fields.List(
+        fields.Nested(
+            Schema.from_dict(
+                {
+                    "userId": fields.Integer(
+                        required=True, metadata={"description": "User ID"}
+                    ),
+                    "permissions": fields.List(
+                        fields.String(
+                            validate=validate.OneOf(["read", "edit"]),
+                            metadata={"description": "Permission type (read/edit)"},
+                        ),
+                        required=True,
+                        metadata={"description": "List of permissions for the user"},
+                    ),
+                }
+            )
+        ),
+        metadata={"description": "List of user permissions for the chart"},
+        allow_none=True,
+    )
+
+    # Add role_permissions field
+    role_permissions = fields.List(
+        fields.Nested(
+            Schema.from_dict(
+                {
+                    "roleId": fields.Integer(
+                        required=True, metadata={"description": "Role ID"}
+                    ),
+                    "permissions": fields.List(
+                        fields.String(
+                            validate=validate.OneOf(["read", "edit"]),
+                            metadata={"description": "Permission type (read/edit)"},
+                        ),
+                        required=True,
+                        metadata={"description": "List of permissions for the role"},
+                    ),
+                }
+            )
+        ),
+        metadata={"description": "List of role permissions for the chart"},
+        allow_none=True,
+    )
 
 
     # def validate_owners(self, owners):

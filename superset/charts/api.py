@@ -373,6 +373,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         try:
             item = self.edit_model_schema.load(request.json)
+            logger.info(f"the update permission body is : {item}")
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:

@@ -9,8 +9,10 @@ from superset.charts.permissions import ChartPermissions
 from superset.daos.base import BaseDAO
 from superset.extensions import db
 from superset.models.core import FavStar, FavStarClassName
-from superset.models.slice import Slice
 from superset.models.role_permission import RolePermission
+from superset.models.slice import Slice
+from flask_appbuilder import AppBuilder
+
 from superset.models.user_permission import UserPermission
 from superset.utils.core import get_user_id
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,6 +21,7 @@ from superset.daos.exceptions import (
     DAODeleteFailedError, DAOUpdateFailedError,
 )
 from sqlalchemy.orm import Session
+from superset import app
 
 if TYPE_CHECKING:
     from superset.connectors.sqla.models import BaseDatasource
@@ -117,10 +120,16 @@ class ChartDAO(BaseDAO[Slice]):
     def get_current_user():
         """获取当前用户对象"""
         user_id = get_user_id()
-        return db.session.query(db.user_model).filter_by(id=user_id).one_or_none()
+        if not user_id:
+            return None
+
+        # 从 Flask AppBuilder 的 security_manager 获取用户模型
+        appbuilder: AppBuilder = app.appbuilder
+        user_model = appbuilder.sm.user_model  # 获取用户模型
+        return db.session.query(user_model).filter_by(id=user_id).one_or_none()
 
     @classmethod
-    def create(
+    def create_permission(
         cls,
         attributes: dict[str, Any],
         commit: bool = True,
@@ -179,7 +188,7 @@ class ChartDAO(BaseDAO[Slice]):
         return [chart for chart in charts if chart.id in allowed_chart_ids]
 
     @classmethod
-    def update(
+    def update_permission(
         cls,
         item: Slice | None = None,
         attributes: dict[str, Any] | None = None,
@@ -195,7 +204,8 @@ class ChartDAO(BaseDAO[Slice]):
         if attributes:
             for key, value in attributes.items():
                 setattr(item, key, value)
-
+        logger.info(f"ready to update: {item}")
+        logger.info(f"the attributes is: {attributes}")
         # 提交数据库更改
         try:
             if commit:
@@ -385,3 +395,82 @@ class ChartDAO(BaseDAO[Slice]):
 
         # Step 4: 返回对象
         return chart
+
+    @classmethod
+    def find_by_id_with_no_permission(
+        cls,
+        model_id: str | int,
+        session: Session = None,
+        skip_base_filter: bool = False,
+    ) -> Slice | None:
+        """
+        Find a chart by id without applying permission checks.
+
+        :param model_id: The ID of the chart to retrieve.
+        :param session: Database session.
+        :param skip_base_filter: Whether to skip the base filter.
+        :return: The chart object if found; otherwise None.
+        """
+        # Step 1: 调用父类方法获取对象
+        session = db.session
+        chart = super().find_by_id(
+            model_id, session=session, skip_base_filter=skip_base_filter
+        )
+
+        # Step 2: 如果没有找到对象，直接返回 None
+        if not chart:
+            return None
+
+        # Step 3: 直接返回对象（不进行权限校验）
+        return chart
+
+    @classmethod
+    def update_permissions(cls, resource_id: int, additional_fields: dict):
+        user_permissions = additional_fields.get("user_permissions", [])
+        role_permissions = additional_fields.get("role_permissions", [])
+
+        # 更新 UserPermission 表
+        for user_permission in user_permissions:
+            user_id = user_permission["userId"]
+            permissions = user_permission["permissions"]
+            existing_permission = (
+                db.session.query(UserPermission)
+                .filter_by(resource_id=resource_id, resource_type="chart", user_id=user_id)
+                .first()
+            )
+            if existing_permission:
+                existing_permission.can_read = "read" in permissions
+                existing_permission.can_edit = "edit" in permissions
+            else:
+                new_permission = UserPermission(
+                    user_id=user_id,
+                    resource_type="chart",
+                    resource_id=resource_id,
+                    can_read="read" in permissions,
+                    can_edit="edit" in permissions,
+                )
+                db.session.add(new_permission)
+
+        # 更新 RolePermission 表
+        for role_permission in role_permissions:
+            role_id = role_permission["roleId"]
+            permissions = role_permission["permissions"]
+            existing_permission = (
+                db.session.query(RolePermission)
+                .filter_by(resource_id=resource_id, resource_type="chart", role_id=role_id)
+                .first()
+            )
+            if existing_permission:
+                existing_permission.can_read = "read" in permissions
+                existing_permission.can_edit = "edit" in permissions
+            else:
+                new_permission = RolePermission(
+                    role_id=role_id,
+                    resource_type="chart",
+                    resource_id=resource_id,
+                    can_read="read" in permissions,
+                    can_edit="edit" in permissions,
+                )
+                db.session.add(new_permission)
+
+        db.session.commit()

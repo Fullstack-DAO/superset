@@ -40,11 +40,9 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.mapper import Mapper
 
 from superset import db, is_feature_enabled, security_manager
-from superset.charts.permissions import ChartPermissions
+# from superset.charts.permissions import ChartPermissions
 from superset.legacy import update_time_range
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin
-from superset.models.role_permission import RolePermission
-from superset.models.user_permission import UserPermission
 from superset.tasks.thumbnails import cache_chart_thumbnail
 from superset.tasks.utils import get_current_user
 from superset.thumbnails.digest import get_chart_digest
@@ -388,17 +386,17 @@ def event_after_chart_changed(
     )
 
 
-def has_permission(self, user, permission_type: str) -> bool:
-    """
-    检查用户是否对当前 Slice（图表）有指定权限。
-
-    :param user: 当前用户对象
-    :param permission_type: 权限类型（read, edit, delete, add 等）
-    :return: 是否有权限
-    """
-    # 直接调用 ChartPermissions 的 has_permission 方法
-    return ChartPermissions.has_permission(chart_id=self.id, user=user,
-                                           permission_type=permission_type)
+# def has_permission(self, user, permission_type: str) -> bool:
+#     """
+#     检查用户是否对当前 Slice（图表）有指定权限。
+#
+#     :param user: 当前用户对象
+#     :param permission_type: 权限类型（read, edit, delete, add 等）
+#     :return: 是否有权限
+#     """
+#     # 直接调用 ChartPermissions 的 has_permission 方法
+#     return ChartPermissions.has_permission(chart_id=self.id, user=user,
+#                                            permission_type=permission_type)
 
 
 # 设置相关权限

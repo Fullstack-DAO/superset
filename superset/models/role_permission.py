@@ -18,7 +18,10 @@ class RolePermission(Model):
     can_delete = Column(Boolean, default=False)
     can_add = Column(Boolean, default=False)
 
-    role = relationship("Role", backref="permissions", cascade="all, delete-orphan")
+    role = relationship("Role", backref="role_permissions")
+    # dashboard = relationship('Dashboard', back_populates='user_permissions',
+    # foreign_keys=[resource_id]) slice = relationship('Slice',
+    # back_populates='user_permissions', foreign_keys=[resource_id])
 
     @staticmethod
     def delete_permission(role_id: int, resource_type: str, resource_id: int):

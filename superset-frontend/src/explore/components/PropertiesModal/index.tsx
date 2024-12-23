@@ -235,6 +235,7 @@ function PropertiesModal({
       description: description || null,
       cache_timeout: cacheTimeout || null,
       certified_by: certifiedBy || null,
+      slice_id: slice.slice_id,
       certification_details:
         certifiedBy && certificationDetails ? certificationDetails : null,
     };

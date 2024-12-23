@@ -37,7 +37,8 @@ class ChartPermissions:
             for role in roles:
                 ChartPermissions.add_permissions_to_role(chart.id, role.id, permissions)
         except Exception as ex:
-            logger.error(f"Error setting default permissions for chart {chart.id}: {ex}")
+            logger.error(
+                f"Error setting default permissions for chart {chart.id}: {ex}")
             raise
 
     @staticmethod
@@ -258,14 +259,16 @@ class ChartPermissions:
             raise
 
     @staticmethod
-    def add_permissions_to_user(chart_id: int, user_id: int, permissions: list[str]) -> None:
+    def add_permissions_to_user(chart_id: int, user_id: int,
+                                permissions: list[str]) -> None:
         """
         为用户添加权限，使用通用方法。
         """
         ChartPermissions._add_permissions(chart_id, user_id, permissions, "user")
 
     @staticmethod
-    def add_permissions_to_role(chart_id: int, role_id: int, permissions: list[str]) -> None:
+    def add_permissions_to_role(chart_id: int, role_id: int,
+                                permissions: list[str]) -> None:
         """
         为角色添加权限，使用通用方法。
         """
@@ -389,3 +392,64 @@ class ChartPermissions:
 
         # 合并去重
         return list(set(user_chart_ids + role_chart_ids))
+
+    @staticmethod
+    def get_user_permissions(user_id: int, permission_type: str) -> list[int]:
+        """
+        获取指定用户有指定权限类型的所有图表 ID 列表。
+
+        :param user_id: 用户 ID
+        :param permission_type: 权限类型 ('read', 'edit', 'delete', 'add')
+        :return: 用户有权限的图表 ID 列表
+        """
+        permission_map = {
+            "read": "can_read",
+            "edit": "can_edit",
+            "delete": "can_delete",
+            "add": "can_add",
+        }
+
+        if permission_type not in permission_map:
+            raise ValueError(f"Unknown permission type: {permission_type}")
+
+        # 获取用户的图表权限
+        user_permissions = [
+            perm.resource_id
+            for perm in db.session.query(UserPermission).filter_by(
+                user_id=user_id,
+                resource_type="chart",
+                **{permission_map[permission_type]: True},
+            ).all()
+        ]
+        return user_permissions
+
+    @staticmethod
+    def get_role_permissions(roles: list[Role], permission_type: str) -> list[int]:
+        """
+        获取指定角色有指定权限类型的所有图表 ID 列表。
+
+        :param roles: 角色列表
+        :param permission_type: 权限类型 ('read', 'edit', 'delete', 'add')
+        :return: 角色有权限的图表 ID 列表
+        """
+        permission_map = {
+            "read": "can_read",
+            "edit": "can_edit",
+            "delete": "can_delete",
+            "add": "can_add",
+        }
+
+        if permission_type not in permission_map:
+            raise ValueError(f"Unknown permission type: {permission_type}")
+
+        # 获取角色的图表权限
+        role_ids = [role.id for role in roles]
+        role_permissions = [
+            perm.resource_id
+            for perm in db.session.query(RolePermission).filter(
+                RolePermission.role_id.in_(role_ids),
+                RolePermission.resource_type == "chart",
+                getattr(RolePermission, permission_map[permission_type]) == True,
+            ).all()
+        ]
+        return role_permissions

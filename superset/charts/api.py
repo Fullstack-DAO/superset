@@ -9,7 +9,8 @@ from flask import redirect, request, Response, send_file, url_for, jsonify
 from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
-
+from flask_appbuilder.api.schemas import get_item_schema, get_list_schema
+from superset.tasks.utils import get_current_user_object
 from flask_babel import ngettext
 from marshmallow import ValidationError
 from werkzeug.wrappers import Response as WerkzeugResponse
@@ -1185,3 +1186,78 @@ class ChartRestApi(BaseSupersetModelRestApi):
             return self.response(200, message=f"Permissions successfully {action}ed.")
         except Exception as e:
             return self.response_400(message=str(e))
+
+    @expose("/", methods=["GET"])
+    @protect()
+    @safe
+    @rison(get_list_schema)
+    def get_list(self, rison: dict) -> Response:
+        """
+        自定义的 get_list 方法，用于处理图表数据的检索。
+        该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
+        """
+
+        # 第一步：检查用户是否有权限访问图表
+        current_user = get_current_user_object()
+
+        # 第二步：获取图表列表，根据解析后的 rison 参数
+        response = self._get_charts_list(rison)
+
+        if response.status_code != 200:
+            return response  # 如果原始列表获取失败，直接返回响应
+
+        # 第三步：根据用户/角色权限进行自定义过滤
+        filtered_result, allowed_ids = self._filter_charts_based_on_permissions(
+            response.json.get("result", []), response.json.get("ids", []), current_user
+        )
+
+        # 第四步：更新响应数据，返回过滤后的图表
+        response_data = response.json
+        response_data["result"] = filtered_result
+        response_data["ids"] = allowed_ids
+        response_data["count"] = len(filtered_result)
+
+        return self.response(200, **response_data)
+
+    def _get_charts_list(self, rison: dict) -> Response:
+        """
+        调用原始的 get_list_headless 方法，获取图表列表。
+        通过 rison 参数传递分页、排序和过滤信息。
+        """
+        return super().get_list_headless(rison=rison)
+
+    def _filter_charts_based_on_permissions(
+        self, original_result: list, original_ids: list, current_user
+    ) -> tuple:
+        """
+        根据用户和角色权限，过滤图表数据。
+        现在支持多个权限类型（例如：'read' 和 'edit'）。
+        """
+        # 获取用户的 'read' 和 'edit' 权限
+        user_read_permissions = ChartPermissions.get_user_permissions(current_user.id, 'read')
+        user_edit_permissions = ChartPermissions.get_user_permissions(current_user.id, 'edit')
+        user_permissions = user_read_permissions + user_edit_permissions
+
+        # 获取角色的 'read' 和 'edit' 权限
+        role_read_permissions = ChartPermissions.get_role_permissions(current_user.roles, 'read')
+        role_edit_permissions = ChartPermissions.get_role_permissions(current_user.roles, 'edit')
+        role_permissions = role_read_permissions + role_edit_permissions
+
+        # 合并用户和角色的权限
+        all_permissions = set(user_permissions + role_permissions)
+
+        # 过滤用户有权限访问的图表ID
+        allowed_ids = [
+            chart_id
+            for chart_id in original_ids
+            if f"read:chart:{chart_id}" in all_permissions
+               or f"edit:chart:{chart_id}" in all_permissions
+        ]
+
+        # 过滤结果，只返回用户有权限的图表
+        filtered_result = [
+            chart for chart in original_result if chart["id"] in allowed_ids
+        ]
+
+        return filtered_result, allowed_ids
+

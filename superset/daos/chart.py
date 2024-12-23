@@ -12,7 +12,6 @@ from superset.models.core import FavStar, FavStarClassName
 from superset.models.role_permission import RolePermission
 from superset.models.slice import Slice
 from flask_appbuilder import AppBuilder
-
 from superset.models.user_permission import UserPermission
 from superset.utils.core import get_user_id
 from sqlalchemy.exc import SQLAlchemyError

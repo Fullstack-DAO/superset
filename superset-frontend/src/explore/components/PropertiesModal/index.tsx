@@ -133,28 +133,36 @@ function PropertiesModal({
   );
 
   const loadRoleOptions = useMemo(
-    () =>
-      async (input = '', page: number, pageSize: number) => {
-        const query = rison.encode({
-          filter: input,
-          page,
-          page_size: pageSize,
+    () => async (input = '', page: number, pageSize: number) => {
+      try {
+        // 使用 rison 生成查询参数
+        const params = rison.encode({
+          filter: input, // 输入筛选条件
+          page, // 当前页码
+          page_size: pageSize, // 每页大小
         });
+
+        // 调用后端新接口
         const response = await SupersetClient.get({
-          endpoint: `/api/v1/chart/related/roles?q=${query}`,
+          endpoint: `/api/v1/rowlevelsecurity/related/roles?q=${params}`, // 替换为新接口
         });
+
+        // 格式化返回数据
         return {
-          data: response.json.result.map(
-            (item: { id: number; name: string }) => ({
-              value: item.id,
-              label: item.name,
-            }),
-          ),
-          totalCount: response.json.count,
+          data: response.json.result.map((item: { text: string; value: number }) => ({
+            value: item.value,
+            label: item.text,
+          })),
+          totalCount: response.json.count, // 从响应中获取总数
         };
-      },
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        return { data: [], totalCount: 0 };
+      }
+    },
     [],
   );
+
 
   const loadOptions = useMemo(
     () =>

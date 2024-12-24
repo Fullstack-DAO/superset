@@ -83,12 +83,13 @@ function PropertiesModal({
 
   // 新增状态：用户和角色权限
   const [userPermissions, setUserPermissions] = useState<
-    { userId: number; permissions: ('read' | 'edit')[] }[]
+    { userId: number; userName: string; permissions: ('read' | 'edit')[] }[]
   >([]);
 
   const [rolePermissions, setRolePermissions] = useState<
-    { roleId: number; permissions: ('read' | 'edit')[] }[]
+    { roleId: number; roleName: string; permissions: ('read' | 'edit')[] }[]
   >([]);
+
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map(tag => ({
@@ -492,17 +493,18 @@ function PropertiesModal({
                 options={loadOptions} // 动态加载用户选项
                 value={userPermissions.map(up => ({
                   value: up.userId,
-                  label: `User ${up.userId} (${up.permissions.join(', ')})`,
+                  label: up.userName, // 使用实际的用户姓名
                 }))}
                 onChange={(values: { value: number; label: string }[]) => {
                   const updatedPermissions = values.map(v => {
                     const existing = userPermissions.find(up => up.userId === v.value);
                     return {
                       userId: v.value,
-                      permissions: existing?.permissions || [], // 默认空权限
+                      userName: v.label, // 从选中的值中获取用户姓名
+                      permissions: existing?.permissions || [], // 保持现有权限或默认空权限
                     };
                   });
-                  setUserPermissions(updatedPermissions); // 更新用户权限
+                  setUserPermissions(updatedPermissions); // 更新用户权限状态
                 }}
               />
               <StyledHelpBlock className="help-block">
@@ -511,13 +513,13 @@ function PropertiesModal({
               <div>
                 {userPermissions.map((user, index) => (
                   <div key={user.userId} style={{ marginBottom: '8px' }}>
-                    <span>{`User ID: ${user.userId}`}</span>
+                    <span>{`${user.userName}`}</span> {/* 显示用户姓名 */}
                     <Checkbox.Group
                       options={[
                         { label: 'Read', value: 'read' },
                         { label: 'Edit', value: 'edit' },
                       ]}
-                      value={user.permissions} // 确保绑定到用户的权限数组
+                      value={user.permissions} // 绑定到用户的权限数组
                       onChange={(checkedValues: ('read' | 'edit')[]) => {
                         const updated = [...userPermissions];
                         updated[index] = {
@@ -541,17 +543,18 @@ function PropertiesModal({
                 options={loadRoleOptions} // 动态加载角色选项
                 value={rolePermissions.map(rp => ({
                   value: rp.roleId,
-                  label: `Role ${rp.roleId} (${rp.permissions.join(', ')})`,
+                  label: rp.roleName, // 使用实际的角色名称
                 }))}
                 onChange={(values: { value: number; label: string }[]) => {
                   const updatedPermissions = values.map(v => {
                     const existing = rolePermissions.find(rp => rp.roleId === v.value);
                     return {
                       roleId: v.value,
-                      permissions: existing?.permissions || [], // 默认空权限
+                      roleName: v.label, // 从选中的值中获取角色名称
+                      permissions: existing?.permissions || [], // 保持现有权限或默认空权限
                     };
                   });
-                  setRolePermissions(updatedPermissions); // 更新角色权限
+                  setRolePermissions(updatedPermissions); // 更新角色权限状态
                 }}
               />
               <StyledHelpBlock className="help-block">
@@ -560,13 +563,13 @@ function PropertiesModal({
               <div>
                 {rolePermissions.map((role, index) => (
                   <div key={role.roleId} style={{ marginBottom: '8px' }}>
-                    <span>{`Role ID: ${role.roleId}`}</span>
+                    <span>{`${role.roleName}`}</span> {/* 显示角色名称 */}
                     <Checkbox.Group
                       options={[
                         { label: 'Read', value: 'read' },
                         { label: 'Edit', value: 'edit' },
                       ]}
-                      value={role.permissions} // 确保绑定到角色的权限数组
+                      value={role.permissions} // 绑定到角色的权限数组
                       onChange={(checkedValues: ('read' | 'edit')[]) => {
                         const updated = [...rolePermissions];
                         updated[index] = {

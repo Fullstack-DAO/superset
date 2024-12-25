@@ -310,8 +310,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             new_model = CreateChartCommand(item).run()
             return self.response(201, id=new_model.id, result=item)
         except DashboardsForbiddenError as ex:
+            logger.error(f"DashboardsForbidden error: {ex.message}")
             return self.response(ex.status, message=ex.message)
         except ChartInvalidError as ex:
+            logger.error(f"Invalid chart data: {ex.normalized_messages()}")
             return self.response_422(message=ex.normalized_messages())
         except ChartCreateFailedError as ex:
             logger.error(
@@ -953,7 +955,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartDAO.ChartDAO.find_by_id(
+        chart = ChartDAO.find_by_id(
             pk,
             check_permission=False,
             permission_type="delete"  # 删除权限

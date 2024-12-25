@@ -18,7 +18,7 @@ import json
 import re
 from typing import Any, Union
 
-from marshmallow import fields, post_dump, post_load, pre_load, Schema
+from marshmallow import fields, post_dump, post_load, pre_load, Schema, validate
 from marshmallow.validate import Length, ValidationError
 
 from superset import security_manager
@@ -332,6 +332,10 @@ class DashboardCopySchema(Schema):
 
 
 class DashboardPutSchema(BaseDashboardSchema):
+    # dashboard_id = fields.Integer(
+    #     required=True,
+    #     metadata={"description": "The unique ID of the chart slice."},
+    # )
     dashboard_title = fields.String(
         metadata={"description": dashboard_title_description},
         allow_none=True,
@@ -370,9 +374,52 @@ class DashboardPutSchema(BaseDashboardSchema):
     )
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
-    # 新增字段
-    visible_roles = fields.List(fields.Integer(), allow_none=True, metadata={"description": "可见角色的 ID 列表"})
-    editable_roles = fields.List(fields.Integer(), allow_none=True, metadata={"description": "可编辑角色的 ID 列表"})
+
+    # Add user_permissions field
+    user_permissions = fields.List(
+        fields.Nested(
+            Schema.from_dict(
+                {
+                    "userId": fields.Integer(
+                        required=True, metadata={"description": "User ID"}
+                    ),
+                    "permissions": fields.List(
+                        fields.String(
+                            validate=validate.OneOf(["read", "edit"]),
+                            metadata={"description": "Permission type (read/edit)"},
+                        ),
+                        required=True,
+                        metadata={"description": "List of permissions for the user"},
+                    ),
+                }
+            )
+        ),
+        metadata={"description": "List of user permissions for the chart"},
+        allow_none=True,
+    )
+
+    # Add role_permissions field
+    role_permissions = fields.List(
+        fields.Nested(
+            Schema.from_dict(
+                {
+                    "roleId": fields.Integer(
+                        required=True, metadata={"description": "Role ID"}
+                    ),
+                    "permissions": fields.List(
+                        fields.String(
+                            validate=validate.OneOf(["read", "edit"]),
+                            metadata={"description": "Permission type (read/edit)"},
+                        ),
+                        required=True,
+                        metadata={"description": "List of permissions for the role"},
+                    ),
+                }
+            )
+        ),
+        metadata={"description": "List of role permissions for the chart"},
+        allow_none=True,
+    )
 
 
 

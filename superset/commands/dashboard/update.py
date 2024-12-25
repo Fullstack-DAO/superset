@@ -46,23 +46,36 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
         self._properties = data.copy()
         self._model: Optional[Dashboard] = None
 
-    def run(self) -> Model:
+    def run(self) -> Dashboard:
         self.validate()
         assert self._model
 
         try:
+            # 更新仪表盘基本字段，不提交事务
             dashboard = DashboardDAO.update(self._model, self._properties, commit=False)
+
+            # 如果需要更新 json_metadata
             if self._properties.get("json_metadata"):
                 dashboard = DashboardDAO.set_dash_metadata(
                     dashboard,
                     data=json.loads(self._properties.get("json_metadata", "{}")),
                     commit=False,
                 )
+
+            # 更新仪表盘相关权限
+            DashboardDAO.update_permissions(dashboard.id, self._properties)
+
+            # 提交事务
             db.session.commit()
+
+            return dashboard
         except DAOUpdateFailedError as ex:
             logger.exception(ex.exception)
             raise DashboardUpdateFailedError() from ex
-        return dashboard
+        except Exception as ex:
+            logger.exception("Unexpected error while updating dashboard.")
+            db.session.rollback()
+            raise DashboardUpdateFailedError() from ex
 
     def validate(self) -> None:
         exceptions: list[ValidationError] = []
@@ -74,6 +87,7 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
         self._model = DashboardDAO.find_by_id(self._model_id)
         if not self._model:
             raise DashboardNotFoundError()
+
         # Check ownership
         try:
             security_manager.raise_for_ownership(self._model)
@@ -92,8 +106,6 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
             self._properties["owners"] = owners
         except ValidationError as ex:
             exceptions.append(ex)
-        if exceptions:
-            raise DashboardInvalidError(exceptions=exceptions)
 
         # Validate/Populate role
         if roles_ids is None:
@@ -103,5 +115,6 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
             self._properties["roles"] = roles
         except ValidationError as ex:
             exceptions.append(ex)
+
         if exceptions:
             raise DashboardInvalidError(exceptions=exceptions)

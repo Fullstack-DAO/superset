@@ -32,6 +32,7 @@ from superset.commands.dashboard.exceptions import (
 )
 from superset.daos.base import BaseDAO
 from superset.dashboards.filters import DashboardAccessFilter, is_uuid
+from superset.dashboards.permissions import DashboardPermissions
 from superset.exceptions import SupersetSecurityException
 from superset.extensions import db
 from superset.models.core import FavStar, FavStarClassName
@@ -346,6 +347,20 @@ class DashboardDAO(BaseDAO[Dashboard]):
         if fav:
             db.session.delete(fav)
             db.session.commit()
+
+    @staticmethod
+    def update_permissions(dashboard_id: int, properties: dict[str, Any]) -> None:
+        """
+        更新仪表盘的权限。根据 properties 中的权限字段更新用户和角色权限。
+
+        :param dashboard_id: 仪表盘 ID
+        :param properties: 更新数据，包含权限信息
+        """
+        # 例如，properties 可能包含 'user_permissions' 和 'role_permissions'
+        DashboardPermissions.handle_permissions_update(
+            dashboard_id=dashboard_id,
+            permissions_data=properties
+        )
 
 
 class EmbeddedDashboardDAO(BaseDAO[EmbeddedDashboard]):

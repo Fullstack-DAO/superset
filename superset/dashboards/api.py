@@ -30,6 +30,7 @@ from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_babel import gettext, ngettext
 from marshmallow import ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
 
@@ -63,6 +64,7 @@ from superset.dashboards.filters import (
     DashboardTitleOrSlugFilter,
     FilterRelatedRoles,
 )
+from superset.dashboards.permissions import DashboardPermissions
 from superset.dashboards.schemas import (
     DashboardCopySchema,
     DashboardDatasetSchema,
@@ -82,7 +84,7 @@ from superset.extensions import event_logger
 from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
 from superset.tasks.thumbnails import cache_dashboard_thumbnail
-from superset.tasks.utils import get_current_user
+from superset.tasks.utils import get_current_user, get_current_user_object
 from superset.utils.screenshots import DashboardScreenshot
 from superset.utils.urls import get_url_path
 from superset.views.base import generate_download_headers
@@ -568,29 +570,53 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        item = request.json
         try:
+            # 加载并验证请求数据
             item = self.edit_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
+            logger.info(f"The update permission body is: {item}")
         except ValidationError as error:
+            logger.error(f"Validation error while updating dashboard: {error.messages}")
             return self.response_400(message=error.messages)
+
         try:
-            changed_model = UpdateDashboardCommand(pk, item).run()
-            last_modified_time = changed_model.changed_on.replace(
-                microsecond=0
-            ).timestamp()
+            # 获取当前用户
+            user = get_current_user_object()
+            if not user:
+                logger.warning("No user found while updating dashboard.")
+                raise DashboardForbiddenError("No user found to assign permissions.")
+
+            # 获取用户的角色
+            user_roles = user.roles  # 假设 user.roles 是一个 Role 对象的列表
+
+            # 更新仪表盘并设置权限
+            changed_model = DashboardPermissions.update_dashboard_with_permissions(
+                pk=pk,
+                item=item,
+                user=user,
+                roles=user_roles
+            )
+
+            last_modified_time = changed_model.changed_on.replace(microsecond=0).timestamp()
+
+            # 构建成功响应
             response = self.response(
                 200,
                 id=changed_model.id,
                 result=item,
                 last_modified_time=last_modified_time,
             )
+            return response
+
         except DashboardNotFoundError:
-            response = self.response_404()
+            return self.response_404()
+
         except DashboardForbiddenError:
-            response = self.response_403()
+            return self.response_403()
+
         except DashboardInvalidError as ex:
+            logger.error(f"Invalid dashboard data: {ex.normalized_messages()}")
             return self.response_422(message=ex.normalized_messages())
+
         except DashboardUpdateFailedError as ex:
             logger.error(
                 "Error updating model %s: %s",
@@ -598,8 +624,25 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 str(ex),
                 exc_info=True,
             )
-            response = self.response_422(message=str(ex))
-        return response
+            return self.response_422(message=str(ex))
+
+        except SQLAlchemyError as ex:
+            logger.error(
+                f"Database error while updating dashboard: {ex}",
+                exc_info=True,
+            )
+            # 不需要在这里回滚，因为在 `DashboardPermissions.update_dashboard_with_permissions`
+            # 中已经处理了
+            return self.response_500(message="Internal server error.")
+
+        except Exception as ex:
+            logger.error(
+                f"Unexpected error while updating dashboard: {ex}",
+                exc_info=True,
+            )
+            # 不需要在这里回滚，因为在 `DashboardPermissions.update_dashboard_with_permissions`
+            # 中已经处理了
+            return self.response_500(message="Internal server error.")
 
     @expose("/<pk>", methods=("DELETE",))
     @protect()

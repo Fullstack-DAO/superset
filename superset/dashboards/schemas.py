@@ -332,10 +332,10 @@ class DashboardCopySchema(Schema):
 
 
 class DashboardPutSchema(BaseDashboardSchema):
-    # dashboard_id = fields.Integer(
-    #     required=True,
-    #     metadata={"description": "The unique ID of the chart slice."},
-    # )
+    dashboard_id = fields.Integer(
+        required=True,
+        metadata={"description": "The unique ID of the chart slice."},
+    )
     dashboard_title = fields.String(
         metadata={"description": dashboard_title_description},
         allow_none=True,

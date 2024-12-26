@@ -589,14 +589,14 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             user_roles = user.roles  # 假设 user.roles 是一个 Role 对象的列表
 
             # 更新仪表盘并设置权限
-            changed_model = DashboardPermissions.update_dashboard_with_permissions(
+            changed_model = DashboardPermissions.update_dashboard(
                 pk=pk,
                 item=item,
                 user=user,
                 roles=user_roles
             )
 
-            last_modified_time = changed_model.changed_on.replace(microsecond=0).timestamp()
+            last_modified_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             # 构建成功响应
             response = self.response(

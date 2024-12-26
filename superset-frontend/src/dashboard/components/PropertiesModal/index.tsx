@@ -23,6 +23,7 @@ import { FormItem } from 'src/components/Form';
 import jsonStringify from 'json-stringify-pretty-compact';
 import Button from 'src/components/Button';
 import { AntdForm, AsyncSelect, Col, Row } from 'src/components';
+import { Checkbox } from 'antd';
 import rison from 'rison';
 import {
   CategoricalColorNamespace,
@@ -53,6 +54,10 @@ import {
 import { loadTags } from 'src/components/Tags/utils';
 
 const StyledFormItem = styled(FormItem)`
+  margin-bottom: 0;
+`;
+
+const StyledHelpBlock = styled.span`
   margin-bottom: 0;
 `;
 
@@ -114,6 +119,15 @@ const PropertiesModal = ({
   const [tags, setTags] = useState<TagType[]>([]);
   const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
 
+  // 新增状态：用户和角色权限
+  const [userPermissions, setUserPermissions] = useState<
+    { userId: number; userName: string; permissions: ('read' | 'edit')[] }[]
+  >([]);
+
+  const [rolePermissions, setRolePermissions] = useState<
+    { roleId: number; roleName: string; permissions: ('read' | 'edit')[] }[]
+  >([]);
+
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map(tag => ({
       value: tag.name,
@@ -164,6 +178,62 @@ const PropertiesModal = ({
         totalCount: response.json.count,
       }));
     },
+    [],
+  );
+
+
+  const loadRoleOptions = useMemo(
+    () => async (input = '', page: number, pageSize: number) => {
+      try {
+        // 使用 rison 生成查询参数
+        const params = rison.encode({
+          filter: input, // 输入筛选条件
+          page, // 当前页码
+          page_size: pageSize, // 每页大小
+        });
+
+        // 调用后端新接口
+        const response = await SupersetClient.get({
+          endpoint: `/api/v1/rowlevelsecurity/related/roles?q=${params}`, // 替换为新接口
+        });
+
+        // 格式化返回数据
+        return {
+          data: response.json.result.map((item: { text: string; value: number }) => ({
+            value: item.value,
+            label: item.text,
+          })),
+          totalCount: response.json.count, // 从响应中获取总数
+        };
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        return { data: [], totalCount: 0 };
+      }
+    },
+    [],
+  );
+
+  const loadOptions = useMemo(
+    () =>
+      async (input = '', page: number, pageSize: number) => {
+        const query = rison.encode({
+          filter: input,
+          page,
+          page_size: pageSize,
+        });
+        const response = await SupersetClient.get({
+          endpoint: `/api/v1/chart/related/owners?q=${query}`,
+        });
+        return {
+          data: response.json.result
+            .filter((item: { extra: { active: boolean } }) => item.extra.active)
+            .map((item_1: { value: number; text: string }) => ({
+              value: item_1.value,
+              label: item_1.text,
+            })),
+          totalCount: response.json.count,
+        };
+      },
     [],
   );
 
@@ -420,6 +490,9 @@ const PropertiesModal = ({
       }
     }
 
+
+
+
     const moreOnSubmitProps: { roles?: Roles } = {};
     const morePutProps: { roles?: number[] } = {};
     if (isFeatureEnabled(FeatureFlag.DASHBOARD_RBAC)) {
@@ -431,13 +504,48 @@ const PropertiesModal = ({
       title,
       slug,
       jsonMetadata: currentJsonMetadata,
-      owners,
       colorScheme: currentColorScheme,
       colorNamespace,
       certifiedBy,
       certificationDetails,
+      user_permissions: userPermissions, // 添加用户权限到提交参数
+      role_permissions: rolePermissions, // 添加角色权限到提交参数
       ...moreOnSubmitProps,
     };
+
+    const payload: { [key: string]: any } = {
+      dashboard_id: dashboardId,
+      dashboard_title: title,
+      slug: slug || null,
+      json_metadata: currentJsonMetadata || null,
+      owners: (owners || []).map(o => o.id),
+      certified_by: certifiedBy || null,
+      certification_details:
+        certifiedBy && certificationDetails ? certificationDetails : null,
+      ...morePutProps,
+    };
+
+    if (userPermissions.length > 0) {
+      payload.user_permissions = userPermissions.map(up => ({
+        userId: up.userId,
+        permissions: up.permissions.filter(p => p === 'read' || p === 'edit'), // 确保权限格式正确
+      }));
+    }
+
+    if (rolePermissions.length > 0) {
+      payload.role_permissions = rolePermissions.map(rp => ({
+        roleId: rp.roleId,
+        permissions: rp.permissions.filter(p => p === 'read' || p === 'edit'),
+      }));
+    }
+
+    // 移除空字段
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === null || payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
+
     if (onlyApply) {
       onSubmit(onSubmitProps);
       onHide();
@@ -446,22 +554,15 @@ const PropertiesModal = ({
       SupersetClient.put({
         endpoint: `/api/v1/dashboard/${dashboardId}`,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dashboard_title: title,
-          slug: slug || null,
-          json_metadata: currentJsonMetadata || null,
-          owners: (owners || []).map(o => o.id),
-          certified_by: certifiedBy || null,
-          certification_details:
-            certifiedBy && certificationDetails ? certificationDetails : null,
-          ...morePutProps,
-        }),
+        body: JSON.stringify(payload),
       }).then(() => {
         onSubmit(onSubmitProps);
         onHide();
         addSuccessToast(t('The dashboard has been saved'));
       }, handleErrorResponse);
     }
+
+    console.log('Payload:', payload);
   };
 
   const getRowsWithoutRoles = () => {
@@ -701,6 +802,122 @@ const PropertiesModal = ({
         {isFeatureEnabled(FeatureFlag.DASHBOARD_RBAC)
           ? getRowsWithRoles()
           : getRowsWithoutRoles()}
+        {/* 用户权限部分 */}
+        <Row gutter={16}>
+          <Col xs={24} md={24}>
+            <h3 style={{ marginTop: '1em' }}>{t('User Permissions')}</h3>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <FormItem label={t('Users')}>
+              <AsyncSelect
+                mode="multiple"
+                ariaLabel={t('Select users')}
+                options={loadOptions} // 动态加载用户选项
+                value={userPermissions.map(up => ({
+                  value: up.userId,
+                  label: up.userName, // 使用实际的用户姓名
+                }))}
+                onChange={(values: { value: number; label: string }[]) => {
+                  const updatedPermissions = values.map(v => {
+                    const existing = userPermissions.find(up => up.userId === v.value);
+                    return {
+                      userId: v.value,
+                      userName: v.label, // 从选中的值中获取用户姓名
+                      permissions: existing?.permissions || [], // 保持现有权限或默认空权限
+                    };
+                  });
+                  setUserPermissions(updatedPermissions); // 更新用户权限状态
+                }}
+              />
+              <StyledHelpBlock className="help-block">
+                {t('Select users and assign read/edit permissions below.')}
+              </StyledHelpBlock>
+              <div>
+                {userPermissions.map((user, index) => (
+                  <div key={user.userId} style={{ marginBottom: '8px' }}>
+                    <span>{`${user.userName}`}</span> {/* 显示用户姓名 */}
+                    <Checkbox.Group
+                      options={[
+                        { label: 'Read', value: 'read' },
+                        { label: 'Edit', value: 'edit' },
+                      ]}
+                      value={user.permissions} // 绑定到用户的权限数组
+                      onChange={(checkedValues: ('read' | 'edit')[]) => {
+                        const updated = [...userPermissions];
+                        updated[index] = {
+                          ...updated[index],
+                          permissions: checkedValues, // 更新权限
+                        };
+                        setUserPermissions(updated); // 更新状态
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </FormItem>
+          </Col>
+        </Row>
+
+        {/* 角色权限部分 */}
+        <Row gutter={16}>
+          <Col xs={24} md={24}>
+            <h3 style={{ marginTop: '1em' }}>{t('Role Permissions')}</h3>
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <FormItem label={t('Roles')}>
+              <AsyncSelect
+                mode="multiple"
+                ariaLabel={t('Select roles')}
+                options={loadRoleOptions} // 动态加载角色选项
+                value={rolePermissions.map(rp => ({
+                  value: rp.roleId,
+                  label: rp.roleName, // 使用实际的角色名称
+                }))}
+                onChange={(values: { value: number; label: string }[]) => {
+                  const updatedPermissions = values.map(v => {
+                    const existing = rolePermissions.find(rp => rp.roleId === v.value);
+                    return {
+                      roleId: v.value,
+                      roleName: v.label, // 从选中的值中获取角色名称
+                      permissions: existing?.permissions || [], // 保持现有权限或默认空权限
+                    };
+                  });
+                  setRolePermissions(updatedPermissions); // 更新角色权限状态
+                }}
+              />
+              <StyledHelpBlock className="help-block">
+                {t('Select roles and assign read/edit permissions below.')}
+              </StyledHelpBlock>
+              <div>
+                {rolePermissions.map((role, index) => (
+                  <div key={role.roleId} style={{ marginBottom: '8px' }}>
+                    <span>{`${role.roleName}`}</span> {/* 显示角色名称 */}
+                    <Checkbox.Group
+                      options={[
+                        { label: 'Read', value: 'read' },
+                        { label: 'Edit', value: 'edit' },
+                      ]}
+                      value={role.permissions} // 绑定到角色的权限数组
+                      onChange={(checkedValues: ('read' | 'edit')[]) => {
+                        const updated = [...rolePermissions];
+                        updated[index] = {
+                          ...updated[index],
+                          permissions: checkedValues, // 更新权限
+                        };
+                        setRolePermissions(updated); // 更新状态
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </FormItem>
+          </Col>
+        </Row>
+
         <Row>
           <Col xs={24} md={24}>
             <h3>{t('Certification')}</h3>

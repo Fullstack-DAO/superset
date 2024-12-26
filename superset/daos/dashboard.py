@@ -356,7 +356,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
         :param dashboard_id: 仪表盘 ID
         :param properties: 更新数据，包含权限信息
         """
-        # 例如，properties 可能包含 'user_permissions' 和 'role_permissions'
+        # properties 可能包含 'user_permissions' 和 'role_permissions'
         DashboardPermissions.handle_permissions_update(
             dashboard_id=dashboard_id,
             permissions_data=properties

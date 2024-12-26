@@ -116,5 +116,10 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
         except ValidationError as ex:
             exceptions.append(ex)
 
+        # Validate permissions if provided
+        if 'user_permissions' in self._properties or 'role_permissions' in self._properties:
+            # 可以在这里添加自定义的权限数据验证逻辑（如果需要）
+            pass
+
         if exceptions:
             raise DashboardInvalidError(exceptions=exceptions)

@@ -275,7 +275,8 @@ class DashboardPermissions:
         ]
 
         if invalid_mapped_permissions:
-            raise ValueError(f"Invalid mapped permissions: {', '.join(invalid_mapped_permissions)}")
+            raise ValueError(
+                f"Invalid mapped permissions: {', '.join(invalid_mapped_permissions)}")
 
         # 移除重复权限
         mapped_permissions = list(set(mapped_permissions))
@@ -615,8 +616,6 @@ class DashboardPermissions:
                         DashboardPermissions.add_permissions_to_role(dashboard_id,
                                                                      role_id,
                                                                      permissions)
-
-
         except Exception as ex:
             logger.error(
                 f"Error handling permissions update for dashboard {dashboard_id}: {ex}",

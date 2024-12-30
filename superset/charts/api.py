@@ -1156,43 +1156,53 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @statsd_metrics
     def modify_permissions(self, pk: int) -> Response:
         """
-        修改图表的权限，支持添加和移除权限。
-        请求体格式:
+        JSON:
         {
-            "entity_id": 123,  # 用户或角色的 ID
-            "entity_type": "user" 或 "role",  # 实体类型
-            "permissions": ["can_read", "can_edit", "can_add", "can_delete"],  # 权限列表
-            "action": "add" 或 "remove"  # 操作类型
+          "entity_type": "user" or "role",
+          "entity_id": 123,
+          "permissions": ["can_read","can_edit"], // 要添加或移除
+          "action": "add" or "remove"
         }
         """
+        # 解析请求体
         data = request.json
-        entity_id = data.get("entity_id")
-        entity_type = data.get("entity_type")  # 从请求体获取 entity_type
-        permissions = data.get("permissions", [])
-        action = data.get("action")
-        chart_id = pk
+        entity_type = data["entity_type"]
+        entity_id = data["entity_id"]
+        permissions = data["permissions"]
+        action = data["action"]
 
-        # 验证参数完整性
-        if not entity_id or not entity_type or not permissions or action not in ["add",
-                                                                                 "remove"]:
-            return self.response_400(
-                message="Missing or invalid parameters: entity_id, entity_type, "
-                        "permissions, or action."
-            )
+        if entity_type == "user":
+            if action == "add":
+                ChartPermissions.add_user_permission(
+                    resource_type="chart",
+                    resource_id=pk,
+                    user_id=entity_id,
+                    permissions=permissions
+                )
+            elif action == "remove":
+                ChartPermissions.remove_user_permission(
+                    resource_type="chart",
+                    resource_id=pk,
+                    user_id=entity_id,
+                    permissions=permissions
+                )
+        else:  # entity_type == "role"
+            if action == "add":
+                ChartPermissions.add_role_permission(
+                    resource_type="chart",
+                    resource_id=pk,
+                    role_id=entity_id,
+                    permissions=permissions
+                )
+            elif action == "remove":
+                ChartPermissions.remove_role_permission(
+                    resource_type="chart",
+                    resource_id=pk,
+                    role_id=entity_id,
+                    permissions=permissions
+                )
 
-        # 验证 entity_type 是否有效
-        if entity_type not in ["user", "role"]:
-            return self.response_400(
-                message=f"Invalid entity_type: {entity_type}. Must be 'user' or 'role'."
-            )
-
-        try:
-            # 调用 ChartDAO 来完成权限管理
-            ChartDAO.modify_permissions(chart_id, entity_type, entity_id, permissions,
-                                        action)
-            return self.response(200, message=f"Permissions successfully {action}ed.")
-        except Exception as e:
-            return self.response_400(message=str(e))
+        return self.response(200, message="Success.")
 
     # @expose("/", methods=["GET"])
     # @protect()
@@ -1281,4 +1291,3 @@ class ChartRestApi(BaseSupersetModelRestApi):
         ]
 
         return filtered_result, allowed_ids
-

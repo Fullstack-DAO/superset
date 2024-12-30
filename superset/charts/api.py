@@ -11,6 +11,7 @@ from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.api.schemas import get_item_schema, get_list_schema
 from superset.tasks.utils import get_current_user_object
+from flask_appbuilder.security.sqla.models import User, Role
 from flask_babel import ngettext
 from marshmallow import ValidationError
 from werkzeug.wrappers import Response as WerkzeugResponse
@@ -49,6 +50,7 @@ from superset.commands.chart.exceptions import (
     ChartNotFoundError,
     ChartUpdateFailedError,
     DashboardsForbiddenError,
+    CreateChartForbiddenError,
 )
 from superset.commands.chart.export import ExportChartsCommand
 from superset.commands.chart.importers.dispatcher import ImportChartsCommand
@@ -309,6 +311,9 @@ class ChartRestApi(BaseSupersetModelRestApi):
         try:
             new_model = CreateChartCommand(item).run()
             return self.response(201, id=new_model.id, result=item)
+        except CreateChartForbiddenError as ex:
+            logger.error(f"ChartsForbidden error: {ex.message}")
+            return self.response(ex.status, message=ex.message)
         except DashboardsForbiddenError as ex:
             logger.error(f"DashboardsForbidden error: {ex.message}")
             return self.response(ex.status, message=ex.message)
@@ -1189,39 +1194,38 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as e:
             return self.response_400(message=str(e))
 
-    @expose("/", methods=["GET"])
-    @protect()
-    @safe
-    @rison(get_list_schema)
-    def get_list(self, rison: dict) -> Response:
-        """
-        自定义的 get_list 方法，用于处理图表数据的检索。
-        该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
-        """
-
-        # 第一步：检查用户是否有权限访问图表
-        current_user = get_current_user_object()
-        logger.info(f"current login user is: {current_user}")
-        logger.info(f"current login user's role is: {current_user.roles}")
-        # 第二步：获取图表列表，根据解析后的 rison 参数
-        response = self._get_charts_list(rison)
-        logger.info(f"response‘s all content: {response}")
-
-        if response.status_code != 200:
-            return response  # 如果原始列表获取失败，直接返回响应
-
-        # 第三步：根据用户/角色权限进行自定义过滤
-        filtered_result, allowed_ids = self._filter_charts_based_on_permissions(
-            response.json.get("result", []), response.json.get("ids", []), current_user
-        )
-
-        # 第四步：更新响应数据，返回过滤后的图表
-        response_data = response.json
-        response_data["result"] = filtered_result
-        response_data["ids"] = allowed_ids
-        response_data["count"] = len(filtered_result)
-
-        return self.response(200, **response_data)
+    # @expose("/", methods=["GET"])
+    # @protect()
+    # @safe
+    # @rison(get_list_schema)
+    # def get_list(self, rison: dict) -> Response:
+    #     """
+    #     自定义的 get_list 方法，用于处理图表数据的检索。
+    #     该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
+    #     """
+    #
+    #     # 第一步：检查用户是否有权限访问图表
+    #     current_user = get_current_user_object()
+    #     logger.info(f"current login user is: {current_user}")
+    #     logger.info(f"current login user's role is: {current_user.roles}")
+    #     # 第二步：获取图表列表，根据解析后的 rison 参数
+    #     response = self._get_charts_list(rison)
+    #     logger.info(f"response‘s all content: {response}")
+    #
+    #     if response.status_code != 200:
+    #         return response  # 如果原始列表获取失败，直接返回响应
+    #
+    # # 第三步：根据用户/角色权限进行自定义过滤 filtered_result, allowed_ids =
+    # self._filter_charts_based_on_permissions( response.json.get("result", []),
+    # response.json.get("ids", []), current_user )
+    #
+    #     # 第四步：更新响应数据，返回过滤后的图表
+    #     response_data = response.json
+    #     response_data["result"] = filtered_result
+    #     response_data["ids"] = allowed_ids
+    #     response_data["count"] = len(filtered_result)
+    #
+    #     return self.response(200, **response_data)
 
     def _get_charts_list(self, rison: dict) -> Response:
         """
@@ -1239,17 +1243,25 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
 
         # 获取用户的 'read' 和 'edit' 权限
-        user_read_permissions = ChartPermissions.get_user_permissions(current_user.id, 'read')
-        logger.info(f"current user's read userpermission chart_id: {user_read_permissions}")
-        user_edit_permissions = ChartPermissions.get_user_permissions(current_user.id, 'edit')
-        logger.info(f"current user's edit userpermission chart_id: {user_edit_permissions}")
+        user_read_permissions = ChartPermissions.get_user_permissions(current_user.id,
+                                                                      'read')
+        logger.info(
+            f"current user's read userpermission chart_id: {user_read_permissions}")
+        user_edit_permissions = ChartPermissions.get_user_permissions(current_user.id,
+                                                                      'edit')
+        logger.info(
+            f"current user's edit userpermission chart_id: {user_edit_permissions}")
         user_permissions = user_read_permissions + user_edit_permissions
 
         # 获取角色的 'read' 和 'edit' 权限
-        role_read_permissions = ChartPermissions.get_role_permissions(current_user.roles, 'read')
-        logger.info(f"current user's read rolepermission chart_id: {role_read_permissions}")
-        role_edit_permissions = ChartPermissions.get_role_permissions(current_user.roles, 'edit')
-        logger.info(f"current user's edit rolepermission chart_id: {role_edit_permissions}")
+        role_read_permissions = ChartPermissions.get_role_permissions(
+            current_user.roles, 'read')
+        logger.info(
+            f"current user's read rolepermission chart_id: {role_read_permissions}")
+        role_edit_permissions = ChartPermissions.get_role_permissions(
+            current_user.roles, 'edit')
+        logger.info(
+            f"current user's edit rolepermission chart_id: {role_edit_permissions}")
         role_permissions = role_read_permissions + role_edit_permissions
 
         # 合并用户和角色的权限

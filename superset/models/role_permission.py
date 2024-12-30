@@ -25,7 +25,7 @@ class RolePermission(Model):
 
     @staticmethod
     def delete_permission(role_id: int, resource_type: str, resource_id: int):
-        """删除角色的权限"""
+        """删除指定角色对某资源的权限记录"""
         permission = RolePermission.query.filter_by(
             role_id=role_id,
             resource_type=resource_type,
@@ -34,6 +34,12 @@ class RolePermission(Model):
         if permission:
             db.session.delete(permission)
             db.session.commit()
-            logger.info(f"Deleted permission for role {role_id} on {resource_type} {resource_id}.")
+            logger.info(
+                f"Deleted permission for role {role_id} on "
+                f"{resource_type} {resource_id}."
+            )
         else:
-            logger.warning(f"No permission found to delete for role {role_id} on {resource_type} {resource_id}.")
+            logger.warning(
+                f"No permission found to delete for role {role_id} on "
+                f"{resource_type} {resource_id}."
+            )

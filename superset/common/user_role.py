@@ -1,13 +1,12 @@
 from flask import request, Response
-from flask_appbuilder.api import expose, protect, safe
-from flask_appbuilder.api import BaseApi
+from flask_appbuilder.api import expose, protect, safe, BaseApi
 from superset.extensions import db
 from flask_appbuilder.security.sqla.models import User, Role
 
-from superset.views.base_api import statsd_metrics, BaseSupersetModelRestApi
+from superset.views.base_api import statsd_metrics
 
 
-class UserOrRoleApi(BaseSupersetModelRestApi):
+class UserOrRoleApi(BaseApi):
     resource_name = "user_or_role"
 
     @expose("/", methods=["GET"])

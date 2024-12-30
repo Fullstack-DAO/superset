@@ -16,7 +16,6 @@
 # under the License.
 from flask_babel import _
 from marshmallow.validate import ValidationError
-
 from superset.commands.exceptions import (
     CommandException,
     CommandInvalidError,
@@ -149,6 +148,17 @@ class ChartImportError(ImportFailedError):
 
 class DashboardsForbiddenError(ForbiddenError):
     message = _("Changing one or more of these dashboards is forbidden")
+
+
+class CreateChartForbiddenError(CommandException):
+    def __init__(self, message: str = None, exception: Exception = None):
+        """
+        使用 CommandException 替代 HTTPException。
+        """
+        # 默认描述信息
+        if message is None:
+            message = "You do not have permission to access this resource."
+        super().__init__(message=message, exception=exception)
 
 
 class WarmUpCacheChartNotFoundError(CommandException):

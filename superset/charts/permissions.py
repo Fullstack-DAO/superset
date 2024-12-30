@@ -2,13 +2,16 @@ import logging
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from superset.connectors.sqla.models import SqlaTable
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
 from superset.models.slice import Slice
 from superset.tasks.utils import get_current_user_object
-from superset.extensions import db
+from superset.extensions import db, security_manager
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.security.sqla.models import User, Role
+
+from superset.utils.core import get_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +257,8 @@ class ChartPermissions:
         except SQLAlchemyError as ex:
             db.session.rollback()
             logger.error(
-                f"Failed to add permissions {permissions} to {entity_type} {entity_id} for chart {chart_id}: {ex}"
+                f"Failed to add permissions {permissions} to {entity_type} {entity_id}"
+                f" for chart {chart_id}: {ex}"
             )
             raise
 
@@ -453,3 +457,280 @@ class ChartPermissions:
             ).all()
         ]
         return role_permissions
+
+    @staticmethod
+    def add_user_permission(
+        resource_type: str, resource_id: int,
+        user_id: int, permissions: list[str],
+    ) -> None:
+        """
+        给指定 user_id 添加对某 chart/dashboard 的权限
+        并在添加前可以验证:
+          - 当前登录用户是否是此资源的管理员
+          - 目标用户是否具备 dataset 访问权限 (如果资源是 chart)
+        """
+        # 1) 校验当前登录用户是否有权限做此操作
+        current_user_id = get_user_id()
+        if not ChartPermissions.is_admin_of_resource(
+            current_user_id, resource_type, resource_id
+        ):
+            raise PermissionError(
+                f"Current user {current_user_id} is not admin of {resource_type} "
+                f"{resource_id}."
+            )
+
+        # 如果是 chart，需要验证目标 user 是否有 dataset 权限
+        if resource_type == "chart":
+            # 找到 chart
+            chart = db.session.query(Slice).filter_by(id=resource_id).one_or_none()
+            if not chart:
+                raise ValueError(f"Chart {resource_id} not found.")
+            # 校验 dataset
+            if "can_edit" in permissions or "can_delete" in permissions or "can_add" in permissions:
+                # 只有在要赋予写/删/add权限时，才需要 dataset 访问权限
+                user_obj = security_manager.get_user_by_id(user_id)
+                if not ChartPermissions.user_has_dataset_access(
+                    user_obj, chart.datasource_id
+                ):
+                    raise PermissionError(
+                        f"User {user_obj.username} lacks dataset access, cannot have "
+                        f"write permission on chart."
+                    )
+
+        # 2) 在 user_permissions 表里插入或更新权限
+        perm = UserPermission.query.filter_by(
+            user_id=user_id,
+            resource_type=resource_type,
+            resource_id=resource_id
+        ).first()
+        if not perm:
+            perm = UserPermission(
+                user_id=user_id,
+                resource_type=resource_type,
+                resource_id=resource_id,
+            )
+            db.session.add(perm)
+
+        # 更新布尔字段
+        perm.can_read = "can_read" in permissions or perm.can_read
+        perm.can_edit = "can_edit" in permissions or perm.can_edit
+        perm.can_delete = "can_delete" in permissions or perm.can_delete
+        perm.can_add = "can_add" in permissions or perm.can_add
+
+        db.session.commit()
+        logger.info(f"Granted {permissions} on {resource_type} {resource_id} "
+                    f"to user {user_id}.")
+
+    @staticmethod
+    def remove_user_permission(
+        resource_type: str, resource_id: int,
+        user_id: int, permissions: list[str],
+    ) -> None:
+        """
+        移除指定用户对资源的指定权限。例如 remove [can_edit]。
+        若最终所有布尔字段都变为False，则干脆删除该记录。
+        """
+        current_user_id = get_user_id()
+        # 同样校验当前用户是否有管理员权限
+        if not ChartPermissions.is_admin_of_resource(
+            current_user_id, resource_type, resource_id
+        ):
+            raise PermissionError(
+                f"Current user {current_user_id} is not admin of {resource_type} {resource_id}."
+            )
+
+        perm = UserPermission.query.filter_by(
+            user_id=user_id,
+            resource_type=resource_type,
+            resource_id=resource_id
+        ).first()
+        if not perm:
+            logger.warning("Permission record not found, nothing to remove.")
+            return
+
+        if "can_read" in permissions:
+            perm.can_read = False
+        if "can_edit" in permissions:
+            perm.can_edit = False
+        if "can_delete" in permissions:
+            perm.can_delete = False
+        if "can_add" in permissions:
+            perm.can_add = False
+
+        if not (perm.can_read or perm.can_edit or perm.can_delete or perm.can_add):
+            # 如果没有权限了，则删除记录
+            db.session.delete(perm)
+        db.session.commit()
+        logger.info(f"Removed {permissions} from user {user_id} "
+                    f"on {resource_type} {resource_id}.")
+
+    @staticmethod
+    def add_role_permission(
+        resource_type: str, resource_id: int,
+        role_id: int, permissions: list[str],
+    ) -> None:
+        """
+        类似 add_user_permission，但面向角色
+        """
+        current_user_id = get_user_id()
+        if not ChartPermissions.is_admin_of_resource(
+            current_user_id, resource_type, resource_id
+        ):
+            raise PermissionError(
+                f"Current user {current_user_id} is not admin of {resource_type} {resource_id}."
+            )
+        # 如果是 chart，需要验证此 role 是否有 dataset 访问
+        # 具体判定见下 user_has_dataset_access_for_role(...)
+        # (可选: 也可以 require that ANY user in that role can read the dataset)
+        # ...
+        perm = RolePermission.query.filter_by(
+            role_id=role_id,
+            resource_type=resource_type,
+            resource_id=resource_id
+        ).first()
+        if not perm:
+            perm = RolePermission(
+                role_id=role_id,
+                resource_type=resource_type,
+                resource_id=resource_id,
+            )
+            db.session.add(perm)
+        perm.can_read = "can_read" in permissions or perm.can_read
+        perm.can_edit = "can_edit" in permissions or perm.can_edit
+        perm.can_delete = "can_delete" in permissions or perm.can_delete
+        perm.can_add = "can_add" in permissions or perm.can_add
+        db.session.commit()
+        logger.info(
+            f"Granted {permissions} on {resource_type} {resource_id} to role {role_id}.")
+
+    @staticmethod
+    def remove_role_permission(
+        resource_type: str, resource_id: int,
+        role_id: int, permissions: list[str],
+    ) -> None:
+        """
+        移除角色某些权限
+        """
+        current_user_id = get_user_id()
+        if not ChartPermissions.is_admin_of_resource(
+            current_user_id, resource_type, resource_id
+        ):
+            raise PermissionError(
+                f"Current user {current_user_id} is not admin of {resource_type} {resource_id}."
+            )
+        perm = RolePermission.query.filter_by(
+            role_id=role_id,
+            resource_type=resource_type,
+            resource_id=resource_id
+        ).first()
+        if not perm:
+            logger.warning("Permission record not found, nothing to remove.")
+            return
+
+        if "can_read" in permissions:
+            perm.can_read = False
+        if "can_edit" in permissions:
+            perm.can_edit = False
+        if "can_delete" in permissions:
+            perm.can_delete = False
+        if "can_add" in permissions:
+            perm.can_add = False
+
+        if not (perm.can_read or perm.can_edit or perm.can_delete or perm.can_add):
+            db.session.delete(perm)
+
+        db.session.commit()
+        logger.info(
+            f"Removed {permissions} from role {role_id} on {resource_type} {resource_id}.")
+
+    # -------------------------------------------------------------------------
+    # 辅助方法
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def user_has_dataset_access(user_obj, dataset_id: int) -> bool:
+        """
+        检查 user_obj 是否具有对某 SQLA Dataset 的访问权限（datasource_access）。
+        如果 dataset 不存在或用户无权限，则返回 False。
+        """
+        logger.info(
+            f"Checking dataset access for user {user_obj.username} (ID={user_obj.id}) "
+            f"on dataset {dataset_id}."
+        )
+        if not user_obj:
+            return False
+
+        # 1. 根据 dataset_id 查询 SqlaTable（如是 Druid datasource，需改为 druid model）
+        dataset = db.session.query(SqlaTable).filter_by(id=dataset_id).one_or_none()
+        if not dataset:
+            logger.warning(f"Dataset with id={dataset_id} does not exist.")
+            return False
+
+        # 2. 调用 security_manager.can_access_datasource(...) 检查权限
+        #    这会验证 user_obj 是否具备 datasource_access on [dataset].
+        #    如果启用 row-level security，内部也会相应处理。
+        has_access = security_manager.can_access_datasource(dataset, user=user_obj)
+        if not has_access:
+            logger.info(
+                f"User {user_obj.username} (id={user_obj.id}) has NO dataset_access "
+                f"for dataset {dataset.table_name} (id={dataset_id})."
+            )
+        return has_access
+
+    @staticmethod
+    def is_admin_of_resource(
+        user_id: int, resource_type: str, resource_id: int
+    ) -> bool:
+        """
+        判断 user_id 对该资源是否是“管理员”（can_delete && can_edit && can_add && can_read）。
+        你可以定制只要 can_delete == True 就当做是管理员。
+        """
+        if not user_id:
+            return False
+        perm = UserPermission.query.filter_by(
+            user_id=user_id,
+            resource_type=resource_type,
+            resource_id=resource_id
+        ).first()
+        if not perm:
+            return False
+        # 判断是否拥有所有权限
+        return all([
+            perm.can_add,
+            perm.can_read,
+            perm.can_edit,
+            perm.can_delete
+        ])
+
+    @staticmethod
+    def interpret_frontend_permissions(perm_list: list[str]) -> dict[str, bool]:
+        """
+        将前端传来的["admin"],["read"],["edit"]等转换为
+        {can_read, can_edit, can_delete, can_add} 的布尔值。
+        """
+        can_read = can_edit = can_add = can_delete = False
+
+        if "admin" in perm_list:
+            # 如果前端勾选了「管理员」
+            can_read = True
+            can_edit = True
+            can_add = True
+            can_delete = True
+        else:
+            # 如果只勾选了可读
+            if "read" in perm_list:
+                can_read = True
+            # 如果只勾选了可编辑
+            if "edit" in perm_list:
+                can_edit = True
+                can_read = True  # 一般可编辑也具备可读
+
+            # 如果前端需要 add/delete 等细分，也可加判断
+            # if "delete" in perm_list: can_delete = True
+            # if "add" in perm_list: can_add = True
+
+        return {
+            "can_read": can_read,
+            "can_edit": can_edit,
+            "can_add": can_add,
+            "can_delete": can_delete,
+        }

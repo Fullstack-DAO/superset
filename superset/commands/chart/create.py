@@ -30,11 +30,13 @@ from superset.commands.chart.exceptions import (
     ChartInvalidError,
     DashboardsForbiddenError,
     DashboardsNotFoundValidationError,
+    CreateChartForbiddenError,
 )
 from superset.commands.utils import get_datasource_by_id
 from superset.daos.chart import ChartDAO
 from superset.daos.dashboard import DashboardDAO
 from superset.daos.exceptions import DAOCreateFailedError
+from superset.tasks.utils import get_current_user_object
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +67,7 @@ class CreateChartCommand(CreateMixin, BaseCommand):
                 chart=new_chart,
                 user=g.user,
                 roles=self._properties["roles"],
-                permissions=["can_read", "can_edit"],
+                permissions=["can_read", "can_edit", "can_add", "can_delete"],
             )
             return new_chart
         except DAOCreateFailedError as ex:
@@ -81,8 +83,25 @@ class CreateChartCommand(CreateMixin, BaseCommand):
         datasource_id = self._properties["datasource_id"]
         dashboard_ids = self._properties.get("dashboards", [])
         owner_ids: Optional[list[int]] = self._properties.get("owners")
+        dataset_id = datasource_id
+        logger.info(f"current dataset_id is {dataset_id}")
+        current_user = get_current_user_object()
+        # 校验 dataset 权限
+        if not ChartPermissions.user_has_dataset_access(current_user, dataset_id):
+            error_message = (
+                f"User {current_user.username} lacks dataset access, cannot create "
+                f"chart."
+            )
+        logger.error(error_message)  # 记录错误日志
+        exceptions.append(CreateChartForbiddenError())
+        try:
+            raise CreateChartForbiddenError("Chart permission denied message.")
+        except CreateChartForbiddenError as e:
+            return {"message": e.message}, 403
 
-        # 验证数据源
+
+
+    # 验证数据源
         try:
             datasource = get_datasource_by_id(datasource_id, datasource_type)
             self._properties["datasource_name"] = datasource.name

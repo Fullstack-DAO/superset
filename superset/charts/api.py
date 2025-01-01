@@ -108,6 +108,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "screenshot",
         "cache_screenshot",
         "warm_up_cache",
+        "get_access_info",
     }
     class_permission_name = "Chart"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
@@ -381,6 +382,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         try:
+            logger.error(f"the request body: {request.json}")
             item = self.edit_model_schema.load(request.json)
             logger.info(f"the update permission body is : {item}")
         except ValidationError as error:
@@ -1291,3 +1293,23 @@ class ChartRestApi(BaseSupersetModelRestApi):
         ]
 
         return filtered_result, allowed_ids
+
+    @expose("/<int:chart_id>/access-info", methods=["GET"])
+    # @protect()
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
+                                             f".access_info",
+        log_to_statsd=False,
+    )
+    def get_access_info(self, chart_id: int):
+        """
+        获取指定 chart 的访问权限信息。
+        """
+        try:
+            access_info = ChartDAO.get_chart_access_info(chart_id)
+            return self.response(200, result=access_info)
+        except Exception as ex:
+            logger.error(f"Error fetching chart access info: {ex}")
+            return self.response_500(message="Failed to fetch chart access info.")

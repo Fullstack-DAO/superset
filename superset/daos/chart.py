@@ -4,6 +4,8 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import literal_column
+
 from superset.charts.filters import ChartFilter
 from superset.charts.permissions import ChartPermissions
 from superset.daos.base import BaseDAO
@@ -12,6 +14,7 @@ from superset.models.core import FavStar, FavStarClassName
 from superset.models.role_permission import RolePermission
 from superset.models.slice import Slice
 from flask_appbuilder import AppBuilder
+from flask_appbuilder.security.sqla.models import User, Role
 from superset.models.user_permission import UserPermission
 from superset.utils.core import get_user_id
 from sqlalchemy.exc import SQLAlchemyError
@@ -434,7 +437,8 @@ class ChartDAO(BaseDAO[Slice]):
             permissions = user_permission["permissions"]
             existing_permission = (
                 db.session.query(UserPermission)
-                .filter_by(resource_id=resource_id, resource_type="chart", user_id=user_id)
+                .filter_by(resource_id=resource_id, resource_type="chart",
+                           user_id=user_id)
                 .first()
             )
             if existing_permission:
@@ -456,7 +460,8 @@ class ChartDAO(BaseDAO[Slice]):
             permissions = role_permission["permissions"]
             existing_permission = (
                 db.session.query(RolePermission)
-                .filter_by(resource_id=resource_id, resource_type="chart", role_id=role_id)
+                .filter_by(resource_id=resource_id, resource_type="chart",
+                           role_id=role_id)
                 .first()
             )
             if existing_permission:
@@ -473,3 +478,75 @@ class ChartDAO(BaseDAO[Slice]):
                 db.session.add(new_permission)
 
         db.session.commit()
+
+    def get_chart_access_info(chart_id: int) -> list[dict]:
+        """
+        获取指定 chart 的访问权限信息，返回指定格式的结果。
+        """
+        try:
+            # 用户权限查询
+            user_permissions_query = (
+                db.session.query(
+                    literal_column("'user'").label("type"),
+                    User.id.label("id"),
+                    User.username.label("name"),
+                    UserPermission.can_read,
+                    UserPermission.can_edit,
+                    UserPermission.can_delete,
+                    UserPermission.can_add,
+                )
+                .join(User, UserPermission.user_id == User.id)
+                .filter(UserPermission.resource_type == "chart")
+                .filter(UserPermission.resource_id == chart_id)
+            )
+
+            # 角色权限查询
+            role_permissions_query = (
+                db.session.query(
+                    literal_column("'role'").label("type"),
+                    Role.id.label("id"),
+                    Role.name.label("name"),
+                    RolePermission.can_read,
+                    RolePermission.can_edit,
+                    RolePermission.can_delete,
+                    RolePermission.can_add,
+                )
+                .join(Role, RolePermission.role_id == Role.id)
+                .filter(RolePermission.resource_type == "chart")
+                .filter(RolePermission.resource_id == chart_id)
+            )
+
+            # 合并查询结果
+            results = user_permissions_query.union_all(role_permissions_query).all()
+
+            # 检查查询结果是否为空
+            if not results:
+                return []
+
+            # 构建返回结果
+            access_info = []
+            for row in results:
+                if row.can_add and row.can_read and row.can_edit and row.can_delete:
+                    permission = "可管理"
+                elif row.can_edit:
+                    permission = "可编辑"
+                elif row.can_read:
+                    permission = "可阅读"
+                else:
+                    permission = "无权限"  # 默认无权限
+
+                access_info.append(
+                    {
+                        "id": row.id,
+                        "name": row.name,
+                        "type": row.type,
+                        "permission": permission,
+                    }
+                )
+
+            return access_info
+
+        except Exception as ex:
+            logger.error(f"Error in get_chart_access_info: {ex}", exc_info=True)
+            raise
+

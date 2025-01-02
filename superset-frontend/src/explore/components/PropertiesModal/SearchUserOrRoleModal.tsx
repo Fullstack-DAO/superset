@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Input, Button, Spin, List } from 'antd';
-import { SupersetClient, t } from '@superset-ui/core';
+import { SupersetClient, } from '@superset-ui/core';
+import { InboxOutlined } from '@ant-design/icons';
 
 interface SearchUserOrRoleModalProps {
   visible: boolean;
@@ -35,11 +36,11 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(searchValue)}`,
       });
 
-      // 直接使用 response 数据
-      const data: any = response; // response 已经是 JSON 对象
-      const { result } = data || {};
+      // 直接解析返回的 result 数据
+      const data = (response as any).json || response; // 如果有 json 字段直接使用它
+      const result = data.result || {};
 
-      if (!result || (!result.users && !result.roles)) {
+      if (!result.users && !result.roles) {
         setSearchResults([]);
         return;
       }
@@ -67,49 +68,40 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     }
   };
 
-
-
-
-
   return (
     <Modal
-      title={t('搜索用户或角色')}
+      title="搜索用户或角色"
       visible={visible}
       onCancel={onClose}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          {t('取消')}
-        </Button>,
-      ]}
+      footer={null}
     >
       <Input.Search
-        placeholder={t('输入用户名或角色名进行搜索')}
+        placeholder="请输入用户名或角色名"
+        enterButton
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         onSearch={handleSearch}
-        enterButton
       />
       {loading ? (
-        <Spin tip={t('加载中...')} />
+        <Spin tip="加载中..." />
+      ) : searchResults.length === 0 ? (
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <InboxOutlined style={{ fontSize: 48, color: '#ccc' }} />
+          <p>No Data</p>
+        </div>
       ) : (
         <List
-          bordered
           dataSource={searchResults}
           renderItem={(item) => (
-            <List.Item
-              actions={[
-                <Button
-                  type="link"
-                  onClick={() => {
-                    onAdd(item);
-                    onClose();
-                  }}
-                >
-                  {t('添加')}
-                </Button>,
-              ]}
-            >
-              {`${item.name} (${item.type})`}
+            <List.Item>
+              {item.name} ({item.type})
+              <Button
+                type="link"
+                onClick={() => onAdd(item)}
+                style={{ marginLeft: 'auto' }}
+              >
+                添加
+              </Button>
             </List.Item>
           )}
         />

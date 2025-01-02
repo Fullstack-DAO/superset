@@ -3,6 +3,7 @@ import { Modal, Button, Dropdown, Menu, Spin } from 'antd';
 import { UserOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
+import SearchUserOrRoleModal from './SearchUserOrRoleModal'; // 新的搜索模态框
 
 // 定义前端展示的协作者类型
 interface Collaborator {
@@ -67,6 +68,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                                                              }) => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
 
   useEffect(() => {
     if (visible && chartId) {
@@ -110,6 +112,11 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
     }
   };
 
+  // 添加协作者
+  const handleAddCollaborator = (newCollaborator: Collaborator) => {
+    setCollaborators((prev) => [...prev, newCollaborator]);
+  };
+
   // 更新协作者权限
   const handlePermissionChange = (id: number, permission: string) => {
     setCollaborators((prev) =>
@@ -143,59 +150,67 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   );
 
   return (
-    <Modal
-      title={t('管理协作者')}
-      visible={visible}
-      onCancel={onClose}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          {t('取消')}
-        </Button>,
-        <Button key="save" type="primary" onClick={onClose}>
-          {t('保存')}
-        </Button>,
-      ]}
-    >
-      {loading ? (
-        <Spin tip={t('加载中...')} />
-      ) : (
-        <CollaboratorContainer>
-          {collaborators.length === 0 ? (
-            <div>{t('暂无协作者')}</div>
-          ) : (
-            collaborators.map((collaborator) => (
-              <CollaboratorItem key={collaborator.key}>
-                <CollaboratorInfo>
-                  <div className="avatar">
-                    <UserOutlined />
-                  </div>
-                  <div className="name">{collaborator.name}</div>
-                  <div style={{ marginLeft: '8px', color: '#888' }}>
-                    {collaborator.type}
-                  </div>
-                </CollaboratorInfo>
-                <DropdownMenu
-                  overlay={permissionMenu(collaborator.id)}
-                  trigger={['click']}
-                >
-                  <Button>
-                    {collaborator.permission} <DownOutlined />
-                  </Button>
-                </DropdownMenu>
-              </CollaboratorItem>
-            ))
-          )}
-          <Button
-            type="dashed"
-            icon={<PlusOutlined />}
-            style={{ width: '100%', marginTop: 12 }}
-            onClick={() => console.log('添加协作者功能未实现')}
-          >
-            {t('添加协作者')}
-          </Button>
-        </CollaboratorContainer>
-      )}
-    </Modal>
+    <>
+      <Modal
+        title={t('管理协作者')}
+        visible={visible}
+        onCancel={onClose}
+        footer={[
+          <Button key="cancel" onClick={onClose}>
+            {t('取消')}
+          </Button>,
+          <Button key="save" type="primary" onClick={onClose}>
+            {t('保存')}
+          </Button>,
+        ]}
+      >
+        {loading ? (
+          <Spin tip={t('加载中...')} />
+        ) : (
+          <CollaboratorContainer>
+            {collaborators.length === 0 ? (
+              <div>{t('暂无协作者')}</div>
+            ) : (
+              collaborators.map((collaborator) => (
+                <CollaboratorItem key={collaborator.key}>
+                  <CollaboratorInfo>
+                    <div className="avatar">
+                      <UserOutlined />
+                    </div>
+                    <div className="name">{collaborator.name}</div>
+                    <div style={{ marginLeft: '8px', color: '#888' }}>
+                      {collaborator.type}
+                    </div>
+                  </CollaboratorInfo>
+                  <DropdownMenu
+                    overlay={permissionMenu(collaborator.id)}
+                    trigger={['click']}
+                  >
+                    <Button>
+                      {collaborator.permission} <DownOutlined />
+                    </Button>
+                  </DropdownMenu>
+                </CollaboratorItem>
+              ))
+            )}
+            <Button
+              type="dashed"
+              icon={<PlusOutlined />}
+              style={{ width: '100%', marginTop: 12 }}
+              onClick={() => setSearchModalVisible(true)}
+            >
+              {t('添加协作者')}
+            </Button>
+          </CollaboratorContainer>
+        )}
+      </Modal>
+      <SearchUserOrRoleModal
+        visible={searchModalVisible}
+        onClose={() => setSearchModalVisible(false)}
+        onAdd={handleAddCollaborator}
+      />
+    </>
+
   );
 };
 

@@ -4,20 +4,13 @@ import { UserOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
 
-// // 定义接口返回的协作者类型
-// interface ApiCollaborator {
-//   id: number;
-//   name: string;
-//   type: 'user' | 'role'; // 接口返回的类型
-//   permission: string;
-// }
-
 // 定义前端展示的协作者类型
 interface Collaborator {
   id: number;
   name: string;
   type: '用户' | '角色'; // 映射后的类型
   permission: string;
+  key: string; // 唯一键值，确保 React 不重复
 }
 
 interface CollaboratorModalProps {
@@ -85,40 +78,37 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   const fetchCollaborators = async () => {
     setLoading(true);
     try {
+      // 调用 API
       const response = await SupersetClient.get({
         endpoint: `/api/v1/chart/${chartId}/access-info`,
       });
 
-      console.log("API 返回的数据:", response.json); // 打印 API 返回的完整数据
-      const { result } = response.json || {}; // 防御性编程：确保 result 存在
+      // 直接从 response 获取数据（无需 json() 方法）
+      const { result } = response.json || response;
 
       if (!result || !Array.isArray(result)) {
-        console.error("API 返回的数据格式不正确:", response.json);
+        console.error('API 返回的数据格式不正确:', response);
         setCollaborators([]); // 设置为空数组，避免报错
         return;
       }
 
+      // 映射协作者数据
       setCollaborators(
         result.map((item: { id: number; name: string; type: string; permission: string }) => ({
           id: item.id,
           name: item.name,
           type: item.type === 'user' ? '用户' : '角色', // 转换类型
           permission: item.permission || '可阅读', // 默认权限
+          key: `${item.id}-${item.type}`, // 唯一 key
         })),
       );
     } catch (error) {
-      console.error("Error fetching collaborators:", error);
+      console.error('Error fetching collaborators:', error);
       setCollaborators([]); // 出现错误时设置为空数组
     } finally {
       setLoading(false);
     }
   };
-
-
-
-
-
-
 
   // 更新协作者权限
   const handlePermissionChange = (id: number, permission: string) => {
@@ -174,7 +164,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
             <div>{t('暂无协作者')}</div>
           ) : (
             collaborators.map((collaborator) => (
-              <CollaboratorItem key={collaborator.id}>
+              <CollaboratorItem key={collaborator.key}>
                 <CollaboratorInfo>
                   <div className="avatar">
                     <UserOutlined />

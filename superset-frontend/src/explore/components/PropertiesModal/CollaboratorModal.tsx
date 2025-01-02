@@ -82,31 +82,41 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   }, [visible, chartId]);
 
   // 获取协作者信息
-  const fetchCollaborators = async () => {
+  const fetchCollaborators = async (): Promise<void> => {
     setLoading(true);
     try {
+      // 获取原始 response
       const response = await SupersetClient.get({
         endpoint: `/api/v1/chart/${chartId}/access-info`,
       });
 
-      // 解析接口返回结果
-      const { result } = (await response.json()) as { result: ApiCollaborator[] };
+      // 确保 response.json 方法可以正确调用
+      if (typeof response.json === 'function') {
+        const { result } = (await response.json()) as { result: ApiCollaborator[] };
 
-      // 更新状态
-      setCollaborators(
-        result.map((item) => ({
-          id: item.id,
-          name: item.name,
-          type: item.type === 'user' ? '用户' : '角色', // 类型映射
-          permission: item.permission || '可阅读',
-        })),
-      );
+        console.log('API 返回的数据:', result);
+
+        // 更新协作者数据
+        setCollaborators(
+          result.map((item) => ({
+            id: item.id,
+            name: item.name,
+            type: item.type === 'user' ? '用户' : '角色',
+            permission: item.permission || '可阅读',
+          })),
+        );
+      } else {
+        console.error('response.json 方法不可用');
+      }
     } catch (error) {
       console.error('Error fetching collaborators:', error);
     } finally {
       setLoading(false);
     }
   };
+
+
+
 
   // 更新协作者权限
   const handlePermissionChange = (id: number, permission: string) => {

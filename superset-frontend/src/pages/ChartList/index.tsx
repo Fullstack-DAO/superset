@@ -234,6 +234,7 @@ function ChartList(props: ChartListProps) {
   const canCreate = hasPerm('can_write');
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
+  const canEditPermission = hasPerm('can_write');
   const canExport =
     hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
@@ -463,7 +464,10 @@ function ChartList(props: ChartListProps) {
             );
           const openEditModal = () => openChartEditModal(original);
           const handleExport = () => handleBulkChartExport([original]);
-          if (!canEdit && !canDelete && !canExport) {
+          const handleEditPermissions = () => {
+            history.push(`/chart/permission/${original.id}`);
+          };
+          if (!canEdit && !canDelete && !canExport && !canEditPermission) {
             return null;
           }
 
@@ -531,6 +535,25 @@ function ChartList(props: ChartListProps) {
                   </span>
                 </Tooltip>
               )}
+              {canEditPermission && (
+                <Tooltip
+                  id="edit-permission-tooltip"
+                  title={t("Edit Permissions")}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleEditPermissions}
+                  >
+                    <Icons.EditAlt data-test="edit-alt" />
+                  </span>
+
+                </Tooltip>
+                )
+
+              }
             </StyledActions>
           );
         },

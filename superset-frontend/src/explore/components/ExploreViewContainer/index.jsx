@@ -268,6 +268,7 @@ function ExploreViewContainer(props) {
           }
         : props.form_data;
       const { id: datasourceId, type: datasourceType } = props.datasource;
+      console.log('Form Data:', formData);
 
       updateHistory(
         formData,

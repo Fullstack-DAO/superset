@@ -46,11 +46,11 @@ export type DndSelectLabelProps = {
 };
 
 export default function DndSelectLabel({
-  displayGhostButton = true,
-  accept,
-  valuesRenderer,
-  ...props
-}: DndSelectLabelProps) {
+                                         displayGhostButton = true,
+                                         accept,
+                                         valuesRenderer,
+                                         ...props
+                                       }: DndSelectLabelProps) {
   const theme = useTheme();
 
   const [{ isOver, canDrop }, datasourcePanelDrop] = useDrop({
@@ -71,7 +71,10 @@ export default function DndSelectLabel({
     }),
   });
 
-  const values = useMemo(() => valuesRenderer(), [valuesRenderer]);
+  const values = useMemo(() => {
+    // Ensure valuesRenderer provides unique keys
+    return React.Children.toArray(valuesRenderer());
+  }, [valuesRenderer]);
 
   function renderGhostButton() {
     return (
@@ -101,3 +104,4 @@ export default function DndSelectLabel({
     </div>
   );
 }
+

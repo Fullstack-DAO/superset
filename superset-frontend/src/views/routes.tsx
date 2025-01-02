@@ -58,6 +58,14 @@ const ChartList = lazy(
   () => import(/* webpackChunkName: "ChartList" */ 'src/pages/ChartList'),
 );
 
+// const ChartPermission = lazy(
+//   () =>
+//     import(
+//       /* webpackChunkName: "ChartPermission" */ 'src/pages/ChartPermission'
+//       ),
+// );
+
+
 const CssTemplateList = lazy(
   () =>
     import(
@@ -167,6 +175,10 @@ export const routes: Routes = [
     path: '/chart/add',
     Component: ChartCreation,
   },
+  // {
+  //   path: '/chart/permission/:id',
+  //   Component: ChartPermission,
+  // },
   {
     path: '/chart/list/',
     Component: ChartList,

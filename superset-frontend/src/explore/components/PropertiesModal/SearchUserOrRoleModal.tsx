@@ -1,28 +1,52 @@
-import React, { useState } from 'react';
-import { Modal, Input, Button, Spin, List } from 'antd';
-import { SupersetClient, } from '@superset-ui/core';
+import React, { useState, useEffect } from 'react';
+import { Modal, Input, Button, Spin, List, message } from 'antd';
+import { SupersetClient } from '@superset-ui/core';
 import { InboxOutlined } from '@ant-design/icons';
 
+// 定义 Collaborator 类型
+interface Collaborator {
+  id: number;
+  name: string;
+  type: 'user' | 'role';
+  permission: string;
+  key: string;
+}
+
+// 定义 SearchUserOrRoleModalProps 接口
 interface SearchUserOrRoleModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (item: { id: number; name: string; type: '用户' | '角色' }) => void;
+  onAdd: (collaborator: Collaborator) => void; // 确保 onAdd 参数类型为 Collaborator
+  existingCollaborators?: { id: number; type: 'user' | 'role' }[];
+  chartId: number;
 }
 
+// 定义 SearchResultItem 类型
 interface SearchResultItem {
   id: number;
   name: string;
-  type: '用户' | '角色';
+  type: 'user' | 'role';
 }
 
 const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
                                                                        visible,
                                                                        onClose,
                                                                        onAdd,
+                                                                       existingCollaborators = [],
+                                                                       chartId,
                                                                      }) => {
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+
+  // 调试 chartId
+  useEffect(() => {
+    if (!chartId) {
+      console.error('chartId 未定义，请检查父组件是否正确传递 chartId');
+    } else {
+      console.log('接收到的 chartId:', chartId);
+    }
+  }, [chartId]);
 
   const handleSearch = async (): Promise<void> => {
     if (!searchValue.trim()) {
@@ -36,8 +60,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(searchValue)}`,
       });
 
-      // 直接解析返回的 result 数据
-      const data = (response as any).json || response; // 如果有 json 字段直接使用它
+      const data = (response as any).json || response;
       const result = data.result || {};
 
       if (!result.users && !result.roles) {
@@ -45,17 +68,16 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         return;
       }
 
-      // 合并用户和角色结果
       const results: SearchResultItem[] = [
         ...(result.users || []).map((user: { id: number; username: string }) => ({
           id: user.id,
           name: user.username,
-          type: '用户',
+          type: 'user',
         })),
         ...(result.roles || []).map((role: { id: number; name: string }) => ({
           id: role.id,
           name: role.name,
-          type: '角色',
+          type: 'role',
         })),
       ];
 
@@ -65,6 +87,49 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
       setSearchResults([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAdd = async (item: SearchResultItem) => {
+    if (!chartId) {
+      message.error('chartId 未定义，无法添加协作者');
+      return;
+    }
+
+    try {
+      // 假设 SupersetClient.post 返回 JsonResponse 类型
+      const response = await SupersetClient.post({
+        endpoint: `/api/v1/chart/${chartId}/add-collaborator`,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          type: item.type,
+        }),
+      });
+
+      const data = (response as any).json || response;
+
+      if (data.status === 200) {
+        message.success(data.message);
+
+        // 添加协作者
+        const collaborator: Collaborator = {
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          permission: '可读', // 默认权限
+          key: `${item.id}-${item.type}`,
+        };
+        onAdd(collaborator);
+      } else {
+        message.warning(data.message || '添加失败，请稍后重试');
+      }
+    } catch (error: any) {
+      console.error('添加协作者时发生错误:', error);
+
+      const errorMessage =
+        error?.response?.message || '添加失败，请稍后重试';
+      message.error(errorMessage);
     }
   };
 
@@ -97,7 +162,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
               {item.name} ({item.type})
               <Button
                 type="link"
-                onClick={() => onAdd(item)}
+                onClick={() => handleAdd(item)}
                 style={{ marginLeft: 'auto' }}
               >
                 添加

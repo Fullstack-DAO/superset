@@ -10,7 +10,7 @@ class UserOrRoleApi(BaseApi):
     resource_name = "user_or_role"
 
     @expose("/", methods=["GET"])
-    @protect()
+    # @protect()
     @safe
     def search_user_or_role(self) -> Response:
         """

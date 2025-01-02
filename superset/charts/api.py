@@ -109,6 +109,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "cache_screenshot",
         "warm_up_cache",
         "get_access_info",
+        "add_collaborator",
     }
     class_permission_name = "Chart"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
@@ -1313,3 +1314,58 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             logger.error(f"Error fetching chart access info: {ex}")
             return self.response_500(message="Failed to fetch chart access info.")
+
+    @expose('/<int:chart_id>/add-collaborator', methods=["POST"])
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.add_collaborator",
+        log_to_statsd=False,
+    )
+    def add_collaborator(self, chart_id: int):
+        """
+        添加协作者接口:
+        - 检查协作者是否已经存在。
+        - 如果不存在，添加到协作者列表。
+        """
+        data = request.json
+        collaborator_id = data.get("id")
+        collaborator_type = data.get("type")
+
+        # 添加一个映射，将中文类型映射为英文类型
+        type_mapping = {
+            "用户": "user",
+            "角色": "role",
+        }
+
+        # 将 collaborator_type 转换为后端识别的值
+        collaborator_type = type_mapping.get(collaborator_type, collaborator_type)
+
+        if not collaborator_id or collaborator_type not in ["user", "role"]:
+            return self.response_400(
+                message=f"Invalid collaborator_type: "
+                        f"{collaborator_type}. "
+                        f"Must be 'user' or 'role'."
+            )
+
+        # 检查协作者是否已经存在
+        try:
+            if ChartDAO.is_collaborator_exist(chart_id, collaborator_id, collaborator_type):
+                return self.response(
+                    400,
+                    message=f"{collaborator_type} (ID: {collaborator_id}) 已经是协作者了！",
+                )
+
+            # 如果不存在，则添加协作者
+            ChartDAO.add_collaborator(chart_id, collaborator_id, collaborator_type)
+
+            return self.response(
+                200,
+                message=f"{collaborator_type} (ID: {collaborator_id}) 添加成功！",
+            )
+        except Exception as ex:
+            logger.error(f"Error adding collaborator: {ex}")
+            return self.response_500(message="Failed to add collaborator.")
+
+
+

@@ -550,3 +550,81 @@ class ChartDAO(BaseDAO[Slice]):
             logger.error(f"Error in get_chart_access_info: {ex}", exc_info=True)
             raise
 
+    @staticmethod
+    def is_collaborator_exist(chart_id: int, collaborator_id: int,
+                              collaborator_type: str) -> bool:
+        """
+        检查协作者是否已经存在于 user_permissions 或 role_permissions 表中。
+
+        :param chart_id: 图表 ID
+        :param collaborator_id: 协作者 ID
+        :param collaborator_type: 协作者类型 ('user' 或 'role')
+        :return: 如果存在则返回 True，否则返回 False
+        """
+        if collaborator_type == "user":
+            exists = (
+                db.session.query(UserPermission)
+                .filter(
+                    UserPermission.resource_type == "chart",
+                    UserPermission.resource_id == chart_id,
+                    UserPermission.user_id == collaborator_id,
+                )
+                .first()
+            )
+        elif collaborator_type == "role":
+            exists = (
+                db.session.query(RolePermission)
+                .filter(
+                    RolePermission.resource_type == "chart",
+                    RolePermission.resource_id == chart_id,
+                    RolePermission.role_id == collaborator_id,
+                )
+                .first()
+            )
+        else:
+            raise ValueError("Invalid collaborator_type. Must be 'user' or 'role'.")
+
+        return exists is not None
+
+    @staticmethod
+    def add_collaborator(chart_id: int, collaborator_id: int, collaborator_type: str) -> None:
+        """
+        添加协作者到 user_permissions 或 role_permissions 表中。
+
+        :param chart_id: 图表 ID
+        :param collaborator_id: 协作者 ID
+        :param collaborator_type: 协作者类型 ('user' 或 'role')
+        """
+        try:
+            if collaborator_type == "user":
+                new_permission = UserPermission(
+                    resource_type="chart",
+                    resource_id=chart_id,
+                    user_id=collaborator_id,
+                    can_read=True,  # 默认权限
+                    can_edit=False,
+                    can_delete=False,
+                    can_add=False,
+                )
+                db.session.add(new_permission)
+            elif collaborator_type == "role":
+                new_permission = RolePermission(
+                    resource_type="chart",
+                    resource_id=chart_id,
+                    role_id=collaborator_id,
+                    can_read=True,  # 默认权限
+                    can_edit=False,
+                    can_delete=False,
+                    can_add=False,
+                )
+                db.session.add(new_permission)
+            else:
+                raise ValueError("Invalid collaborator_type. Must be 'user' or 'role'.")
+
+            db.session.commit()
+            logger.info(f"Successfully added collaborator: chart_id={chart_id}, collaborator_id={collaborator_id}, collaborator_type={collaborator_type}")
+        except Exception as ex:
+            db.session.rollback()  # 确保事务回滚
+            logger.error(f"Error adding collaborator: {ex}")
+            raise
+

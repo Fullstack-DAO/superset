@@ -208,6 +208,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         visible={searchModalVisible}
         onClose={() => setSearchModalVisible(false)}
         onAdd={handleAddCollaborator}
+        chartId={chartId} // 传递 chartId
       />
     </>
 

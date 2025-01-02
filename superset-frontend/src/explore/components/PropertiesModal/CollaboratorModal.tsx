@@ -4,13 +4,13 @@ import { UserOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
 
-// 定义接口返回的协作者类型
-interface ApiCollaborator {
-  id: number;
-  name: string;
-  type: 'user' | 'role'; // 接口返回的类型
-  permission: string;
-}
+// // 定义接口返回的协作者类型
+// interface ApiCollaborator {
+//   id: number;
+//   name: string;
+//   type: 'user' | 'role'; // 接口返回的类型
+//   permission: string;
+// }
 
 // 定义前端展示的协作者类型
 interface Collaborator {
@@ -82,38 +82,40 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   }, [visible, chartId]);
 
   // 获取协作者信息
-  const fetchCollaborators = async (): Promise<void> => {
+  const fetchCollaborators = async () => {
     setLoading(true);
     try {
-      // 获取原始 response
       const response = await SupersetClient.get({
         endpoint: `/api/v1/chart/${chartId}/access-info`,
       });
 
-      // 确保 response.json 方法可以正确调用
-      if (typeof response.json === 'function') {
-        const { result } = (await response.json()) as { result: ApiCollaborator[] };
+      console.log("API 返回的数据:", response.json); // 打印 API 返回的完整数据
+      const { result } = response.json || {}; // 防御性编程：确保 result 存在
 
-        console.log('API 返回的数据:', result);
-
-        // 更新协作者数据
-        setCollaborators(
-          result.map((item) => ({
-            id: item.id,
-            name: item.name,
-            type: item.type === 'user' ? '用户' : '角色',
-            permission: item.permission || '可阅读',
-          })),
-        );
-      } else {
-        console.error('response.json 方法不可用');
+      if (!result || !Array.isArray(result)) {
+        console.error("API 返回的数据格式不正确:", response.json);
+        setCollaborators([]); // 设置为空数组，避免报错
+        return;
       }
+
+      setCollaborators(
+        result.map((item: { id: number; name: string; type: string; permission: string }) => ({
+          id: item.id,
+          name: item.name,
+          type: item.type === 'user' ? '用户' : '角色', // 转换类型
+          permission: item.permission || '可阅读', // 默认权限
+        })),
+      );
     } catch (error) {
-      console.error('Error fetching collaborators:', error);
+      console.error("Error fetching collaborators:", error);
+      setCollaborators([]); // 出现错误时设置为空数组
     } finally {
       setLoading(false);
     }
   };
+
+
+
 
 
 

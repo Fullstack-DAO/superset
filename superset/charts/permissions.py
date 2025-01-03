@@ -702,29 +702,44 @@ class ChartPermissions:
     @staticmethod
     def interpret_frontend_permissions(perm_list: list[str]) -> dict[str, bool]:
         """
-        将前端传来的["admin"], ["edit"], ["read"]等转换为
-        {can_read, can_edit, can_add, can_delete} 的布尔值。
+        将前端传来的["can_read", "can_edit", "can_add", "can_delete"]等转换为
+        {can_read, can_edit, can_add, can_delete} 的布尔值，并根据这些权限推导出
+        高层权限（例如 'admin', 'edit', 'read'）。
         """
         can_read = can_edit = can_add = can_delete = False
+        logger.info(f"检查前端到底勾选的是什么内容: {perm_list}")
 
-        if "admin" in perm_list:
-            # 如果前端勾选了「管理员」
+        # 逐个检查前端传过来的权限
+        if "can_read" in perm_list:
             can_read = True
+        if "can_edit" in perm_list:
             can_edit = True
+        if "can_add" in perm_list:
             can_add = True
+        if "can_delete" in perm_list:
             can_delete = True
-        else:
-            # 如果只勾选了可读
-            if "read" in perm_list:
-                can_read = True
-            # 如果只勾选了可编辑
-            if "edit" in perm_list:
-                can_edit = True
-                can_read = True  # 可编辑通常也具备可读权限
 
-        return {
+        # 低层次权限字典
+        permissions = {
             "can_read": can_read,
             "can_edit": can_edit,
             "can_add": can_add,
             "can_delete": can_delete,
         }
+
+        # # 推导出高层次权限
+        # # 如果命中了can_read, can_edit, can_add, can_delete，返回admin
+        # if can_read and can_edit and can_add and can_delete:
+        #     permissions["admin"] = True
+        # # 如果只命中了can_edit或can_add，返回edit
+        # elif can_edit or can_add:
+        #     permissions["edit"] = True
+        # # 如果命中了can_read，返回read
+        # elif can_read:
+        #     permissions["read"] = True
+
+        return permissions
+
+
+
+

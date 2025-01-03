@@ -233,7 +233,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
 
     let action: 'add' | 'remove' = 'add'; // 使用原始字段名
     let permissionsToModify: Permission[] = [];
-
+    console.log("hasAllPermissions: ", hasAllPermissions);
     if (hasAllPermissions) {
       permissionsToModify = [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
     } else if (hasEditPermissions) {

@@ -278,6 +278,7 @@ class ChartDAO(BaseDAO[Slice]):
         if entity_type not in ["user", "role"]:
             raise ValueError("Invalid entity type: must be 'user' or 'role'.")
         valid_permissions = ["can_read", "can_edit", "can_add", "can_delete"]
+        logger.info(f"当前的permissions: {permissions}")
         for perm in permissions:
             if perm not in valid_permissions:
                 raise ValueError(f"Invalid permission: {perm}")
@@ -304,7 +305,9 @@ class ChartDAO(BaseDAO[Slice]):
                         db.session.add(permission_model)
                     # 设置指定的权限为 True
                     for perm in permissions:
+                        logger.info(f"更新前的perm: {perm}")
                         setattr(permission_model, perm, True)
+                        logger.info(f"更新后的perm: {perm}")
                 elif action == "remove":
                     if permission_model:
                         # 删除 UserPermission 记录
@@ -347,7 +350,8 @@ class ChartDAO(BaseDAO[Slice]):
 
             db.session.commit()
             logger.info(
-                f"Successfully {'added' if action == 'add' else 'removed'} permissions for {entity_type} ID {entity_id} on chart ID {chart_id}.")
+                f"Successfully {'added' if action == 'add' else 'removed'}"
+                f" permissions for {entity_type} ID {entity_id} on chart ID {chart_id}.")
 
         except Exception as ex:
             db.session.rollback()

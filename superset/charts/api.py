@@ -1155,7 +1155,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
     # 增加权限管理的接口
     @expose("/<pk>/permissions/modify", methods=["POST"])
-    # @protect()
     @safe
     @statsd_metrics
     def modify_permissions(self, pk: int) -> Response:
@@ -1165,7 +1164,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         {
           "entity_type": "user" or "role",
           "entity_id": 123,
-          "permissions": ["admin", "edit", "read"], // 要添加或移除
+          "permissions": ["can_read", "can_edit", "can_add", "can_delete"],
           "action": "add" or "remove"
         }
         """
@@ -1175,6 +1174,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
             entity_id = data.get("entity_id")
             permissions = data.get("permissions", [])
             action = data.get("action")
+            logger.info(f"前端传过来的action: {action}")
+            logger.info(f"前端传过来的权限集合: {permissions}")
 
             # 验证输入
             if entity_type not in ["user", "role"]:
@@ -1194,9 +1195,11 @@ class ChartRestApi(BaseSupersetModelRestApi):
                     message=f"Invalid action: {action}. Must be 'add' or 'remove'."
                 )
 
+            # Interpret the frontend permissions
+            perm_dict = ChartPermissions.interpret_frontend_permissions(permissions)
+            logger.info(f"推导出的权限集合: {perm_dict}")
+
             if action == "add":
-                # 将高层次权限转换为具体权限字段
-                perm_dict = ChartPermissions.interpret_frontend_permissions(permissions)
                 add_perms = [k for k, v in perm_dict.items() if v]
                 ChartDAO.modify_permissions(
                     chart_id=pk,
@@ -1206,14 +1209,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
                     action="add",
                 )
             elif action == "remove":
+                remove_perms = [k for k, v in perm_dict.items() if v]
                 if "admin" in permissions:
-                    # 如果要移除管理员权限，移除所有权限
+                    # 移除管理员权限时，需要移除所有相关权限
                     remove_perms = ["can_read", "can_edit", "can_add", "can_delete"]
-                else:
-                    # 将高层次权限转换为具体权限字段
-                    perm_dict = ChartPermissions.interpret_frontend_permissions(
-                        permissions)
-                    remove_perms = [k for k, v in perm_dict.items() if v]
                 ChartDAO.modify_permissions(
                     chart_id=pk,
                     entity_type=entity_type,
@@ -1230,6 +1229,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             logger.error(f"Error modifying permissions: {ex}", exc_info=True)
             return self.response_500(message="权限更新失败。")
+
 
     # @expose("/", methods=["GET"])
     # @protect()

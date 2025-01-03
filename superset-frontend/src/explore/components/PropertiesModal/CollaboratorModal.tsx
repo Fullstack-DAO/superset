@@ -180,9 +180,12 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         action: 'add', // 使用原始字段名
       };
 
-      await SupersetClient.post({ // 使用 POST 方法
+      await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       // 更新本地状态
@@ -251,9 +254,12 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
     };
 
     try {
-      await SupersetClient.post({ // 使用 POST 方法
+      await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       // 更新本地状态
@@ -300,9 +306,12 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
     };
 
     try {
-      await SupersetClient.post({ // 使用 POST 方法
+      await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       // 更新本地状态

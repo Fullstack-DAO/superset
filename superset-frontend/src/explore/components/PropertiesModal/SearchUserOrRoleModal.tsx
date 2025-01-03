@@ -1,3 +1,4 @@
+// SearchUserOrRoleModal.tsx
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button, Spin, List, message } from 'antd';
 import { SupersetClient, t } from '@superset-ui/core';
@@ -14,7 +15,8 @@ interface Collaborator {
 interface SearchUserOrRoleModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (collaborators: Collaborator[]) => void; // 改为支持批量添加协作者
+  onAdd: (collaborator: Collaborator) => void;
+  existingCollaborators?: { id: number; type: 'user' | 'role' }[];
   chartId: number;
 }
 
@@ -28,12 +30,12 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
                                                                        visible,
                                                                        onClose,
                                                                        onAdd,
+                                                                       existingCollaborators = [],
                                                                        chartId,
                                                                      }) => {
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Set<SearchResultItem>>(new Set());
 
   useEffect(() => {
     if (!chartId) {
@@ -54,6 +56,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(searchValue)}`,
       });
 
+      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
       const { result } = res.json;
 
       if (!result || (!result.users && !result.roles)) {
@@ -83,54 +86,50 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     }
   };
 
-  // 选择或取消选择协作者
-  const toggleSelect = (item: SearchResultItem) => {
-    setSelectedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(item)) {
-        newSet.delete(item);
-      } else {
-        newSet.add(item);
-      }
-      return newSet;
-    });
-  };
-
-  // 批量添加协作者
-  const handleBatchAdd = async () => {
+  // 添加协作者
+  const handleAdd = async (item: SearchResultItem) => {
     if (!chartId) {
       message.error('chartId 未定义，无法添加协作者');
       return;
     }
 
-    const collaborators = Array.from(selectedItems).map((item) => ({
-      id: item.id,
-      name: item.name,
-      type: item.type,
-      permission: '可阅读',
-      key: `${item.id}-${item.type}`,
-    }));
-
     try {
-      await Promise.all(
-        collaborators.map((collaborator) =>
-          SupersetClient.post({
-            endpoint: `/api/v1/chart/${chartId}/add-collaborator`,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: collaborator.id,
-              type: collaborator.type,
-            }),
-          }),
-        ),
-      );
-      message.success('协作者添加成功');
-      onAdd(collaborators);
-      onClose();
+      const res = await SupersetClient.post({
+        endpoint: `/api/v1/chart/${chartId}/add-collaborator`,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          type: item.type,
+        }),
+      });
+
+      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
+      const { json } = res;
+
+      message.success(json.message || '添加成功');
+
+      const collaborator: Collaborator = {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        permission: '可阅读',
+        key: `${item.id}-${item.type}`,
+      };
+
+      onAdd(collaborator);
+      onClose(); // 关闭搜索模态框
     } catch (error: any) {
-      console.error('批量添加协作者时发生错误:', error);
-      const errorMessage =
-        error?.response?.json?.message || '添加失败，请稍后重试';
+      console.error('添加协作者时发生错误:', error);
+      console.log('完整错误对象:', error); // 打印完整错误对象
+
+      // 优先使用 error.message
+      let errorMessage = '添加失败，请稍后重试';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+
+      console.log('提取的错误信息:', errorMessage); // 打印提取的错误信息
+
       message.error(errorMessage);
     }
   };
@@ -140,19 +139,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
       title={t('搜索用户或角色')}
       visible={visible}
       onCancel={onClose}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          {t('取消')}
-        </Button>,
-        <Button
-          key="add"
-          type="primary"
-          onClick={handleBatchAdd}
-          disabled={selectedItems.size === 0}
-        >
-          {t('添加选中')}
-        </Button>,
-      ]}
+      footer={null}
     >
       <Input.Search
         placeholder={t('请输入用户名或角色名')}
@@ -177,11 +164,11 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
                 {item.name} ({item.type === 'user' ? '用户' : '角色'})
               </span>
               <Button
-                type={selectedItems.has(item) ? 'primary' : 'default'}
-                onClick={() => toggleSelect(item)}
+                type="link"
+                onClick={() => handleAdd(item)}
                 style={{ marginLeft: 'auto' }}
               >
-                {selectedItems.has(item) ? t('取消选择') : t('选择')}
+                {t('添加')}
               </Button>
             </List.Item>
           )}

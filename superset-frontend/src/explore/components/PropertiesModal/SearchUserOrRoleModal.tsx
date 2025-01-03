@@ -3,7 +3,6 @@ import { Modal, Input, Button, Spin, List, message } from 'antd';
 import { SupersetClient } from '@superset-ui/core';
 import { InboxOutlined } from '@ant-design/icons';
 
-// 定义 Collaborator 类型
 interface Collaborator {
   id: number;
   name: string;
@@ -12,16 +11,14 @@ interface Collaborator {
   key: string;
 }
 
-// 定义 SearchUserOrRoleModalProps 接口
 interface SearchUserOrRoleModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (collaborator: Collaborator) => void; // 确保 onAdd 参数类型为 Collaborator
+  onAdd: (collaborator: Collaborator) => void;
   existingCollaborators?: { id: number; type: 'user' | 'role' }[];
   chartId: number;
 }
 
-// 定义 SearchResultItem 类型
 interface SearchResultItem {
   id: number;
   name: string;
@@ -39,15 +36,13 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
 
-  // 调试 chartId
   useEffect(() => {
     if (!chartId) {
       console.error('chartId 未定义，请检查父组件是否正确传递 chartId');
-    } else {
-      console.log('接收到的 chartId:', chartId);
     }
   }, [chartId]);
 
+  // 搜索用户或角色
   const handleSearch = async (): Promise<void> => {
     if (!searchValue.trim()) {
       setSearchResults([]);
@@ -56,11 +51,13 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
 
     setLoading(true);
     try {
-      const response = await SupersetClient.get({
+      // 获取响应
+      const response: any = await SupersetClient.get({
         endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(searchValue)}`,
       });
 
-      const data = (response as any).json || response;
+      // 直接使用返回的 JSON 数据
+      const data = response.json || response;
       const result = data.result || {};
 
       if (!result.users && !result.roles) {
@@ -90,6 +87,9 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     }
   };
 
+
+
+  // 添加协作者
   const handleAdd = async (item: SearchResultItem) => {
     if (!chartId) {
       message.error('chartId 未定义，无法添加协作者');
@@ -97,8 +97,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     }
 
     try {
-      // 假设 SupersetClient.post 返回 JsonResponse 类型
-      const response = await SupersetClient.post({
+      const response: any = await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/add-collaborator`,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,31 +106,31 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         }),
       });
 
-      const data = (response as any).json || response;
+      const data = response.json || response;
 
       if (data.status === 200) {
         message.success(data.message);
 
-        // 添加协作者
         const collaborator: Collaborator = {
           id: item.id,
           name: item.name,
           type: item.type,
-          permission: '可读', // 默认权限
+          permission: '可读',
           key: `${item.id}-${item.type}`,
         };
+
         onAdd(collaborator);
       } else {
         message.warning(data.message || '添加失败，请稍后重试');
       }
     } catch (error: any) {
       console.error('添加协作者时发生错误:', error);
-
       const errorMessage =
         error?.response?.message || '添加失败，请稍后重试';
       message.error(errorMessage);
     }
   };
+
 
   return (
     <Modal

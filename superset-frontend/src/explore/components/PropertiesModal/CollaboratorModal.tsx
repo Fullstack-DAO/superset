@@ -9,7 +9,7 @@ import SearchUserOrRoleModal from './SearchUserOrRoleModal'; // 新的搜索模�
 interface Collaborator {
   id: number;
   name: string;
-  type: '用户' | '角色'; // 映射后的类型
+  type: 'user' | 'role'; // 统一为 'user' | 'role'
   permission: string;
   key: string; // 唯一键值，确保 React 不重复
 }
@@ -80,16 +80,15 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   const fetchCollaborators = async () => {
     setLoading(true);
     try {
-      // 调用 API
-      const response = await SupersetClient.get({
+      const res = await SupersetClient.get({
         endpoint: `/api/v1/chart/${chartId}/access-info`,
       });
 
-      // 直接从 response 获取数据（无需 json() 方法）
-      const { result } = response.json || response;
+      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
+      const { result } = res.json;
 
       if (!result || !Array.isArray(result)) {
-        console.error('API 返回的数据格式不正确:', response);
+        console.error('API 返回的数据格式不正确:', res.json);
         setCollaborators([]); // 设置为空数组，避免报错
         return;
       }
@@ -99,7 +98,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         result.map((item: { id: number; name: string; type: string; permission: string }) => ({
           id: item.id,
           name: item.name,
-          type: item.type === 'user' ? '用户' : '角色', // 转换类型
+          type: item.type as 'user' | 'role', // 确保类型为 'user' | 'role'
           permission: item.permission || '可阅读', // 默认权限
           key: `${item.id}-${item.type}`, // 唯一 key
         })),
@@ -179,7 +178,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                     </div>
                     <div className="name">{collaborator.name}</div>
                     <div style={{ marginLeft: '8px', color: '#888' }}>
-                      {collaborator.type}
+                      {collaborator.type === 'user' ? '用户' : '角色'}
                     </div>
                   </CollaboratorInfo>
                   <DropdownMenu
@@ -211,7 +210,6 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         chartId={chartId} // 传递 chartId
       />
     </>
-
   );
 };
 

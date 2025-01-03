@@ -110,6 +110,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "warm_up_cache",
         "get_access_info",
         "add_collaborator",
+        "modify_permissions",
     }
     class_permission_name = "Chart"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
@@ -1154,58 +1155,81 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
     # 增加权限管理的接口
     @expose("/<pk>/permissions/modify", methods=["POST"])
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     def modify_permissions(self, pk: int) -> Response:
         """
-        JSON:
+        修改图表的权限。
+        JSON 请求体格式:
         {
           "entity_type": "user" or "role",
           "entity_id": 123,
-          "permissions": ["can_read","can_edit"], // 要添加或移除
+          "permissions": ["admin", "edit", "read"], // 要添加或移除
           "action": "add" or "remove"
         }
         """
-        # 解析请求体
-        data = request.json
-        entity_type = data["entity_type"]
-        entity_id = data["entity_id"]
-        permissions = data["permissions"]
-        action = data["action"]
+        try:
+            data = request.json
+            entity_type = data.get("entity_type")
+            entity_id = data.get("entity_id")
+            permissions = data.get("permissions", [])
+            action = data.get("action")
 
-        if entity_type == "user":
-            if action == "add":
-                ChartPermissions.add_user_permission(
-                    resource_type="chart",
-                    resource_id=pk,
-                    user_id=entity_id,
-                    permissions=permissions
+            # 验证输入
+            if entity_type not in ["user", "role"]:
+                return self.response_400(
+                    message=f"Invalid entity_type: {entity_type}. Must be 'user' or 'role'."
                 )
-            elif action == "remove":
-                ChartPermissions.remove_user_permission(
-                    resource_type="chart",
-                    resource_id=pk,
-                    user_id=entity_id,
-                    permissions=permissions
+            if not isinstance(entity_id, int):
+                return self.response_400(
+                    message=f"Invalid entity_id: {entity_id}. Must be an integer."
                 )
-        else:  # entity_type == "role"
-            if action == "add":
-                ChartPermissions.add_role_permission(
-                    resource_type="chart",
-                    resource_id=pk,
-                    role_id=entity_id,
-                    permissions=permissions
+            if not isinstance(permissions, list) or not all(isinstance(p, str) for p in permissions):
+                return self.response_400(
+                    message="Invalid permissions format. Must be a list of strings."
                 )
-            elif action == "remove":
-                ChartPermissions.remove_role_permission(
-                    resource_type="chart",
-                    resource_id=pk,
-                    role_id=entity_id,
-                    permissions=permissions
+            if action not in ["add", "remove"]:
+                return self.response_400(
+                    message=f"Invalid action: {action}. Must be 'add' or 'remove'."
                 )
 
-        return self.response(200, message="Success.")
+            if action == "add":
+                # 将高层次权限转换为具体权限字段
+                perm_dict = ChartPermissions.interpret_frontend_permissions(permissions)
+                add_perms = [k for k, v in perm_dict.items() if v]
+                ChartDAO.modify_permissions(
+                    chart_id=pk,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    permissions=add_perms,
+                    action="add",
+                )
+            elif action == "remove":
+                if "admin" in permissions:
+                    # 如果要移除管理员权限，移除所有权限
+                    remove_perms = ["can_read", "can_edit", "can_add", "can_delete"]
+                else:
+                    # 将高层次权限转换为具体权限字段
+                    perm_dict = ChartPermissions.interpret_frontend_permissions(
+                        permissions)
+                    remove_perms = [k for k, v in perm_dict.items() if v]
+                ChartDAO.modify_permissions(
+                    chart_id=pk,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    permissions=remove_perms,
+                    action="remove",
+                )
+
+            return self.response(200, message="权限更新成功。")
+
+        except ValueError as ve:
+            logger.error(f"ValueError modifying permissions: {ve}")
+            return self.response_400(message=str(ve))
+        except Exception as ex:
+            logger.error(f"Error modifying permissions: {ex}", exc_info=True)
+            return self.response_500(message="权限更新失败。")
 
     # @expose("/", methods=["GET"])
     # @protect()

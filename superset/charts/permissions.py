@@ -137,13 +137,13 @@ class ChartPermissions:
         }
 
     @staticmethod
-    def check_permission(chart: Slice, user, permission_type: str) -> bool:
+    def check_permission(chart: Slice, user: User, permission_type: str) -> bool:
         """
         检查用户是否有某种类型的权限。
 
         :param chart: 图表对象
         :param user: 当前用户对象
-        :param permission_type: 权限类型 ('read', 'edit', 'delete')
+        :param permission_type: 权限类型 ('read', 'edit', 'delete', 'add')
         :return: 是否有权限
         """
         permission_map = {
@@ -156,34 +156,35 @@ class ChartPermissions:
         if permission_type not in permission_map:
             raise ValueError(f"Unknown permission type: {permission_type}")
 
-        # 获取用户权限
-        user_permissions = (
+        perm_field = permission_map[permission_type]
+
+        # 检查用户自身权限
+        user_has_permission = (
             db.session.query(UserPermission)
             .filter_by(
                 user_id=user.id,
                 resource_type="chart",
                 resource_id=chart.id,
             )
+            .filter(getattr(UserPermission, perm_field) == True)
             .first()
         )
-
-        if user_permissions and getattr(user_permissions,
-                                        permission_map[permission_type]):
+        if user_has_permission:
             return True
 
-        # 获取角色权限
-        role_permissions = (
+        # 检查用户角色权限
+        roles_ids = [role.id for role in user.roles]
+        role_has_permission = (
             db.session.query(RolePermission)
             .filter(
                 RolePermission.resource_type == "chart",
                 RolePermission.resource_id == chart.id,
-                RolePermission.role_id.in_([role.id for role in user.roles]),
-                getattr(RolePermission, permission_map[permission_type]) == True,
+                RolePermission.role_id.in_(roles_ids),
+                getattr(RolePermission, perm_field) == True,
             )
-            .all()
+            .first()
         )
-
-        return bool(role_permissions)
+        return role_has_permission is not None
 
     @staticmethod
     def get_chart_and_check_permission(pk: int, permission_type: str) -> Slice | None:
@@ -647,7 +648,7 @@ class ChartPermissions:
     # 辅助方法
     # -------------------------------------------------------------------------
     @staticmethod
-    def user_has_dataset_access(user_obj, dataset_id: int) -> bool:
+    def user_has_dataset_access(user_obj: User, dataset_id: int) -> bool:
         """
         检查 user_obj 是否具有对某 SQLA Dataset 的访问权限（datasource_access）。
         如果 dataset 不存在或用户无权限，则返回 False。
@@ -659,15 +660,13 @@ class ChartPermissions:
         if not user_obj:
             return False
 
-        # 1. 根据 dataset_id 查询 SqlaTable（如是 Druid datasource，需改为 druid model）
+        # 根据 dataset_id 查询 SqlaTable
         dataset = db.session.query(SqlaTable).filter_by(id=dataset_id).one_or_none()
         if not dataset:
             logger.warning(f"Dataset with id={dataset_id} does not exist.")
             return False
 
-        # 2. 调用 security_manager.can_access_datasource(...) 检查权限
-        #    这会验证 user_obj 是否具备 datasource_access on [dataset].
-        #    如果启用 row-level security，内部也会相应处理。
+        # 调用 security_manager.can_access_datasource(...) 检查权限
         has_access = security_manager.can_access_datasource(dataset, user=user_obj)
         if not has_access:
             logger.info(
@@ -682,7 +681,6 @@ class ChartPermissions:
     ) -> bool:
         """
         判断 user_id 对该资源是否是“管理员”（can_delete && can_edit && can_add && can_read）。
-        你可以定制只要 can_delete == True 就当做是管理员。
         """
         if not user_id:
             return False
@@ -704,8 +702,8 @@ class ChartPermissions:
     @staticmethod
     def interpret_frontend_permissions(perm_list: list[str]) -> dict[str, bool]:
         """
-        将前端传来的["admin"],["read"],["edit"]等转换为
-        {can_read, can_edit, can_delete, can_add} 的布尔值。
+        将前端传来的["admin"], ["edit"], ["read"]等转换为
+        {can_read, can_edit, can_add, can_delete} 的布尔值。
         """
         can_read = can_edit = can_add = can_delete = False
 
@@ -722,11 +720,7 @@ class ChartPermissions:
             # 如果只勾选了可编辑
             if "edit" in perm_list:
                 can_edit = True
-                can_read = True  # 一般可编辑也具备可读
-
-            # 如果前端需要 add/delete 等细分，也可加判断
-            # if "delete" in perm_list: can_delete = True
-            # if "add" in perm_list: can_add = True
+                can_read = True  # 可编辑通常也具备可读权限
 
         return {
             "can_read": can_read,

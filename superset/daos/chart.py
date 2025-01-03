@@ -258,7 +258,10 @@ class ChartDAO(BaseDAO[Slice]):
 
     @staticmethod
     def modify_permissions(
-        chart_id: int, entity_type: str, entity_id: int, permissions: list[str],
+        chart_id: int,
+        entity_type: str,
+        entity_id: int,
+        permissions: list[str],
         action: str
     ) -> None:
         """
@@ -267,29 +270,89 @@ class ChartDAO(BaseDAO[Slice]):
         :param chart_id: 图表 ID
         :param entity_type: 实体类型 ('user' 或 'role')
         :param entity_id: 用户或角色 ID
-        :param permissions: 权限列表
+        :param permissions: 权限列表 ['can_read', 'can_edit', 'can_add', 'can_delete']
         :param action: 操作类型 ('add' 或 'remove')
         """
         if action not in ["add", "remove"]:
             raise ValueError("Invalid action type: must be 'add' or 'remove'.")
         if entity_type not in ["user", "role"]:
             raise ValueError("Invalid entity type: must be 'user' or 'role'.")
+        valid_permissions = ["can_read", "can_edit", "can_add", "can_delete"]
+        for perm in permissions:
+            if perm not in valid_permissions:
+                raise ValueError(f"Invalid permission: {perm}")
 
-        # 调用 ChartPermissions 处理权限逻辑
-        if action == "add":
+        try:
             if entity_type == "user":
-                ChartPermissions.add_permissions_to_user(chart_id, entity_id,
-                                                         permissions)
+                permission_model = db.session.query(UserPermission).filter_by(
+                    resource_type="chart",
+                    resource_id=chart_id,
+                    user_id=entity_id
+                ).first()
+                if action == "add":
+                    if not permission_model:
+                        # 创建新的 UserPermission 记录
+                        permission_model = UserPermission(
+                            resource_type="chart",
+                            resource_id=chart_id,
+                            user_id=entity_id,
+                            can_read=False,
+                            can_edit=False,
+                            can_add=False,
+                            can_delete=False,
+                        )
+                        db.session.add(permission_model)
+                    # 设置指定的权限为 True
+                    for perm in permissions:
+                        setattr(permission_model, perm, True)
+                elif action == "remove":
+                    if permission_model:
+                        # 删除 UserPermission 记录
+                        db.session.delete(permission_model)
+                    else:
+                        # 尝试从不存在的权限中移除
+                        raise ValueError(
+                            f"User (ID: {entity_id}) is not a collaborator.")
+
             elif entity_type == "role":
-                ChartPermissions.add_permissions_to_role(chart_id, entity_id,
-                                                         permissions)
-        elif action == "remove":
-            if entity_type == "user":
-                ChartPermissions.remove_permissions_to_user(chart_id, entity_id,
-                                                            permissions)
-            elif entity_type == "role":
-                ChartPermissions.remove_permissions_to_role(chart_id, entity_id,
-                                                            permissions)
+                permission_model = db.session.query(RolePermission).filter_by(
+                    resource_type="chart",
+                    resource_id=chart_id,
+                    role_id=entity_id
+                ).first()
+                if action == "add":
+                    if not permission_model:
+                        # 创建新的 RolePermission 记录
+                        permission_model = RolePermission(
+                            resource_type="chart",
+                            resource_id=chart_id,
+                            role_id=entity_id,
+                            can_read=False,
+                            can_edit=False,
+                            can_add=False,
+                            can_delete=False,
+                        )
+                        db.session.add(permission_model)
+                    # 设置指定的权限为 True
+                    for perm in permissions:
+                        setattr(permission_model, perm, True)
+                elif action == "remove":
+                    if permission_model:
+                        # 删除 RolePermission 记录
+                        db.session.delete(permission_model)
+                    else:
+                        # 尝试从不存在的权限中移除
+                        raise ValueError(
+                            f"Role (ID: {entity_id}) is not a collaborator.")
+
+            db.session.commit()
+            logger.info(
+                f"Successfully {'added' if action == 'add' else 'removed'} permissions for {entity_type} ID {entity_id} on chart ID {chart_id}.")
+
+        except Exception as ex:
+            db.session.rollback()
+            logger.error(f"Error modifying permissions: {ex}")
+            raise
 
     @staticmethod
     def get_chart_and_check_permission(pk: int, permission_type: str) -> Slice | None:
@@ -479,6 +542,7 @@ class ChartDAO(BaseDAO[Slice]):
 
         db.session.commit()
 
+    @staticmethod
     def get_chart_access_info(chart_id: int) -> list[dict]:
         """
         获取指定 chart 的访问权限信息，返回指定格式的结果。
@@ -492,8 +556,8 @@ class ChartDAO(BaseDAO[Slice]):
                     User.username.label("name"),
                     UserPermission.can_read,
                     UserPermission.can_edit,
-                    UserPermission.can_delete,
                     UserPermission.can_add,
+                    UserPermission.can_delete,
                 )
                 .join(User, UserPermission.user_id == User.id)
                 .filter(UserPermission.resource_type == "chart")
@@ -508,8 +572,8 @@ class ChartDAO(BaseDAO[Slice]):
                     Role.name.label("name"),
                     RolePermission.can_read,
                     RolePermission.can_edit,
-                    RolePermission.can_delete,
                     RolePermission.can_add,
+                    RolePermission.can_delete,
                 )
                 .join(Role, RolePermission.role_id == Role.id)
                 .filter(RolePermission.resource_type == "chart")
@@ -526,9 +590,18 @@ class ChartDAO(BaseDAO[Slice]):
             # 构建返回结果
             access_info = []
             for row in results:
-                if row.can_add and row.can_read and row.can_edit and row.can_delete:
+                # 根据权限布尔值正确映射权限标签
+                if (
+                    row.can_read
+                    and row.can_edit
+                    and row.can_add
+                    and row.can_delete
+                ):
                     permission = "可管理"
-                elif row.can_edit:
+                elif (
+                    row.can_read
+                    and row.can_edit
+                ):
                     permission = "可编辑"
                 elif row.can_read:
                     permission = "可阅读"
@@ -587,7 +660,8 @@ class ChartDAO(BaseDAO[Slice]):
         return exists is not None
 
     @staticmethod
-    def add_collaborator(chart_id: int, collaborator_id: int, collaborator_type: str) -> None:
+    def add_collaborator(chart_id: int, collaborator_id: int,
+                         collaborator_type: str) -> None:
         """
         添加协作者到 user_permissions 或 role_permissions 表中。
 
@@ -622,9 +696,9 @@ class ChartDAO(BaseDAO[Slice]):
                 raise ValueError("Invalid collaborator_type. Must be 'user' or 'role'.")
 
             db.session.commit()
-            logger.info(f"Successfully added collaborator: chart_id={chart_id}, collaborator_id={collaborator_id}, collaborator_type={collaborator_type}")
+            logger.info(
+                f"Successfully added collaborator: chart_id={chart_id}, collaborator_id={collaborator_id}, collaborator_type={collaborator_type}")
         except Exception as ex:
             db.session.rollback()  # 确保事务回滚
             logger.error(f"Error adding collaborator: {ex}")
             raise
-

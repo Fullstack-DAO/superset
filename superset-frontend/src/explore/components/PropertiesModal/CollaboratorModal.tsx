@@ -84,7 +84,6 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         endpoint: `/api/v1/chart/${chartId}/access-info`,
       });
 
-      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
       const { result } = res.json;
 
       if (!result || !Array.isArray(result)) {
@@ -112,8 +111,8 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   };
 
   // 添加协作者
-  const handleAddCollaborator = (newCollaborator: Collaborator) => {
-    setCollaborators((prev) => [...prev, newCollaborator]);
+  const handleAddCollaborator = (newCollaborators: Collaborator[]) => {
+    setCollaborators((prev) => [...prev, ...newCollaborators]);
   };
 
   // 更新协作者权限
@@ -196,7 +195,9 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
               type="dashed"
               icon={<PlusOutlined />}
               style={{ width: '100%', marginTop: 12 }}
-              onClick={() => setSearchModalVisible(true)}
+              onClick={() => {
+                setSearchModalVisible(true);
+              }}
             >
               {t('添加协作者')}
             </Button>
@@ -206,8 +207,11 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       <SearchUserOrRoleModal
         visible={searchModalVisible}
         onClose={() => setSearchModalVisible(false)}
-        onAdd={handleAddCollaborator}
-        chartId={chartId} // 传递 chartId
+        onAdd={(newCollaborators: Collaborator[]) => {
+          handleAddCollaborator(newCollaborators); // 添加多个协作者
+          setSearchModalVisible(false); // 关闭模态框
+        }}
+        chartId={chartId}
       />
     </>
   );

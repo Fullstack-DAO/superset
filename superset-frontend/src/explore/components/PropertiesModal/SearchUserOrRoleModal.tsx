@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button, Spin, List, message } from 'antd';
-import { SupersetClient } from '@superset-ui/core';
+import { SupersetClient, t } from '@superset-ui/core';
 import { InboxOutlined } from '@ant-design/icons';
 
 interface Collaborator {
   id: number;
   name: string;
-  type: 'user' | 'role';
+  type: 'user' | 'role'; // 统一为 'user' | 'role'
   permission: string;
   key: string;
 }
@@ -51,16 +51,14 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
 
     setLoading(true);
     try {
-      // 获取响应
-      const response: any = await SupersetClient.get({
+      const res = await SupersetClient.get({
         endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(searchValue)}`,
       });
 
-      // 直接使用返回的 JSON 数据
-      const data = response.json || response;
-      const result = data.result || {};
+      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
+      const { result } = res.json;
 
-      if (!result.users && !result.roles) {
+      if (!result || (!result.users && !result.roles)) {
         setSearchResults([]);
         return;
       }
@@ -87,8 +85,6 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     }
   };
 
-
-
   // 添加协作者
   const handleAdd = async (item: SearchResultItem) => {
     if (!chartId) {
@@ -97,7 +93,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     }
 
     try {
-      const response: any = await SupersetClient.post({
+      const res = await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/add-collaborator`,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,65 +102,64 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         }),
       });
 
-      const data = response.json || response;
+      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
+      const { json } = res;
 
-      if (data.status === 200) {
-        message.success(data.message);
+      message.success(json.message || '添加成功');
 
-        const collaborator: Collaborator = {
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          permission: '可读',
-          key: `${item.id}-${item.type}`,
-        };
+      const collaborator: Collaborator = {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        permission: '可阅读',
+        key: `${item.id}-${item.type}`,
+      };
 
-        onAdd(collaborator);
-      } else {
-        message.warning(data.message || '添加失败，请稍后重试');
-      }
+      onAdd(collaborator);
+      onClose(); // 关闭搜索模态框
     } catch (error: any) {
       console.error('添加协作者时发生错误:', error);
       const errorMessage =
-        error?.response?.message || '添加失败，请稍后重试';
+        error?.response?.json?.message || '添加失败，请稍后重试';
       message.error(errorMessage);
     }
   };
 
-
   return (
     <Modal
-      title="搜索用户或角色"
+      title={t('搜索用户或角色')}
       visible={visible}
       onCancel={onClose}
       footer={null}
     >
       <Input.Search
-        placeholder="请输入用户名或角色名"
-        enterButton
+        placeholder={t('请输入用户名或角色名')}
+        enterButton={t('搜索')}
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
         onSearch={handleSearch}
       />
       {loading ? (
-        <Spin tip="加载中..." />
+        <Spin tip={t('加载中...')} />
       ) : searchResults.length === 0 ? (
         <div style={{ textAlign: 'center', marginTop: 16 }}>
           <InboxOutlined style={{ fontSize: 48, color: '#ccc' }} />
-          <p>No Data</p>
+          <p>{t('暂无数据')}</p>
         </div>
       ) : (
         <List
           dataSource={searchResults}
           renderItem={(item) => (
             <List.Item>
-              {item.name} ({item.type})
+              <span>
+                {item.name} ({item.type === 'user' ? '用户' : '角色'})
+              </span>
               <Button
                 type="link"
                 onClick={() => handleAdd(item)}
                 style={{ marginLeft: 'auto' }}
               >
-                添加
+                {t('添加')}
               </Button>
             </List.Item>
           )}

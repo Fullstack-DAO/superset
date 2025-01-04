@@ -667,7 +667,8 @@ class ChartPermissions:
             return False
 
         # 调用 security_manager.can_access_datasource(...) 检查权限
-        has_access = security_manager.can_access_datasource(dataset, user=user_obj)
+        # 移除 user 参数
+        has_access = security_manager.can_access_datasource(dataset)
         if not has_access:
             logger.info(
                 f"User {user_obj.username} (id={user_obj.id}) has NO dataset_access "
@@ -739,7 +740,3 @@ class ChartPermissions:
         #     permissions["read"] = True
 
         return permissions
-
-
-
-

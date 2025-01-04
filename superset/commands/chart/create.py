@@ -32,7 +32,11 @@ from superset.commands.chart.exceptions import (
     DashboardsNotFoundValidationError,
     CreateChartForbiddenError,
 )
-from superset.commands.utils import get_datasource_by_id
+from superset.commands.exceptions import (
+    OwnersNotFoundValidationError,
+    RolesNotFoundValidationError,
+)
+from superset.commands.utils import get_datasource_by_id, populate_roles
 from superset.daos.chart import ChartDAO
 from superset.daos.dashboard import DashboardDAO
 from superset.daos.exceptions import DAOCreateFailedError
@@ -56,8 +60,10 @@ class CreateChartCommand(CreateMixin, BaseCommand):
             self._properties["last_saved_by"] = g.user
 
             # 设置所有者和角色权限
-            self._properties["owners"] = self.populate_owners(self._properties.get("owners"))
-            self._properties["roles"] = self.populate_roles(self._properties.get("roles"))
+            self._properties["owners"] = self.populate_owners(
+                self._properties.get("owners"))
+            self._properties["roles"] = populate_roles(
+                self._properties.get("roles"))
 
             # 调用 ChartDAO.create
             new_chart = ChartDAO.create(attributes=self._properties)
@@ -83,25 +89,20 @@ class CreateChartCommand(CreateMixin, BaseCommand):
         datasource_id = self._properties["datasource_id"]
         dashboard_ids = self._properties.get("dashboards", [])
         owner_ids: Optional[list[int]] = self._properties.get("owners")
+        role_ids: Optional[list[int]] = self._properties.get("roles")  # 假设有 roles 字段
         dataset_id = datasource_id
         logger.info(f"current dataset_id is {dataset_id}")
         current_user = get_current_user_object()
+
         # 校验 dataset 权限
         if not ChartPermissions.user_has_dataset_access(current_user, dataset_id):
             error_message = (
-                f"User {current_user.username} lacks dataset access, cannot create "
-                f"chart."
+                f"User {current_user.username} lacks dataset access, cannot create chart."
             )
-        logger.error(error_message)  # 记录错误日志
-        exceptions.append(CreateChartForbiddenError())
-        try:
+            logger.error(error_message)  # 记录错误日志
             raise CreateChartForbiddenError("Chart permission denied message.")
-        except CreateChartForbiddenError as e:
-            return {"message": e.message}, 403
 
-
-
-    # 验证数据源
+        # 验证数据源
         try:
             datasource = get_datasource_by_id(datasource_id, datasource_type)
             self._properties["datasource_name"] = datasource.name
@@ -119,10 +120,26 @@ class CreateChartCommand(CreateMixin, BaseCommand):
 
         # 验证所有者
         try:
-            self._properties["owners"] = self.populate_owners(owner_ids)
+            owners = self.populate_owners(owner_ids)  # 通过 CreateMixin 调用
+            self._properties["owners"] = [owner.id for owner in owners]
+            self._owners = owners
+        except OwnersNotFoundValidationError as ex:
+            exceptions.append(ex)
+        except ValidationError as ex:
+            exceptions.append(ex)
+
+        # 验证角色
+        try:
+            roles = populate_roles(role_ids)  # 直接调用独立的函数
+            self._properties["roles"] = [role.id for role in roles]
+            self._roles = roles
+        except RolesNotFoundValidationError as ex:
+            exceptions.append(ex)
         except ValidationError as ex:
             exceptions.append(ex)
 
         if exceptions:
             raise ChartInvalidError(exceptions=exceptions)
+
+
 

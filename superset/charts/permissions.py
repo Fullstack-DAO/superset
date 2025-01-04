@@ -771,22 +771,17 @@ class ChartPermissions:
                 resource_id=chart_id
             ).first()
 
-        # 合并权限：用户权限优先
+        # 合并权限：用户权限和角色权限平级
         permissions = {
-            'can_read': user_permissions.can_read if user_permissions else False,
-            'can_edit': user_permissions.can_edit if user_permissions else False,
-            'can_delete': user_permissions.can_delete if user_permissions else False,
-            'can_add': user_permissions.can_add if user_permissions else False
+            'can_read': (user_permissions.can_read if user_permissions else False) or
+                        (role_permission.can_read if role_permission else False),
+            'can_edit': (user_permissions.can_edit if user_permissions else False) or
+                        (role_permission.can_edit if role_permission else False),
+            'can_delete': (user_permissions.can_delete if user_permissions else False) or
+                          (role_permission.can_delete if role_permission else False),
+            'can_add': (user_permissions.can_add if user_permissions else False) or
+                       (role_permission.can_add if role_permission else False),
         }
 
-        # 如果角色权限存在且用户没有设置相关权限，则使用角色权限
-        if role_permission:
-            permissions['can_read'] = permissions[
-                                          'can_read'] or role_permission.can_read
-            permissions['can_edit'] = permissions[
-                                          'can_edit'] or role_permission.can_edit
-            permissions['can_delete'] = permissions[
-                                            'can_delete'] or role_permission.can_delete
-            permissions['can_add'] = permissions['can_add'] or role_permission.can_add
-
         return permissions
+

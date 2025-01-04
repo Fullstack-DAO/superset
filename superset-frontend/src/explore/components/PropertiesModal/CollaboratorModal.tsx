@@ -183,6 +183,9 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       await SupersetClient.post({ // 使用 POST 方法
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json', // 设置 Content-Type
+        },
       });
 
       // 更新本地状态
@@ -254,6 +257,9 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       await SupersetClient.post({ // 使用 POST 方法
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json', // 确保设置 Content-Type
+        },
       });
 
       // 更新本地状态
@@ -286,11 +292,8 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
 
   // 删除协作者
   const handleRemoveCollaborator = async (collaborator: Collaborator) => {
+    console.log('Removing collaborator', collaborator);
     const { type: entityType, id: entityId } = collaborator;
-    const collaboratorKey = `${entityId}-${entityType}`;
-
-    // 添加到正在更新的集合中
-    setUpdatingIds((prev) => new Set(prev).add(collaboratorKey));
 
     const data: ModifyPermissionsData = {
       entity_type: entityType,
@@ -304,7 +307,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json', // 确保设置 Content-Type
         },
       });
 
@@ -320,13 +323,6 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       } else {
         message.error(t('移除协作者失败'));
       }
-    } finally {
-      // 从正在更新的集合中移除
-      setUpdatingIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(collaboratorKey);
-        return newSet;
-      });
     }
   };
 
@@ -362,15 +358,22 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       </Menu.Item>
       <Menu.Divider />
       <Menu.Item key="移除">
-        <Popconfirm
-          title={t('确定要移除这个协作者吗？')}
-          onConfirm={() => handleRemoveCollaborator(collaborator)}
-          okText={t('确定')}
-          cancelText={t('取消')}
-          okButtonProps={{ danger: true }}
+        <span
+          role="button"
+          style={{ color: 'red', cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            Modal.confirm({
+              title: t('确定要移除这个协作者吗？'),
+              onOk: () => handleRemoveCollaborator(collaborator),
+              okText: t('确定'),
+              cancelText: t('取消'),
+              okButtonProps: { danger: true },
+            });
+          }}
         >
-          <span style={{ color: 'red', cursor: 'pointer' }}>{t('移除')}</span>
-        </Popconfirm>
+          {t('移除')}
+        </span>
       </Menu.Item>
     </Menu>
   );

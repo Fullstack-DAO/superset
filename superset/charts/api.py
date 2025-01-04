@@ -5,7 +5,8 @@ from io import BytesIO
 from typing import Any, cast, Optional
 from zipfile import is_zipfile, ZipFile
 
-from flask import redirect, request, Response, send_file, url_for, jsonify, make_response
+from flask import redirect, request, Response, send_file, url_for, jsonify, \
+    make_response
 from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
@@ -385,6 +386,20 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         try:
             logger.error(f"the request body: {request.json}")
+            current_user = get_current_user_object()
+            user_id = current_user.id
+            logger.info(f"current_user id is: {user_id}")
+            # 检查当前用户对该图表是否具备 can_read, can_edit, can_delete, can_add 四种权限
+            user_permissions = ChartPermissions.get_permissions_for_chart(user_id, pk)
+            if not user_permissions.get("can_edit", False):
+                response = make_response(
+                    jsonify({
+                        "error": "您没有足够的权限来修改其他人的图表。",
+                        "code": 403,
+                        "message": "Forbidden"
+                    }), 403
+                )
+                return response
             item = self.edit_model_schema.load(request.json)
             logger.info(f"the update permission body is : {item}")
         except ValidationError as error:
@@ -1189,9 +1204,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
             entity_id = data.get("entity_id")
             permissions = data.get("permissions", [])
             action = data.get("action")
-            logger.info(f"前端传过来的chartId: {entity_id}")
-            logger.info(f"前端传过来的action: {action}")
-            logger.info(f"前端传过来的权限集合: {permissions}")
 
             # 验证输入
             if entity_type not in ["user", "role"]:

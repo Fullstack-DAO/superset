@@ -72,8 +72,7 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
             logger.info(f"Additional fields: {additional_fields}")
             # 调用 ChartDAO 更新图表
             chart = ChartDAO.update(self._model, self._properties)
-            # 更新 user_permissions 和 role_permissions
-            ChartDAO.update_permissions(chart.id, additional_fields)
+
             return chart
         except DAOUpdateFailedError as ex:
             logger.exception(ex.exception)

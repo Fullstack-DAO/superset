@@ -117,7 +117,7 @@ function PropertiesModal({
   function showError({ error, statusText, message }: any) {
     let errorText = error || statusText || t('An error has occurred');
     if (message === 'Forbidden') {
-      errorText = t('You do not have permission to edit this chart');
+      errorText = t('你没有权限去修改别人的图表');
     }
     Modal.error({
       title: t('Error'),

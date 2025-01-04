@@ -303,6 +303,9 @@ class ChartDAO(BaseDAO[Slice]):
                             can_delete=False,
                         )
                         db.session.add(permission_model)
+                    # 先将所有权限设为 False
+                    for perm in valid_permissions:
+                        setattr(permission_model, perm, False)
                     # 设置指定的权限为 True
                     for perm in permissions:
                         logger.info(f"更新前的perm: {perm}")
@@ -336,9 +339,14 @@ class ChartDAO(BaseDAO[Slice]):
                             can_delete=False,
                         )
                         db.session.add(permission_model)
+                    # 先将所有权限设为 False
+                    for perm in valid_permissions:
+                        setattr(permission_model, perm, False)
                     # 设置指定的权限为 True
                     for perm in permissions:
+                        logger.info(f"更新前的perm: {perm}")
                         setattr(permission_model, perm, True)
+                        logger.info(f"更新后的perm: {perm}")
                 elif action == "remove":
                     if permission_model:
                         # 删除 RolePermission 记录

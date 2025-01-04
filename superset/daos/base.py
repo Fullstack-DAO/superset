@@ -180,13 +180,11 @@ class BaseDAO(Generic[T]):
 
         if not item:
             item = cls.model_cls()  # type: ignore  # pylint: disable=not-callable
-        logging.info(f"attributes before: {attributes}")
-        logging.info(f"item before: {item}")
+
         if attributes:
             for key, value in attributes.items():
                 setattr(item, key, value)
-        logging.info(f"attributes after: {attributes}")
-        logging.info(f"item after: {item}")
+
         try:
             db.session.merge(item)
 

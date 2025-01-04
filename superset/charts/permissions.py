@@ -16,6 +16,15 @@ from superset.utils.core import get_user_id
 logger = logging.getLogger(__name__)
 
 
+def get_current_user_role_id():
+    user = get_current_user_object()  # 获取当前登录的用户
+    if user and user.roles:
+        # 如果用户有角色，假设只有一个角色
+        role_id = user.roles[0].id  # 获取第一个角色的 ID
+        return role_id
+    return None  # 如果没有角色，返回 None
+
+
 class ChartPermissions:
     datamodel = SQLAInterface(Slice)  # 创建 datamodel 实例
 
@@ -738,5 +747,46 @@ class ChartPermissions:
         # # 如果命中了can_read，返回read
         # elif can_read:
         #     permissions["read"] = True
+
+        return permissions
+
+    @staticmethod
+    def get_permissions_for_chart(user_id, chart_id):
+        # 获取用户权限
+        user_permissions = db.session.query(UserPermission).filter_by(
+            user_id=user_id,
+            resource_type='chart',
+            resource_id=chart_id
+        ).first()
+
+        # 获取当前登录用户的角色 ID
+        role_id = get_current_user_role_id()
+
+        # 获取角色权限
+        role_permission = None
+        if role_id:
+            role_permission = db.session.query(RolePermission).filter_by(
+                role_id=role_id,
+                resource_type='chart',
+                resource_id=chart_id
+            ).first()
+
+        # 合并权限：用户权限优先
+        permissions = {
+            'can_read': user_permissions.can_read if user_permissions else False,
+            'can_edit': user_permissions.can_edit if user_permissions else False,
+            'can_delete': user_permissions.can_delete if user_permissions else False,
+            'can_add': user_permissions.can_add if user_permissions else False
+        }
+
+        # 如果角色权限存在且用户没有设置相关权限，则使用角色权限
+        if role_permission:
+            permissions['can_read'] = permissions[
+                                          'can_read'] or role_permission.can_read
+            permissions['can_edit'] = permissions[
+                                          'can_edit'] or role_permission.can_edit
+            permissions['can_delete'] = permissions[
+                                            'can_delete'] or role_permission.can_delete
+            permissions['can_add'] = permissions['can_add'] or role_permission.can_add
 
         return permissions

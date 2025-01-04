@@ -1,6 +1,6 @@
 // CollaboratorModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Dropdown, Menu, Spin, message, Popconfirm } from 'antd';
+import { Modal, Button, Dropdown, Menu, Spin, message} from 'antd';
 import { UserOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
@@ -254,11 +254,11 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
     };
 
     try {
-      await SupersetClient.post({ // 使用 POST 方法
+      await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
         headers: {
-          'Content-Type': 'application/json', // 确保设置 Content-Type
+          'Content-Type': 'application/json',
         },
       });
 
@@ -274,14 +274,18 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       message.success(t('权限更新成功'));
     } catch (error: any) {
       console.error('Error updating permissions:', error);
-      if (error.response?.json) {
+      // 修改错误处理逻辑
+      if (error.status === 403) {
+        // 处理 403 Forbidden 错误
+        const errorData = await error.json();
+        message.error(t(errorData.error || '您没有足够的权限执行此操作'));
+      } else if (error.response?.json) {
         const errorMsg = await error.response.json();
-        message.error(t(`更新权限失败: ${errorMsg.errors[0].message}`));
+        message.error(t(`更新权限失败: ${errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'}`));
       } else {
         message.error(t('更新权限失败'));
       }
     } finally {
-      // 从正在更新的集合中移除
       setUpdatingIds((prev) => {
         const newSet = new Set(prev);
         newSet.delete(collaboratorKey);

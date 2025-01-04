@@ -97,7 +97,8 @@ class CreateChartCommand(CreateMixin, BaseCommand):
         # 校验 dataset 权限
         if not ChartPermissions.user_has_dataset_access(current_user, dataset_id):
             error_message = (
-                f"User {current_user.username} lacks dataset access, cannot create chart."
+                f"User {current_user.username} "
+                f"lacks dataset access, cannot create chart."
             )
             logger.error(error_message)  # 记录错误日志
             raise CreateChartForbiddenError("Chart permission denied message.")

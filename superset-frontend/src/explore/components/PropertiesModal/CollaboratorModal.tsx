@@ -180,12 +180,9 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         action: 'add', // 使用原始字段名
       };
 
-      await SupersetClient.post({
+      await SupersetClient.post({ // 使用 POST 方法
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       // 更新本地状态
@@ -203,7 +200,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       message.success(t('协作者添加成功'));
     } catch (error: any) {
       console.error('Error adding collaborator:', error);
-      if (error.response && error.response.json) {
+      if (error.response?.json) {
         const errorMsg = await error.response.json();
         message.error(t(`添加协作者失败: ${errorMsg.errors[0].message}`));
       } else {
@@ -233,7 +230,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
 
     let action: 'add' | 'remove' = 'add'; // 使用原始字段名
     let permissionsToModify: Permission[] = [];
-    console.log("hasAllPermissions: ", hasAllPermissions);
+
     if (hasAllPermissions) {
       permissionsToModify = [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
     } else if (hasEditPermissions) {
@@ -254,12 +251,9 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
     };
 
     try {
-      await SupersetClient.post({
+      await SupersetClient.post({ // 使用 POST 方法
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       // 更新本地状态
@@ -274,7 +268,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       message.success(t('权限更新成功'));
     } catch (error: any) {
       console.error('Error updating permissions:', error);
-      if (error.response && error.response.json) {
+      if (error.response?.json) {
         const errorMsg = await error.response.json();
         message.error(t(`更新权限失败: ${errorMsg.errors[0].message}`));
       } else {
@@ -320,7 +314,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       message.success(t('协作者移除成功'));
     } catch (error: any) {
       console.error('Error removing collaborator:', error);
-      if (error.response && error.response.json) {
+      if (error.response?.json) {
         const errorMsg = await error.response.json();
         message.error(t(`移除协作者失败: ${errorMsg.errors[0].message}`));
       } else {

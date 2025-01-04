@@ -1439,97 +1439,97 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             },
         )
 
-    # @expose("/", methods=["GET"])
-    # @protect()
-    # @safe
-    # @rison(get_list_schema)
-    # def get_list(self, rison: dict) -> Response:
-    #     """
-    #     自定义的 get_list 方法，用于处理仪表盘数据的检索。
-    #     该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
-    #     """
-    #     # 第一步：检查用户是否有权限访问仪表盘
-    #     current_user = get_current_user_object()
-    #     logger.info(f"Current logged-in user: {current_user.username}")
-    #     logger.info(
-    #         f"Current user's roles: {[role.name for role in current_user.roles]}")
-    #
-    #     # 第二步：获取仪表盘列表，根据解析后的 rison 参数
-    #     response = self._get_dashboards_list(rison)
-    #     logger.info(f"Raw response content: {response}")
-    #
-    #     if response.status_code != 200:
-    #         return response  # 如果原始列表获取失败，直接返回响应
-    #
-    #     # 第三步：根据用户/角色权限进行自定义过滤
-    #     filtered_result, allowed_ids = self._filter_dashboards_based_on_permissions(
-    #         response.json.get("result", []),
-    #         response.json.get("ids", []),
-    #         current_user
-    #     )
-    #
-    #     # 第四步：更新响应数据，返回过滤后的仪表盘
-    #     response_data = response.json
-    #     response_data["result"] = filtered_result
-    #     response_data["ids"] = allowed_ids
-    #     response_data["count"] = len(filtered_result)
-    #
-    #     return self.response(200, **response_data)
-    #
-    # def _get_dashboards_list(self, rison: dict) -> Response:
-    #     """
-    #     调用原始的 get_list_headless 方法，获取仪表盘列表。
-    #     通过 rison 参数传递分页、排序和过滤信息。
-    #     """
-    #     return super().get_list_headless(rison=rison)
-    #
-    # def _filter_dashboards_based_on_permissions(
-    #     self, original_result: list, original_ids: list,
-    #     current_user
-    # ) -> tuple:
-    #     """
-    #     根据用户和角色权限，过滤仪表盘数据。
-    #     支持多个权限类型（例如：'read' 和 'edit'）。
-    #
-    #     :param original_result: 原始的仪表盘数据列表
-    #     :param original_ids: 原始的仪表盘 ID 列表
-    #     :param current_user: 当前用户对象
-    #     :return: 过滤后的仪表盘数据列表和允许的仪表盘 ID 列表
-    #     """
-    #     # 获取用户的 'read' 和 'edit' 权限
-    #     user_read_permissions = DashboardPermissions.get_user_permissions(
-    #         current_user.id, 'read')
-    #     logger.info(f"User {current_user.id} read permissions: {user_read_permissions}")
-    #     user_edit_permissions = DashboardPermissions.get_user_permissions(
-    #         current_user.id, 'edit')
-    #     logger.info(f"User {current_user.id} edit permissions: {user_edit_permissions}")
-    #     user_permissions = user_read_permissions + user_edit_permissions
-    #
-    #     # 获取角色的 'read' 和 'edit' 权限
-    #     role_read_permissions = DashboardPermissions.get_role_permissions(
-    #         current_user.roles, 'read')
-    #     logger.info(f"User's roles read permissions: {role_read_permissions}")
-    #     role_edit_permissions = DashboardPermissions.get_role_permissions(
-    #         current_user.roles, 'edit')
-    #     logger.info(f"User's roles edit permissions: {role_edit_permissions}")
-    #     role_permissions = role_read_permissions + role_edit_permissions
-    #
-    #     # 合并用户和角色的权限，去重
-    #     all_permissions = set(user_permissions + role_permissions)
-    #     logger.info(f"User {current_user.id} all permissions: {all_permissions}")
-    #
-    #     # 过滤用户有权限访问的仪表盘 ID
-    #     logger.info(f"Original dashboard IDs: {original_ids}")
-    #     allowed_ids = [
-    #         dashboard_id
-    #         for dashboard_id in original_ids
-    #         if dashboard_id in all_permissions
-    #     ]
-    #     logger.info(f"Allowed dashboard IDs: {allowed_ids}")
-    #
-    #     # 过滤结果，只返回用户有权限的仪表盘
-    #     filtered_result = [
-    #         dashboard for dashboard in original_result if dashboard["id"] in allowed_ids
-    #     ]
-    #
-    #     return filtered_result, allowed_ids
+    @expose("/", methods=["GET"])
+    @protect()
+    @safe
+    @rison(get_list_schema)
+    def get_list(self, rison: dict) -> Response:
+        """
+        自定义的 get_list 方法，用于处理仪表盘数据的检索。
+        该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
+        """
+        # 第一步：检查用户是否有权限访问仪表盘
+        current_user = get_current_user_object()
+        logger.info(f"Current logged-in user: {current_user.username}")
+        logger.info(
+            f"Current user's roles: {[role.name for role in current_user.roles]}")
+
+        # 第二步：获取仪表盘列表，根据解析后的 rison 参数
+        response = self._get_dashboards_list(rison)
+        logger.info(f"Raw response content: {response}")
+
+        if response.status_code != 200:
+            return response  # 如果原始列表获取失败，直接返回响应
+
+        # 第三步：根据用户/角色权限进行自定义过滤
+        filtered_result, allowed_ids = self._filter_dashboards_based_on_permissions(
+            response.json.get("result", []),
+            response.json.get("ids", []),
+            current_user
+        )
+
+        # 第四步：更新响应数据，返回过滤后的仪表盘
+        response_data = response.json
+        response_data["result"] = filtered_result
+        response_data["ids"] = allowed_ids
+        response_data["count"] = len(filtered_result)
+
+        return self.response(200, **response_data)
+
+    def _get_dashboards_list(self, rison: dict) -> Response:
+        """
+        调用原始的 get_list_headless 方法，获取仪表盘列表。
+        通过 rison 参数传递分页、排序和过滤信息。
+        """
+        return super().get_list_headless(rison=rison)
+
+    def _filter_dashboards_based_on_permissions(
+        self, original_result: list, original_ids: list,
+        current_user
+    ) -> tuple:
+        """
+        根据用户和角色权限，过滤仪表盘数据。
+        支持多个权限类型（例如：'read' 和 'edit'）。
+
+        :param original_result: 原始的仪表盘数据列表
+        :param original_ids: 原始的仪表盘 ID 列表
+        :param current_user: 当前用户对象
+        :return: 过滤后的仪表盘数据列表和允许的仪表盘 ID 列表
+        """
+        # 获取用户的 'read' 和 'edit' 权限
+        user_read_permissions = DashboardPermissions.get_user_permissions(
+            current_user.id, 'read')
+        logger.info(f"User {current_user.id} read permissions: {user_read_permissions}")
+        user_edit_permissions = DashboardPermissions.get_user_permissions(
+            current_user.id, 'edit')
+        logger.info(f"User {current_user.id} edit permissions: {user_edit_permissions}")
+        user_permissions = user_read_permissions + user_edit_permissions
+
+        # 获取角色的 'read' 和 'edit' 权限
+        role_read_permissions = DashboardPermissions.get_role_permissions(
+            current_user.roles, 'read')
+        logger.info(f"User's roles read permissions: {role_read_permissions}")
+        role_edit_permissions = DashboardPermissions.get_role_permissions(
+            current_user.roles, 'edit')
+        logger.info(f"User's roles edit permissions: {role_edit_permissions}")
+        role_permissions = role_read_permissions + role_edit_permissions
+
+        # 合并用户和角色的权限，去重
+        all_permissions = set(user_permissions + role_permissions)
+        logger.info(f"User {current_user.id} all permissions: {all_permissions}")
+
+        # 过滤用户有权限访问的仪表盘 ID
+        logger.info(f"Original dashboard IDs: {original_ids}")
+        allowed_ids = [
+            dashboard_id
+            for dashboard_id in original_ids
+            if dashboard_id in all_permissions
+        ]
+        logger.info(f"Allowed dashboard IDs: {allowed_ids}")
+
+        # 过滤结果，只返回用户有权限的仪表盘
+        filtered_result = [
+            dashboard for dashboard in original_result if dashboard["id"] in allowed_ids
+        ]
+
+        return filtered_result, allowed_ids

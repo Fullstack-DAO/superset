@@ -1186,7 +1186,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
                 return self.response_400(
                     message=f"Invalid entity_id: {entity_id}. Must be an integer."
                 )
-            if not isinstance(permissions, list) or not all(isinstance(p, str) for p in permissions):
+            if not isinstance(permissions, list) or not all(
+                isinstance(p, str) for p in permissions):
                 return self.response_400(
                     message="Invalid permissions format. Must be a list of strings."
                 )
@@ -1230,39 +1231,39 @@ class ChartRestApi(BaseSupersetModelRestApi):
             logger.error(f"Error modifying permissions: {ex}", exc_info=True)
             return self.response_500(message="权限更新失败。")
 
+    @expose("/", methods=["GET"])
+    @protect()
+    @safe
+    @rison(get_list_schema)
+    def get_list(self, rison: dict) -> Response:
+        """
+        自定义的 get_list 方法，用于处理图表数据的检索。
+        该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
+        """
 
-    # @expose("/", methods=["GET"])
-    # @protect()
-    # @safe
-    # @rison(get_list_schema)
-    # def get_list(self, rison: dict) -> Response:
-    #     """
-    #     自定义的 get_list 方法，用于处理图表数据的检索。
-    #     该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
-    #     """
-    #
-    #     # 第一步：检查用户是否有权限访问图表
-    #     current_user = get_current_user_object()
-    #     logger.info(f"current login user is: {current_user}")
-    #     logger.info(f"current login user's role is: {current_user.roles}")
-    #     # 第二步：获取图表列表，根据解析后的 rison 参数
-    #     response = self._get_charts_list(rison)
-    #     logger.info(f"response‘s all content: {response}")
-    #
-    #     if response.status_code != 200:
-    #         return response  # 如果原始列表获取失败，直接返回响应
-    #
-    # # 第三步：根据用户/角色权限进行自定义过滤 filtered_result, allowed_ids =
-    # self._filter_charts_based_on_permissions( response.json.get("result", []),
-    # response.json.get("ids", []), current_user )
-    #
-    #     # 第四步：更新响应数据，返回过滤后的图表
-    #     response_data = response.json
-    #     response_data["result"] = filtered_result
-    #     response_data["ids"] = allowed_ids
-    #     response_data["count"] = len(filtered_result)
-    #
-    #     return self.response(200, **response_data)
+        # 第一步：检查用户是否有权限访问图表
+        current_user = get_current_user_object()
+        logger.info(f"current login user is: {current_user}")
+        logger.info(f"current login user's role is: {current_user.roles}")
+        # 第二步：获取图表列表，根据解析后的 rison 参数
+        response = self._get_charts_list(rison)
+        logger.info(f"response‘s all content: {response}")
+
+        if response.status_code != 200:
+            return response  # 如果原始列表获取失败，直接返回响应
+
+        # 第三步：根据用户/角色权限进行自定义过滤 filtered_result, allowed_ids =
+        filtered_result, allowed_ids = self._filter_charts_based_on_permissions(
+            response.json.get("result", []),
+            response.json.get("ids", []), current_user)
+
+        # 第四步：更新响应数据，返回过滤后的图表
+        response_data = response.json
+        response_data["result"] = filtered_result
+        response_data["ids"] = allowed_ids
+        response_data["count"] = len(filtered_result)
+
+        return self.response(200, **response_data)
 
     def _get_charts_list(self, rison: dict) -> Response:
         """
@@ -1343,7 +1344,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
-        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.add_collaborator",
+        action=lambda self, *args,
+                      **kwargs: f"{self.__class__.__name__}.add_collaborator",
         log_to_statsd=False,
     )
     def add_collaborator(self, chart_id: int):
@@ -1374,7 +1376,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         # 检查协作者是否已经存在
         try:
-            if ChartDAO.is_collaborator_exist(chart_id, collaborator_id, collaborator_type):
+            if ChartDAO.is_collaborator_exist(chart_id, collaborator_id,
+                                              collaborator_type):
                 return self.response(
                     400,
                     message=f"{collaborator_type} (ID: {collaborator_id}) 已经是协作者了！",
@@ -1390,6 +1393,3 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             logger.error(f"Error adding collaborator: {ex}")
             return self.response_500(message="Failed to add collaborator.")
-
-
-

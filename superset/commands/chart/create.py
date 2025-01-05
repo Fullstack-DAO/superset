@@ -58,6 +58,7 @@ class CreateChartCommand(CreateMixin, BaseCommand):
             # 设置最后保存时间和当前用户
             self._properties["last_saved_at"] = datetime.now()
             self._properties["last_saved_by"] = g.user
+            datasource_id = self._properties["datasource_id"]
 
             # 设置所有者和角色权限
             self._properties["owners"] = self.populate_owners(
@@ -74,6 +75,7 @@ class CreateChartCommand(CreateMixin, BaseCommand):
                 user=g.user,
                 roles=self._properties["roles"],
                 permissions=["can_read", "can_edit", "can_add", "can_delete"],
+                datasource_id=datasource_id  # 传递 datasource_id
             )
             return new_chart
         except DAOCreateFailedError as ex:

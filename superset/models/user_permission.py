@@ -12,7 +12,8 @@ class UserPermission(Model):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('ab_user.id', ondelete='CASCADE'), nullable=False)
     resource_type = Column(String(100), nullable=False)  # 'chart' 或 'dashboard'
-    resource_id = Column(Integer, nullable=False)  # 资源的 ID
+    resource_id = Column(Integer, nullable=False)  # chart ID
+    datasource_id = Column(Integer)  # dataset ID
     can_read = Column(Boolean, default=False)
     can_edit = Column(Boolean, default=False)
     can_delete = Column(Boolean, default=False)

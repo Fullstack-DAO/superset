@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import literal_column
 
@@ -672,21 +672,46 @@ class ChartDAO(BaseDAO[Slice]):
         return exists is not None
 
     @staticmethod
-    def add_collaborator(chart_id: int, collaborator_id: int,
-                         collaborator_type: str) -> None:
+    def get_datasource_id_by_resource(resource_type: str, resource_id: int) -> Optional[int]:
         """
-        添加协作者到 user_permissions 或 role_permissions 表中。
+        根据 resource_type 和 resource_id 查询 UserPermission 表，返回对应的 datasource_id
+
+        :param resource_type: 资源类型，应该是 'chart'
+        :param resource_id: 资源 ID，例如 chart 的 ID
+        :return: datasource_id 或者 None
+        """
+        # 查询 UserPermission 表，筛选出 resource_type 和 resource_id 匹配的记录
+        result = db.session.query(UserPermission.datasource_id) \
+            .filter(UserPermission.resource_type == resource_type) \
+            .filter(UserPermission.resource_id == resource_id) \
+            .first()  # 使用 first() 获取第一行数据
+        logger.info(f"当前的result: {result}")
+        # 如果结果不为空，返回 datasource_id，否则返回 None
+        if result:
+            logger.info(f"当前的result.datasource_id: {result.datasource_id}")
+            return result.datasource_id
+        else:
+            return None
+
+    @staticmethod
+    def add_collaborator(chart_id: int, collaborator_id: int,
+                         collaborator_type: str, datasource_id: int) -> None:
+        """
+        添加协作者到 user_permissions 或 role_permissions 表中，并将对应的 datasource_id 一起添加。
 
         :param chart_id: 图表 ID
         :param collaborator_id: 协作者 ID
         :param collaborator_type: 协作者类型 ('user' 或 'role')
+        :param datasource_id: 数据源 ID
         """
         try:
+            logger.info(f"当前的datasource_id: {datasource_id}")
             if collaborator_type == "user":
                 new_permission = UserPermission(
                     resource_type="chart",
                     resource_id=chart_id,
                     user_id=collaborator_id,
+                    datasource_id=datasource_id,  # 使用传递的 datasource_id
                     can_read=True,  # 默认权限
                     can_edit=False,
                     can_delete=False,
@@ -698,6 +723,7 @@ class ChartDAO(BaseDAO[Slice]):
                     resource_type="chart",
                     resource_id=chart_id,
                     role_id=collaborator_id,
+                    datasource_id=datasource_id,  # 使用传递的 datasource_id
                     can_read=True,  # 默认权限
                     can_edit=False,
                     can_delete=False,
@@ -707,10 +733,13 @@ class ChartDAO(BaseDAO[Slice]):
             else:
                 raise ValueError("Invalid collaborator_type. Must be 'user' or 'role'.")
 
+            # 提交事务
             db.session.commit()
+
             logger.info(
-                f"Successfully added collaborator: chart_id={chart_id}, collaborator_id={collaborator_id}, collaborator_type={collaborator_type}")
+                f"Successfully added collaborator: chart_id={chart_id}, collaborator_id={collaborator_id}, collaborator_type={collaborator_type}, datasource_id={datasource_id}")
         except Exception as ex:
             db.session.rollback()  # 确保事务回滚
             logger.error(f"Error adding collaborator: {ex}")
             raise
+

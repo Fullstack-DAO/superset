@@ -1388,6 +1388,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         collaborator_type = data.get("type")
         logger.info(f"当前的collaborator_id: {collaborator_id}")
         logger.info(f"当前的collaborator_type: {collaborator_type}")
+        logger.info(f"当前的chartId是: {chart_id}")
 
         # 添加一个映射，将中文类型映射为英文类型
         type_mapping = {
@@ -1417,9 +1418,30 @@ class ChartRestApi(BaseSupersetModelRestApi):
                     }), 400
                 )
                 return response
+            resource_type = 'chart'
+            datasource_id = ChartDAO.get_datasource_id_by_resource(resource_type,
+                                                                   chart_id)
+            logger.info(f"获取到的datasource_id: {datasource_id}")
+            if collaborator_type == "user":
+                # 如果是用户类型，检查用户对 chart 是否有权限
+                has_permission = ChartPermissions.check_user_permission(collaborator_id,
+                                                                        datasource_id)
+            elif collaborator_type == "role":
+                # 如果是角色类型，检查角色对 chart 是否有权限
+                has_permission = ChartPermissions.check_role_permission(collaborator_id,
+                                                                        datasource_id)
 
-            # 如果不存在，则添加协作者
-            ChartDAO.add_collaborator(chart_id, collaborator_id, collaborator_type)
+            if not has_permission:
+                return self.response_403(
+                    message=f"该{'用户' if collaborator_type == 'user' else '角色'}没有权限访问数据源！"
+                )
+                # 如果不存在，则添加协作者
+
+            ChartDAO.add_collaborator(
+                chart_id,
+                collaborator_id,
+                collaborator_type,
+                datasource_id)
 
             return self.response(
                 200,

@@ -1,7 +1,7 @@
 import logging
 
 from sqlalchemy.exc import SQLAlchemyError
-
+from sqlalchemy import text
 from superset.connectors.sqla.models import SqlaTable
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
@@ -34,20 +34,26 @@ class ChartPermissions:
         user: User,
         roles: list[Role] = None,
         permissions: list[str] = None,
+        datasource_id: int = None
     ) -> None:
         """
-        设置图表的默认权限。
+        设置图表的默认权限，并插入 datasource_id。
         """
         roles = roles or []  # 如果没有传入角色，默认使用空列表
         permissions = permissions or ["can_read", "can_edit"]  # 默认权限
 
+        # 如果没有传入 datasource_id，使用 chart 中的 datasource_id
+        datasource_id = datasource_id or chart.datasource_id
+
         try:
             # 为用户分配权限
-            ChartPermissions.add_permissions_to_user(chart.id, user.id, permissions)
+            ChartPermissions.add_permissions_to_user(chart.id, user.id, permissions,
+                                                     datasource_id)
 
             # 为每个角色分配权限
             for role in roles:
-                ChartPermissions.add_permissions_to_role(chart.id, role.id, permissions)
+                ChartPermissions.add_permissions_to_role(chart.id, role.id, permissions,
+                                                         datasource_id)
         except Exception as ex:
             logger.error(
                 f"Error setting default permissions for chart {chart.id}: {ex}")
@@ -225,15 +231,17 @@ class ChartPermissions:
 
     @staticmethod
     def _add_permissions(
-        chart_id: int, entity_id: int, permissions: list[str], entity_type: str
+        chart_id: int, entity_id: int, permissions: list[str], entity_type: str,
+        datasource_id: int
     ) -> None:
         """
-        通用方法，为用户或角色添加权限。
+        通用方法，为用户或角色添加权限，并插入或更新数据时包含 datasource_id。
 
         :param chart_id: 图表 ID
         :param entity_id: 用户或角色 ID
         :param permissions: 权限列表
         :param entity_type: 实体类型 ('user' 或 'role')
+        :param datasource_id: 数据源 ID
         """
         valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
         invalid_permissions = [perm for perm in permissions if
@@ -241,25 +249,31 @@ class ChartPermissions:
         if invalid_permissions:
             raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
 
+        # 根据 entity_type 确定使用哪个模型
         permission_model = UserPermission if entity_type == "user" else RolePermission
 
         try:
+            # 查询是否已存在权限记录，增加 datasource_id 过滤条件
             existing_permission = db.session.query(permission_model).filter_by(
                 resource_type="chart",
                 resource_id=chart_id,
+                datasource_id=datasource_id,  # 过滤条件中加入 datasource_id
                 **{f"{entity_type}_id": entity_id},
             ).first()
 
             if not existing_permission:
+                # 如果没有现有权限记录，创建新记录并包含 datasource_id
                 permission_data = {perm: True for perm in permissions}
                 permission = permission_model(
                     resource_type="chart",
                     resource_id=chart_id,
+                    datasource_id=datasource_id,  # 插入 datasource_id
                     **{f"{entity_type}_id": entity_id},
                     **permission_data,
                 )
                 db.session.add(permission)
             else:
+                # 如果已有权限记录，更新权限
                 for perm in permissions:
                     setattr(existing_permission, perm, True)
 
@@ -273,20 +287,30 @@ class ChartPermissions:
             raise
 
     @staticmethod
-    def add_permissions_to_user(chart_id: int, user_id: int,
-                                permissions: list[str]) -> None:
+    def add_permissions_to_user(chart_id: int, user_id: int, permissions: list[str],
+                                datasource_id: int) -> None:
         """
-        为用户添加权限，使用通用方法。
+        为用户添加权限，使用通用方法，并传入 datasource_id。
         """
-        ChartPermissions._add_permissions(chart_id, user_id, permissions, "user")
+        ChartPermissions._add_permissions(
+            chart_id,
+            user_id,
+            permissions,
+            "user",
+            datasource_id)
 
     @staticmethod
-    def add_permissions_to_role(chart_id: int, role_id: int,
-                                permissions: list[str]) -> None:
+    def add_permissions_to_role(chart_id: int, role_id: int, permissions: list[str],
+                                datasource_id: int) -> None:
         """
-        为角色添加权限，使用通用方法。
+        为角色添加权限，使用通用方法，并传入 datasource_id。
         """
-        ChartPermissions._add_permissions(chart_id, role_id, permissions, "role")
+        ChartPermissions._add_permissions(
+            chart_id,
+            role_id,
+            permissions,
+            "role",
+            datasource_id)
 
     @staticmethod
     def _remove_permissions(
@@ -686,6 +710,98 @@ class ChartPermissions:
         return has_access
 
     @staticmethod
+    def check_role_permission(role_id=None, role_name=None):
+        # 确保至少传入一个 role_id 或 role_name
+        if not role_id and not role_name:
+            raise ValueError("必须提供 role_id 或 role_name")
+
+        # SQL 查询，检查角色是否有权限
+        query = """
+        SELECT
+            r.name AS role_name,
+            p.name AS permission_name
+        FROM
+            ab_role r
+        JOIN
+            ab_permission_view_role pvr ON r.id = pvr.role_id
+        JOIN
+            ab_permission_view pv ON pvr.permission_view_id = pv.id
+        JOIN
+            ab_permission p ON pv.permission_id = p.id
+        WHERE
+        """
+
+        # 根据传入的参数选择 role_id 或 role_name 作为查询条件
+        params = {}
+
+        if role_id:
+            query += " r.id = :role_id"
+            params['role_id'] = role_id
+        elif role_name:
+            query += " r.name = :role_name"
+            params['role_name'] = role_name
+
+        # 执行查询
+        result = db.session.execute(
+            text(query),
+            params
+        ).fetchall()
+
+        # 如果查询结果不为空，说明角色有权限
+        if result:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def check_user_permission(user_id=None, user_name=None):
+        # 确保传入了有效的 user_id 或 user_name
+        if not user_id and not user_name:
+            raise ValueError("必须提供 user_id 或 user_name")
+
+        # SQL 查询，检查用户是否有权限
+        query = """
+        SELECT
+            u.username AS user_name,
+            p.name AS permission_name
+        FROM
+            ab_user u
+        JOIN
+            ab_user_role ur ON u.id = ur.user_id
+        JOIN
+            ab_role r ON ur.role_id = r.id
+        JOIN
+            ab_permission_view_role pvr ON r.id = pvr.role_id
+        JOIN
+            ab_permission_view pv ON pvr.permission_view_id = pv.id
+        JOIN
+            ab_permission p ON pv.permission_id = p.id
+        WHERE
+        """
+
+        # 根据提供的参数构建查询条件
+        params = {}
+
+        if user_id:
+            query += " u.id = :user_id"
+            params['user_id'] = user_id
+        elif user_name:
+            query += " u.username = :user_name"
+            params['user_name'] = user_name
+
+        # 执行查询
+        result = db.session.execute(
+            text(query),
+            params
+        ).fetchall()
+
+        # 如果查询结果不为空，说明该用户有权限
+        if result:
+            return True
+        else:
+            return False
+
+    @staticmethod
     def is_admin_of_resource(
         user_id: int, resource_type: str, resource_id: int
     ) -> bool:
@@ -777,11 +893,11 @@ class ChartPermissions:
                         (role_permission.can_read if role_permission else False),
             'can_edit': (user_permissions.can_edit if user_permissions else False) or
                         (role_permission.can_edit if role_permission else False),
-            'can_delete': (user_permissions.can_delete if user_permissions else False) or
+            'can_delete': (
+                              user_permissions.can_delete if user_permissions else False) or
                           (role_permission.can_delete if role_permission else False),
             'can_add': (user_permissions.can_add if user_permissions else False) or
                        (role_permission.can_add if role_permission else False),
         }
 
         return permissions
-

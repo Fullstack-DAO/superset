@@ -1386,6 +1386,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
         data = request.json
         collaborator_id = data.get("id")
         collaborator_type = data.get("type")
+        logger.info(f"当前的collaborator_id: {collaborator_id}")
+        logger.info(f"当前的collaborator_type: {collaborator_type}")
 
         # 添加一个映射，将中文类型映射为英文类型
         type_mapping = {
@@ -1407,10 +1409,14 @@ class ChartRestApi(BaseSupersetModelRestApi):
         try:
             if ChartDAO.is_collaborator_exist(chart_id, collaborator_id,
                                               collaborator_type):
-                return self.response(
-                    400,
-                    message=f"{collaborator_type} (ID: {collaborator_id}) 已经是协作者了！",
+                response = make_response(
+                    jsonify({
+                        "error": f"该用户已经是协作者了！",
+                        "code": 400,
+                        "message": "Forbidden"
+                    }), 400
                 )
+                return response
 
             # 如果不存在，则添加协作者
             ChartDAO.add_collaborator(chart_id, collaborator_id, collaborator_type)

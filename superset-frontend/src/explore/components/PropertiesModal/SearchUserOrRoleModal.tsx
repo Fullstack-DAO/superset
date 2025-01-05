@@ -103,9 +103,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         }),
       });
 
-      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
       const { json } = res;
-
       message.success(json.message || '添加成功');
 
       const collaborator: Collaborator = {
@@ -117,20 +115,21 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
       };
 
       onAdd(collaborator);
-      onClose(); // 关闭搜索模态框
+      onClose();
     } catch (error: any) {
       console.error('添加协作者时发生错误:', error);
-      console.log('完整错误对象:', error); // 打印完整错误对象
-
-      // 优先使用 error.message
-      let errorMessage = '添加失败，请稍后重试';
-      if (error.message) {
-        errorMessage = error.message;
+      
+      // 修改错误处理逻辑
+      if (error.status === 400 || error.status === 403) {
+        // 处理后端返回的错误信息
+        const errorData = await error.json();
+        message.error(t(errorData.error || '添加失败'));
+      } else if (error.response?.json) {
+        const errorMsg = await error.response.json();
+        message.error(t(`添加失败: ${errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'}`));
+      } else {
+        message.error(t('添加失败，请稍后重试'));
       }
-
-      console.log('提取的错误信息:', errorMessage); // 打印提取的错误信息
-
-      message.error(errorMessage);
     }
   };
 

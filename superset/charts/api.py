@@ -1414,7 +1414,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
                     jsonify({
                         "error": f"该用户已经是协作者了！",
                         "code": 400,
-                        "message": "Forbidden"
+                        "message": "BAD REQUEST"
                     }), 400
                 )
                 return response
@@ -1432,8 +1432,12 @@ class ChartRestApi(BaseSupersetModelRestApi):
                                                                         datasource_id)
 
             if not has_permission:
-                return self.response_403(
-                    message=f"该{'用户' if collaborator_type == 'user' else '角色'}没有权限访问数据源！"
+                return make_response(
+                    jsonify({
+                        "error": f"该{'用户' if collaborator_type == 'user' else '角色'}没有权限访问数据源！",
+                        "code": 403,
+                        "message": "Forbidden"
+                    }), 403
                 )
                 # 如果不存在，则添加协作者
 

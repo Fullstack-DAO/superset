@@ -710,7 +710,7 @@ class ChartPermissions:
         return has_access
 
     @staticmethod
-    def check_role_permission(role_id=None, role_name=None):
+    def check_role_permission(role_id=None, role_name=None) -> bool:
         # 确保至少传入一个 role_id 或 role_name
         if not role_id and not role_name:
             raise ValueError("必须提供 role_id 或 role_name")
@@ -754,7 +754,7 @@ class ChartPermissions:
             return False
 
     @staticmethod
-    def check_user_permission(user_id=None, user_name=None):
+    def check_user_permission(user_id=None, user_name=None) -> bool:
         # 确保传入了有效的 user_id 或 user_name
         if not user_id and not user_name:
             raise ValueError("必须提供 user_id 或 user_name")

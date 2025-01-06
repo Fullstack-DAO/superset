@@ -30,7 +30,8 @@ class DashboardPermissions:
         """
         roles = roles or []  # 如果没有传入角色，默认使用空列表
         permissions = permissions or ["can_read", "can_edit"]  # 默认权限
-
+        logger.info(f"创建dashboard传入的permissions: {permissions}")
+        logger.info(f"创建dashboard传入的roles: {roles}")
         try:
             # 为用户分配权限
             DashboardPermissions.add_permissions_to_user(dashboard.id, user.id,
@@ -42,7 +43,8 @@ class DashboardPermissions:
                                                              permissions)
         except Exception as ex:
             logger.error(
-                f"Error setting default permissions for dashboard {dashboard.id}: {ex}")
+                f"Error setting default permissions for dashboard {dashboard.id}: {ex}"
+            )
             raise
 
     @staticmethod
@@ -201,8 +203,9 @@ class DashboardPermissions:
         return bool(role_permissions)
 
     @staticmethod
-    def get_dashboard_and_check_permission(pk: int, permission_type: str) -> Optional[
-        Dashboard]:
+    def get_dashboard_and_check_permission(
+        pk: int, permission_type: str
+    ) -> Optional[Dashboard]:
         """
         获取仪表盘并检查用户权限。
 
@@ -245,79 +248,45 @@ class DashboardPermissions:
         :param entity_type: 实体类型 ('user' 或 'role')
         :raises ValueError: 如果存在无效权限或实体类型错误
         """
-        # 定义权限映射
-        PERMISSION_MAPPING = {
-            "read": "can_read",
-            "edit": "can_edit",
-            "delete": "can_delete",
-            "add": "can_add",
-        }
-
-        # 映射前端传递的权限
-        mapped_permissions = []
-        invalid_permissions = []
-
-        for perm in permissions:
-            mapped_perm = PERMISSION_MAPPING.get(perm)
-            if mapped_perm:
-                mapped_permissions.append(mapped_perm)
-            else:
-                invalid_permissions.append(perm)
+        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
+        invalid_permissions = [perm for perm in permissions if
+                               perm not in valid_permissions]
 
         # 检查是否存在无效权限
         if invalid_permissions:
             raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
 
-        # 验证映射后的权限是否有效
-        valid_permissions = {"can_read", "can_edit", "can_delete", "can_add"}
-        invalid_mapped_permissions = [
-            perm for perm in mapped_permissions if perm not in valid_permissions
-        ]
+        # 根据 entity_type 确定使用哪个模型
+        permission_model = UserPermission if entity_type == "user" else RolePermission
 
-        if invalid_mapped_permissions:
-            raise ValueError(
-                f"Invalid mapped permissions: {', '.join(invalid_mapped_permissions)}")
-
-        # 移除重复权限
-        mapped_permissions = list(set(mapped_permissions))
-
-        # 选择权限模型
-        if entity_type == "user":
-            permission_model = UserPermission
-            entity_filter = {"user_id": entity_id}
-        elif entity_type == "role":
-            permission_model = RolePermission
-            entity_filter = {"role_id": entity_id}
-        else:
-            raise ValueError(f"Unknown entity type: {entity_type}")
 
         try:
             # 查询现有权限记录
             existing_permission = db.session.query(permission_model).filter_by(
                 resource_type="dashboard",
                 resource_id=dashboard_id,
-                **entity_filter,
+                **{f"{entity_type}_id": entity_id},
             ).first()
 
             if not existing_permission:
                 # 创建新的权限记录
-                permission_data = {perm: True for perm in mapped_permissions}
+                permission_data = {perm: True for perm in permissions}
                 permission = permission_model(
                     resource_type="dashboard",
                     resource_id=dashboard_id,
-                    **entity_filter,
+                    **{f"{entity_type}_id": entity_id},
                     **permission_data,
                 )
                 db.session.add(permission)
                 logger.info(
-                    f"Added new permissions {mapped_permissions} to {entity_type} ID {entity_id} for dashboard ID {dashboard_id}"
+                    f"Added new permissions {permission_data} to {entity_type} ID {entity_id} for dashboard ID {dashboard_id}"
                 )
             else:
                 # 更新现有权限记录
-                for perm in mapped_permissions:
+                for perm in permissions:
                     setattr(existing_permission, perm, True)
                 logger.info(
-                    f"Updated permissions {mapped_permissions} for {entity_type} ID {entity_id} on dashboard ID {dashboard_id}"
+                    f"Updated permissions {permissions} for {entity_type} ID {entity_id} on dashboard ID {dashboard_id}"
                 )
 
         except SQLAlchemyError as ex:
@@ -347,54 +316,64 @@ class DashboardPermissions:
                                               "role")
 
     @staticmethod
-    def _remove_permissions(
-        dashboard_id: int, entity_id: int, permissions: list[str], entity_type: str
+    def _add_permissions(
+        dashboard_id: int,
+        entity_id: int,
+        permissions: list[str],
+        entity_type: str
     ) -> None:
         """
-        通用方法，从用户或角色移除多个权限。
+        通用方法，为用户或角色添加权限。
 
         :param dashboard_id: 仪表盘 ID
         :param entity_id: 用户或角色 ID
-        :param permissions: 权限列表，例如 ['can_read', 'can_edit']
+        :param permissions: 权限列表（如 ['can_read', 'can_edit']）
         :param entity_type: 实体类型 ('user' 或 'role')
+        :raises ValueError: 如果存在无效权限或实体类型错误
         """
         valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-
-        # 验证权限类型是否合法
-        invalid_permissions = [permission for permission in permissions if
-                               permission not in valid_permissions]
+        invalid_permissions = [perm for perm in permissions if perm not in valid_permissions]
         if invalid_permissions:
-            raise ValueError(f"Invalid permission(s): {', '.join(invalid_permissions)}")
+            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
 
+        # 根据 entity_type 确定使用哪个模型
         permission_model = UserPermission if entity_type == "user" else RolePermission
 
         try:
-            # 查找权限记录
+            # 查询是否已存在权限记录
             existing_permission = db.session.query(permission_model).filter_by(
                 resource_type="dashboard",
                 resource_id=dashboard_id,
                 **{f"{entity_type}_id": entity_id},
             ).first()
 
-            if existing_permission:
-                # 移除指定的权限
-                for permission in permissions:
-                    setattr(existing_permission, permission, False)
+            if not existing_permission:
+                # 如果没有现有权限记录，创建新记录
+                permission_data = {perm: True for perm in permissions}
+                permission = permission_model(
+                    resource_type="dashboard",
+                    resource_id=dashboard_id,
+                    **{f"{entity_type}_id": entity_id},
+                    **permission_data,
+                )
+                db.session.add(permission)
+                logger.info(
+                    f"Added new permissions {permissions} to {entity_type} ID {entity_id} for dashboard ID {dashboard_id}"
+                )
+            else:
+                # 如果已有权限记录，更新权限
+                for perm in permissions:
+                    setattr(existing_permission, perm, True)
+                logger.info(
+                    f"Updated permissions {permissions} for {entity_type} ID {entity_id} on dashboard ID {dashboard_id}"
+                )
 
-                # 如果所有权限都被移除，则删除该记录
-                if not (
-                    existing_permission.can_read
-                    or existing_permission.can_edit
-                    or existing_permission.can_delete
-                    or existing_permission.can_add
-                ):
-                    db.session.delete(existing_permission)
-
-                db.session.commit()
+            db.session.commit()
         except SQLAlchemyError as ex:
             db.session.rollback()
             logger.error(
-                f"Failed to remove permissions {permissions} from {entity_type} {entity_id} for dashboard {dashboard_id}: {ex}"
+                f"Failed to add permissions {permissions} to {entity_type} {entity_id} for dashboard {dashboard_id}: {ex}",
+                exc_info=True
             )
             raise
 

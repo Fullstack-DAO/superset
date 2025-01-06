@@ -272,11 +272,17 @@ class ChartPermissions:
                     **permission_data,
                 )
                 db.session.add(permission)
+                logger.info(
+                    f"Added new permissions {permission_data} to {entity_type} ID "
+                    f"{entity_id} for chart ID {chart_id}"
+                )
             else:
                 # 如果已有权限记录，更新权限
                 for perm in permissions:
                     setattr(existing_permission, perm, True)
-
+                logger.info(
+                    f"Updated permissions {permissions} for {entity_type} ID {entity_id} on chart ID {chart_id}"
+                )
             db.session.commit()
         except SQLAlchemyError as ex:
             db.session.rollback()

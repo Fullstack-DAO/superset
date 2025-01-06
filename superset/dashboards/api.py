@@ -572,6 +572,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         try:
+            logger.info(f"The request is coming...")
             # 加载并验证请求数据
             item = self.edit_model_schema.load(request.json)
             logger.info(f"The update permission body is: {item}")

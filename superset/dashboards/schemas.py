@@ -75,8 +75,8 @@ openapi_spec_methods_override = {
         "get": {
             "summary": "Get a list of dashboards",
             "description": "Gets a list of dashboards, use Rison or JSON query "
-            "parameters for filtering, sorting, pagination and "
-            " for selecting specific columns and metadata.",
+                           "parameters for filtering, sorting, pagination and "
+                           " for selecting specific columns and metadata.",
         }
     },
     "info": {"get": {"summary": "Get metadata information about this API resource"}},
@@ -306,10 +306,10 @@ class DashboardPostSchema(BaseDashboardSchema):
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
     # 新增字段
-    visible_roles = fields.List(fields.Integer(), metadata={"description": "可见角色的 ID 列表"})
-    editable_roles = fields.List(fields.Integer(), metadata={"description": "可编辑角色的 ID 列表"})
-
-
+    visible_roles = fields.List(fields.Integer(),
+                                metadata={"description": "可见角色的 ID 列表"})
+    editable_roles = fields.List(fields.Integer(),
+                                 metadata={"description": "可编辑角色的 ID 列表"})
 
 
 class DashboardCopySchema(Schema):
@@ -332,10 +332,10 @@ class DashboardCopySchema(Schema):
 
 
 class DashboardPutSchema(BaseDashboardSchema):
-    dashboard_id = fields.Integer(
-        required=True,
-        metadata={"description": "The unique ID of the chart slice."},
-    )
+    # dashboard_id = fields.Integer(
+    #     required=True,
+    #     metadata={"description": "The unique ID of the chart slice."},
+    # )
     dashboard_title = fields.String(
         metadata={"description": dashboard_title_description},
         allow_none=True,
@@ -420,7 +420,6 @@ class DashboardPutSchema(BaseDashboardSchema):
         metadata={"description": "List of role permissions for the chart"},
         allow_none=True,
     )
-
 
 
 class ChartFavStarResponseResult(Schema):

@@ -38,7 +38,7 @@ import {
 
 import Modal from 'src/components/Modal';
 import { JsonEditor } from 'src/components/AsyncAceEditor';
-
+import DashboardCollaboratorModal from './DashboardCollaboratorModal'; // 管理协作者弹窗组件
 import ColorSchemeControlWrapper from 'src/dashboard/components/ColorSchemeControlWrapper';
 import FilterScopeModal from 'src/dashboard/components/filterscope/FilterScopeModal';
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
@@ -63,6 +63,13 @@ const StyledHelpBlock = styled.span`
 const StyledJsonEditor = styled(JsonEditor)`
   border-radius: ${({ theme }) => theme.borderRadius}px;
   border: 1px solid ${({ theme }) => theme.colors.secondary.light2};
+`;
+
+const CollaboratorSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 40px; /* 向右移动 */
 `;
 
 type PropertiesModalProps = {
@@ -95,17 +102,17 @@ type DashboardInfo = {
 };
 
 const PropertiesModal = ({
-  addSuccessToast,
-  addDangerToast,
-  colorScheme: currentColorScheme,
-  dashboardId,
-  dashboardInfo: currentDashboardInfo,
-  dashboardTitle,
-  onHide = () => {},
-  onlyApply = false,
-  onSubmit = () => {},
-  show = false,
-}: PropertiesModalProps) => {
+                           addSuccessToast,
+                           addDangerToast,
+                           colorScheme: currentColorScheme,
+                           dashboardId,
+                           dashboardInfo: currentDashboardInfo,
+                           dashboardTitle,
+                           onHide = () => {},
+                           onlyApply = false,
+                           onSubmit = () => {},
+                           show = false,
+                         }: PropertiesModalProps) => {
   const [form] = AntdForm.useForm();
   const [isLoading, setIsLoading] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -117,15 +124,6 @@ const PropertiesModal = ({
   const saveLabel = onlyApply ? t('Apply') : t('Save');
   const [tags, setTags] = useState<TagType[]>([]);
   const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
-
-  // 新增状态：用户和角色权限
-  const [userPermissions, setUserPermissions] = useState<
-    { userId: number; userName: string; permissions: ('read' | 'edit')[] }[]
-  >([]);
-
-  const [rolePermissions, setRolePermissions] = useState<
-    { roleId: number; roleName: string; permissions: ('read' | 'edit')[] }[]
-  >([]);
 
   const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] = useState(false);
 
@@ -189,7 +187,6 @@ const PropertiesModal = ({
     },
     [],
   );
-
 
   const loadRoleOptions = useMemo(
     () => async (input = '', page: number, pageSize: number) => {
@@ -391,8 +388,7 @@ const PropertiesModal = ({
   const updateTags = (oldTags: TagType[], newTags: TagType[]) => {
     // update the tags for this object
     // add tags that are in new tags, but not in old tags
-    // eslint-disable-next-line array-callback-return
-    newTags.map((tag: TagType) => {
+    newTags.forEach((tag: TagType) => {
       if (!oldTags.some(t => t.name === tag.name)) {
         addTag(
           {
@@ -407,8 +403,7 @@ const PropertiesModal = ({
       }
     });
     // delete tags that are in old tags, but not in new tags
-    // eslint-disable-next-line array-callback-return
-    oldTags.map((tag: TagType) => {
+    oldTags.forEach((tag: TagType) => {
       if (!newTags.some(t => t.name === tag.name)) {
         deleteTaggedObjects(
           {
@@ -499,9 +494,6 @@ const PropertiesModal = ({
       }
     }
 
-
-
-
     const moreOnSubmitProps: { roles?: Roles } = {};
     const morePutProps: { roles?: number[] } = {};
     if (isFeatureEnabled(FeatureFlag.DASHBOARD_RBAC)) {
@@ -517,8 +509,6 @@ const PropertiesModal = ({
       colorNamespace,
       certifiedBy,
       certificationDetails,
-      user_permissions: userPermissions, // 添加用户权限到提交参数
-      role_permissions: rolePermissions, // 添加角色权限到提交参数
       ...moreOnSubmitProps,
     };
 
@@ -533,20 +523,6 @@ const PropertiesModal = ({
         certifiedBy && certificationDetails ? certificationDetails : null,
       ...morePutProps,
     };
-
-    if (userPermissions.length > 0) {
-      payload.user_permissions = userPermissions.map(up => ({
-        userId: up.userId,
-        permissions: up.permissions.filter(p => p === 'read' || p === 'edit'), // 确保权限格式正确
-      }));
-    }
-
-    if (rolePermissions.length > 0) {
-      payload.role_permissions = rolePermissions.map(rp => ({
-        roleId: rp.roleId,
-        permissions: rp.permissions.filter(p => p === 'read' || p === 'edit'),
-      }));
-    }
 
     // 移除空字段
     Object.keys(payload).forEach(key => {
@@ -634,7 +610,6 @@ const PropertiesModal = ({
             <StyledFormItem label={t('Owners')}>
               <AsyncSelect
                 allowClear
-                allowNewOptions
                 ariaLabel={t('Owners')}
                 disabled={isLoading}
                 mode="multiple"
@@ -766,8 +741,8 @@ const PropertiesModal = ({
             tooltip={
               dashboardInfo?.isManagedExternally
                 ? t(
-                    "This dashboard is managed externally, and can't be edited in Superset",
-                  )
+                  "This dashboard is managed externally, and can't be edited in Superset",
+                )
                 : ''
             }
           >
@@ -811,9 +786,6 @@ const PropertiesModal = ({
         {isFeatureEnabled(FeatureFlag.DASHBOARD_RBAC)
           ? getRowsWithRoles()
           : getRowsWithoutRoles()}
-
-
-
 
         <Row>
           <Col xs={24} md={24}>
@@ -862,7 +834,7 @@ const PropertiesModal = ({
                 />
               </StyledFormItem>
               <p className="help-block">
-                {t('A list of tags that have been applied to this chart.')}
+                {t('A list of tags that have been applied to this dashboard.')}
               </p>
             </Col>
           </Row>
@@ -921,26 +893,27 @@ const PropertiesModal = ({
             )}
           </Col>
         </Row>
-        <Row gutter={16} justify="space-between" align="middle">
-          <Col xs={24} md={12}>
-            {/* 其他内容 */}
-          </Col>
-          <Col xs={24} md={12} style={{ textAlign: 'right' }}>
-            <Button type="primary" onClick={showCollaboratorsModal}>
-              Manage Collaborators
-            </Button>
+        {/* 替换 Manage Collaborators 部分 */}
+        <Row gutter={16} style={{ marginTop: '1em' }}>
+          <Col span={24}>
+            <CollaboratorSection>
+              <h3 style={{ marginBottom: '8px' }}>{t('Manage Collaborators')}</h3>
+              <Button type="primary" onClick={showCollaboratorsModal}>
+                {t('Manage Collaborators')}
+              </Button>
+            </CollaboratorSection>
           </Col>
         </Row>
-
-        <Modal
-          title="Manage Collaborators"
-          visible={isCollaboratorsModalVisible}
-          onCancel={handleCollaboratorsModalClose}
-          footer={null}
-        >
-          <p>这里是协作者管理的内容</p>
-        </Modal>
       </AntdForm>
+
+      {/* 集成 DashboardCollaboratorModal 组件 */}
+      <DashboardCollaboratorModal
+        visible={isCollaboratorsModalVisible}
+        onClose={handleCollaboratorsModalClose}
+        dashboardId={dashboardId}
+        // addSuccessToast={addSuccessToast}
+        // addDangerToast={addDangerToast}
+      />
     </Modal>
   );
 };

@@ -23,7 +23,6 @@ import { FormItem } from 'src/components/Form';
 import jsonStringify from 'json-stringify-pretty-compact';
 import Button from 'src/components/Button';
 import { AntdForm, AsyncSelect, Col, Row } from 'src/components';
-import { Checkbox } from 'antd';
 import rison from 'rison';
 import {
   CategoricalColorNamespace,
@@ -127,6 +126,16 @@ const PropertiesModal = ({
   const [rolePermissions, setRolePermissions] = useState<
     { roleId: number; roleName: string; permissions: ('read' | 'edit')[] }[]
   >([]);
+
+  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] = useState(false);
+
+  const showCollaboratorsModal = () => {
+    setCollaboratorsModalVisible(true);
+  };
+
+  const handleCollaboratorsModalClose = () => {
+    setCollaboratorsModalVisible(false);
+  };
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map(tag => ({
@@ -802,121 +811,9 @@ const PropertiesModal = ({
         {isFeatureEnabled(FeatureFlag.DASHBOARD_RBAC)
           ? getRowsWithRoles()
           : getRowsWithoutRoles()}
-        {/* 用户权限部分 */}
-        <Row gutter={16}>
-          <Col xs={24} md={24}>
-            <h3 style={{ marginTop: '1em' }}>{t('User Permissions')}</h3>
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <FormItem label={t('Users')}>
-              <AsyncSelect
-                mode="multiple"
-                ariaLabel={t('Select users')}
-                options={loadOptions} // 动态加载用户选项
-                value={userPermissions.map(up => ({
-                  value: up.userId,
-                  label: up.userName, // 使用实际的用户姓名
-                }))}
-                onChange={(values: { value: number; label: string }[]) => {
-                  const updatedPermissions = values.map(v => {
-                    const existing = userPermissions.find(up => up.userId === v.value);
-                    return {
-                      userId: v.value,
-                      userName: v.label, // 从选中的值中获取用户姓名
-                      permissions: existing?.permissions || [], // 保持现有权限或默认空权限
-                    };
-                  });
-                  setUserPermissions(updatedPermissions); // 更新用户权限状态
-                }}
-              />
-              <StyledHelpBlock className="help-block">
-                {t('Select users and assign read/edit permissions below.')}
-              </StyledHelpBlock>
-              <div>
-                {userPermissions.map((user, index) => (
-                  <div key={user.userId} style={{ marginBottom: '8px' }}>
-                    <span>{`${user.userName}`}</span> {/* 显示用户姓名 */}
-                    <Checkbox.Group
-                      options={[
-                        { label: 'Read', value: 'read' },
-                        { label: 'Edit', value: 'edit' },
-                      ]}
-                      value={user.permissions} // 绑定到用户的权限数组
-                      onChange={(checkedValues: ('read' | 'edit')[]) => {
-                        const updated = [...userPermissions];
-                        updated[index] = {
-                          ...updated[index],
-                          permissions: checkedValues, // 更新权限
-                        };
-                        setUserPermissions(updated); // 更新状态
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </FormItem>
-          </Col>
-        </Row>
 
-        {/* 角色权限部分 */}
-        <Row gutter={16}>
-          <Col xs={24} md={24}>
-            <h3 style={{ marginTop: '1em' }}>{t('Role Permissions')}</h3>
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <FormItem label={t('Roles')}>
-              <AsyncSelect
-                mode="multiple"
-                ariaLabel={t('Select roles')}
-                options={loadRoleOptions} // 动态加载角色选项
-                value={rolePermissions.map(rp => ({
-                  value: rp.roleId,
-                  label: rp.roleName, // 使用实际的角色名称
-                }))}
-                onChange={(values: { value: number; label: string }[]) => {
-                  const updatedPermissions = values.map(v => {
-                    const existing = rolePermissions.find(rp => rp.roleId === v.value);
-                    return {
-                      roleId: v.value,
-                      roleName: v.label, // 从选中的值中获取角色名称
-                      permissions: existing?.permissions || [], // 保持现有权限或默认空权限
-                    };
-                  });
-                  setRolePermissions(updatedPermissions); // 更新角色权限状态
-                }}
-              />
-              <StyledHelpBlock className="help-block">
-                {t('Select roles and assign read/edit permissions below.')}
-              </StyledHelpBlock>
-              <div>
-                {rolePermissions.map((role, index) => (
-                  <div key={role.roleId} style={{ marginBottom: '8px' }}>
-                    <span>{`${role.roleName}`}</span> {/* 显示角色名称 */}
-                    <Checkbox.Group
-                      options={[
-                        { label: 'Read', value: 'read' },
-                        { label: 'Edit', value: 'edit' },
-                      ]}
-                      value={role.permissions} // 绑定到角色的权限数组
-                      onChange={(checkedValues: ('read' | 'edit')[]) => {
-                        const updated = [...rolePermissions];
-                        updated[index] = {
-                          ...updated[index],
-                          permissions: checkedValues, // 更新权限
-                        };
-                        setRolePermissions(updated); // 更新状态
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </FormItem>
-          </Col>
-        </Row>
+
+
 
         <Row>
           <Col xs={24} md={24}>
@@ -1024,6 +921,25 @@ const PropertiesModal = ({
             )}
           </Col>
         </Row>
+        <Row gutter={16} justify="space-between" align="middle">
+          <Col xs={24} md={12}>
+            {/* 其他内容 */}
+          </Col>
+          <Col xs={24} md={12} style={{ textAlign: 'right' }}>
+            <Button type="primary" onClick={showCollaboratorsModal}>
+              Manage Collaborators
+            </Button>
+          </Col>
+        </Row>
+
+        <Modal
+          title="Manage Collaborators"
+          visible={isCollaboratorsModalVisible}
+          onCancel={handleCollaboratorsModalClose}
+          footer={null}
+        >
+          <p>这里是协作者管理的内容</p>
+        </Modal>
       </AntdForm>
     </Modal>
   );

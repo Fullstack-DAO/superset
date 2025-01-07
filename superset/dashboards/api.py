@@ -150,6 +150,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         "delete_embedded",
         "thumbnail",
         "copy_dash",
+        "get_access_info",
     }
     resource_name = "dashboard"
     allow_browser_login = True
@@ -1440,42 +1441,42 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             },
         )
 
-    @expose("/", methods=["GET"])
-    @protect()
-    @safe
-    @rison(get_list_schema)
-    def get_list(self, rison: dict) -> Response:
-        """
-        自定义的 get_list 方法，用于处理仪表盘数据的检索。
-        该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
-        """
-        # 第一步：检查用户是否有权限访问仪表盘
-        current_user = get_current_user_object()
-        logger.info(f"Current logged-in user: {current_user.username}")
-        logger.info(
-            f"Current user's roles: {[role.name for role in current_user.roles]}")
-
-        # 第二步：获取仪表盘列表，根据解析后的 rison 参数
-        response = self._get_dashboards_list(rison)
-        logger.info(f"Raw response content: {response}")
-
-        if response.status_code != 200:
-            return response  # 如果原始列表获取失败，直接返回响应
-
-        # 第三步：根据用户/角色权限进行自定义过滤
-        filtered_result, allowed_ids = self._filter_dashboards_based_on_permissions(
-            response.json.get("result", []),
-            response.json.get("ids", []),
-            current_user
-        )
-
-        # 第四步：更新响应数据，返回过滤后的仪表盘
-        response_data = response.json
-        response_data["result"] = filtered_result
-        response_data["ids"] = allowed_ids
-        response_data["count"] = len(filtered_result)
-
-        return self.response(200, **response_data)
+    # @expose("/", methods=["GET"])
+    # @protect()
+    # @safe
+    # @rison(get_list_schema)
+    # def get_list(self, rison: dict) -> Response:
+    #     """
+    #     自定义的 get_list 方法，用于处理仪表盘数据的检索。
+    #     该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
+    #     """
+    #     # 第一步：检查用户是否有权限访问仪表盘
+    #     current_user = get_current_user_object()
+    #     logger.info(f"Current logged-in user: {current_user.username}")
+    #     logger.info(
+    #         f"Current user's roles: {[role.name for role in current_user.roles]}")
+    #
+    #     # 第二步：获取仪表盘列表，根据解析后的 rison 参数
+    #     response = self._get_dashboards_list(rison)
+    #     logger.info(f"Raw response content: {response}")
+    #
+    #     if response.status_code != 200:
+    #         return response  # 如果原始列表获取失败，直接返回响应
+    #
+    #     # 第三步：根据用户/角色权限进行自定义过滤
+    #     filtered_result, allowed_ids = self._filter_dashboards_based_on_permissions(
+    #         response.json.get("result", []),
+    #         response.json.get("ids", []),
+    #         current_user
+    #     )
+    #
+    #     # 第四步：更新响应数据，返回过滤后的仪表盘
+    #     response_data = response.json
+    #     response_data["result"] = filtered_result
+    #     response_data["ids"] = allowed_ids
+    #     response_data["count"] = len(filtered_result)
+    #
+    #     return self.response(200, **response_data)
 
     def _get_dashboards_list(self, rison: dict) -> Response:
         """
@@ -1534,3 +1535,23 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         ]
 
         return filtered_result, allowed_ids
+
+    @expose("/<int:dashboard_id>/access-info", methods=["GET"])
+    # @protect()
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}"
+                                             f".access_info",
+        log_to_statsd=False,
+    )
+    def get_access_info(self, dashboard_id: int):
+        """
+        获取指定 chart 的访问权限信息。
+        """
+        try:
+            access_info = DashboardDAO.get_dashboard_access_info(dashboard_id)
+            return self.response(200, result=access_info)
+        except Exception as ex:
+            logger.error(f"Error fetching dashboard access info: {ex}")
+            return self.response_500(message="Failed to fetch dashboard access info.")

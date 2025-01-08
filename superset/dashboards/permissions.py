@@ -259,7 +259,6 @@ class DashboardPermissions:
         # 根据 entity_type 确定使用哪个模型
         permission_model = UserPermission if entity_type == "user" else RolePermission
 
-
         try:
             # 查询现有权限记录
             existing_permission = db.session.query(permission_model).filter_by(
@@ -332,7 +331,8 @@ class DashboardPermissions:
         :raises ValueError: 如果存在无效权限或实体类型错误
         """
         valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-        invalid_permissions = [perm for perm in permissions if perm not in valid_permissions]
+        invalid_permissions = [perm for perm in permissions if
+                               perm not in valid_permissions]
         if invalid_permissions:
             raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
 
@@ -600,3 +600,79 @@ class DashboardPermissions:
                 f"Error handling permissions update for dashboard {dashboard_id}: {ex}",
                 exc_info=True)
             raise
+
+    @staticmethod
+    def is_admin_of_resource(
+        user_id: int, resource_type: str, resource_id: int
+    ) -> bool:
+        """
+        判断 user_id 对该资源是否是“管理员”（can_delete && can_edit && can_add && can_read）。
+        """
+        if not user_id:
+            return False
+        perm = UserPermission.query.filter_by(
+            user_id=user_id,
+            resource_type=resource_type,
+            resource_id=resource_id
+        ).first()
+        if not perm:
+            return False
+        # 判断是否拥有所有权限
+        return all([
+            perm.can_add,
+            perm.can_read,
+            perm.can_edit,
+            perm.can_delete
+        ])
+
+    @staticmethod
+    def check_chart_admin_permissions(user_id: int, role_ids: list[int],
+                                      chart_id: int) -> bool:
+        """
+        检查用户是否对指定的 chart_id 拥有管理员权限。
+        :param user_id: 当前用户的 ID
+        :param role_ids: 当前用户的角色 ID 列表
+        :param chart_id: 要检查权限的图表 ID
+        :return: 如果是管理员，返回 True；否则返回 False
+        """
+        # 使用 db.session.query 代替传入的 session 参数
+        # 检查 UserPermissions 表
+        user_permission = (
+            db.session.query(UserPermission)
+            .filter_by(user_id=user_id, resource_id=chart_id, resource_type="chart")
+            .first()
+        )
+
+        # 检查 RolePermissions 表
+        role_permissions = (
+            db.session.query(RolePermission)
+            .filter(
+                RolePermission.role_id.in_(role_ids),
+                RolePermission.resource_id == chart_id,
+                RolePermission.resource_type == "chart",
+                )
+            .all()
+        )
+
+        # 检查是否为管理员
+        is_admin = False
+        if user_permission:
+            # 如果 UserPermissions 表中所有权限都为 True，则为管理员
+            is_admin = (
+                user_permission.can_add
+                and user_permission.can_read
+                and user_permission.can_delete
+                and user_permission.can_edit
+            )
+
+        if not is_admin and role_permissions:
+            # 如果 RolePermissions 表中任意角色的所有权限都为 True，则为管理员
+            is_admin = any(
+                role_permission.can_add
+                and role_permission.can_read
+                and role_permission.can_delete
+                and role_permission.can_edit
+                for role_permission in role_permissions
+            )
+
+        return is_admin

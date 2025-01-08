@@ -23,7 +23,8 @@ from io import BytesIO
 from typing import Any, Callable, cast, Optional
 from zipfile import is_zipfile, ZipFile
 
-from flask import make_response, redirect, request, Response, send_file, url_for
+from flask import make_response, redirect, request, Response, send_file, url_for, \
+    jsonify
 from flask_appbuilder import permission_name
 from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
@@ -587,28 +588,44 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             if not user:
                 logger.warning("No user found while updating dashboard.")
                 raise DashboardForbiddenError("No user found to assign permissions.")
-
+            user_id = user.id  # 获取当前用户的ID
             # 获取用户的角色
-            user_roles = user.roles  # 假设 user.roles 是一个 Role 对象的列表
+            role_ids = DashboardRestApi.get_user_role_ids(user)
+            logger.info(f"Current user's role IDs: {role_ids}")
+            json_data = item.get("json_metadata")
+            logger.info(f"json_data: {json_data}")
+            charts = DashboardDAO.extract_chart_info(json_data=json_data)
+            logger.info(f"charts: {charts}")
+            for chart in charts:
+                chart_id = chart.get("chartId")
+                slice_name = chart.get("sliceName")
 
-            # 更新仪表盘并设置权限
-            changed_model = DashboardPermissions.update_dashboard(
-                pk=pk,
-                item=item,
-                user=user,
-                roles=user_roles
-            )
+                # 调用 DashboardDAO 的方法检查权限
+                is_admin = DashboardPermissions.check_chart_admin_permissions(
+                    user_id=user_id, role_ids=role_ids, chart_id=chart_id
+                )
 
-            last_modified_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-            # 构建成功响应
+                if not is_admin:
+                    logger.warning(
+                        f"User does not have admin permissions for chartId={chart_id}, sliceName={slice_name}"
+                    )
+                    # 返回 403 错误并提示 sliceName
+                    return make_response(
+                        {
+                            "message": f"chart:{slice_name}, chartId: {chart_id}你没有管理员权限，无法保存"
+                        },
+                        403,
+                    )
+            changed_model = UpdateDashboardCommand(pk, item).run()
+            last_modified_time = changed_model.changed_on.replace(
+                microsecond=0
+            ).timestamp()
             response = self.response(
                 200,
                 id=changed_model.id,
                 result=item,
                 last_modified_time=last_modified_time,
             )
-            return response
 
         except DashboardNotFoundError:
             return self.response_404()
@@ -646,6 +663,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             # 不需要在这里回滚，因为在 `DashboardPermissions.update_dashboard_with_permissions`
             # 中已经处理了
             return self.response_500(message="Internal server error.")
+        return response
 
     @expose("/<pk>", methods=("DELETE",))
     @protect()
@@ -1555,3 +1573,95 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             logger.error(f"Error fetching dashboard access info: {ex}")
             return self.response_500(message="Failed to fetch dashboard access info.")
+
+    @expose('/<int:dashboard_id>/add-collaborator', methods=["POST"])
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args,
+                      **kwargs: f"{self.__class__.__name__}.add_collaborator",
+        log_to_statsd=False,
+    )
+    def add_collaborator(self, dashboard_id: int):
+        """
+        添加协作者接口:
+        - 检查协作者是否已经存在。
+        - 如果不存在，添加到协作者列表。
+        """
+        data = request.json
+        collaborator_id = data.get("id")
+        collaborator_type = data.get("type")
+        logger.info(f"当前的collaborator_id: {collaborator_id}")
+        logger.info(f"当前的collaborator_type: {collaborator_type}")
+        logger.info(f"当前的dashboardId是: {dashboard_id}")
+
+        # 添加一个映射，将中文类型映射为英文类型
+        type_mapping = {
+            "用户": "user",
+            "角色": "role",
+        }
+
+        # 将 collaborator_type 转换为后端识别的值
+        collaborator_type = type_mapping.get(collaborator_type, collaborator_type)
+
+        if not collaborator_id or collaborator_type not in ["user", "role"]:
+            return self.response_400(
+                message=f"Invalid collaborator_type: "
+                        f"{collaborator_type}. "
+                        f"Must be 'user' or 'role'."
+            )
+
+        # 检查协作者是否已经存在
+        try:
+            if DashboardDAO.is_collaborator_exist(dashboard_id, collaborator_id,
+                                                  collaborator_type):
+                response = make_response(
+                    jsonify({
+                        "error": f"该用户已经是协作者了！",
+                        "code": 400,
+                        "message": "BAD REQUEST"
+                    }), 400
+                )
+                return response
+            resource_type = 'dashboard'
+
+            if collaborator_type == "user":
+                # 如果是用户类型，检查用户对 chart 是否有权限
+                has_permission = DashboardPermissions.check_user_permission(
+                    collaborator_id)
+            elif collaborator_type == "role":
+                # 如果是角色类型，检查角色对 chart 是否有权限
+                has_permission = DashboardPermissions.check_role_permission(
+                    collaborator_id)
+
+            if not has_permission:
+                return make_response(
+                    jsonify({
+                        "error": f"该{'用户' if collaborator_type == 'user' else '角色'}没有权限访问数据源！",
+                        "code": 403,
+                        "message": "Forbidden"
+                    }), 403
+                )
+                # 如果不存在，则添加协作者
+
+            DashboardDAO.add_collaborator(
+                dashboard_id,
+                collaborator_id,
+                collaborator_type)
+
+            return self.response(
+                200,
+                message=f"{collaborator_type} (ID: {collaborator_id}) 添加成功！",
+            )
+        except Exception as ex:
+            logger.error(f"Error adding collaborator: {ex}")
+            return self.response_500(message="Failed to add collaborator.")
+
+    @staticmethod
+    def get_user_role_ids(user) -> list:
+        """
+        获取当前用户的角色ID列表
+        :param user: 当前用户对象
+        :return: 用户角色ID列表
+        """
+        return [role.id for role in user.roles]  # 假设 user.roles 是用户角色的列表

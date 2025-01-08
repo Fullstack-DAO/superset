@@ -53,7 +53,6 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
         try:
             # 更新仪表盘基本字段，不提交事务
             dashboard = DashboardDAO.update(self._model, self._properties, commit=False)
-
             # 如果需要更新 json_metadata
             if self._properties.get("json_metadata"):
                 dashboard = DashboardDAO.set_dash_metadata(
@@ -61,9 +60,6 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
                     data=json.loads(self._properties.get("json_metadata", "{}")),
                     commit=False,
                 )
-
-            # 更新仪表盘相关权限
-            DashboardDAO.update_permissions(dashboard.id, self._properties)
 
             # 提交事务
             db.session.commit()

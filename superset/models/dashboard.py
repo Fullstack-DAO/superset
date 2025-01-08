@@ -47,14 +47,18 @@ from sqlalchemy.sql.elements import BinaryExpression
 from superset import app, db, is_feature_enabled, security_manager
 from superset.connectors.sqla.models import BaseDatasource, SqlaTable
 from superset.daos.datasource import DatasourceDAO
+from superset.exceptions import SupersetSecurityException
 from superset.extensions import cache_manager
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin
+from superset.models.role_permission import RolePermission
 from superset.models.slice import Slice
 from superset.models.user_attributes import UserAttribute
+from superset.models.user_permission import UserPermission
 from superset.tasks.thumbnails import cache_dashboard_thumbnail
 from superset.tasks.utils import get_current_user
 from superset.thumbnails.digest import get_dashboard_digest
 from superset.utils import core as utils
+from superset.utils.core import get_user_id
 from superset.utils.decorators import debounce
 
 # 确保导入 EmbeddedDashboard

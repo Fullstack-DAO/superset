@@ -446,6 +446,130 @@ class DashboardDAO(BaseDAO[Dashboard]):
             logger.error(f"Error in get_chart_access_info: {ex}", exc_info=True)
             raise
 
+    @staticmethod
+    def is_collaborator_exist(dashboard_id: int, collaborator_id: int,
+                              collaborator_type: str) -> bool:
+        """
+       检查协作者是否已经存在于 user_permissions 或 role_permissions 表中。
+
+       :param dashboard_id: 仪表盘 ID
+       :param collaborator_id: 协作者 ID
+       :param collaborator_type: 协作者类型 ('user' 或 'role')
+       :return: 如果存在则返回 True，否则返回 False
+       """
+        if collaborator_type == "user":
+            exists = (
+                db.session.query(UserPermission)
+                .filter(
+                    UserPermission.resource_type == "dashboard",
+                    UserPermission.resource_id == dashboard_id,
+                    UserPermission.user_id == collaborator_id,
+                )
+                .first()
+            )
+        elif collaborator_type == "role":
+            exists = (
+                db.session.query(RolePermission)
+                .filter(
+                    RolePermission.resource_type == "dashboard",
+                    RolePermission.resource_id == dashboard_id,
+                    RolePermission.role_id == collaborator_id,
+                )
+                .first()
+            )
+        else:
+            raise ValueError("Invalid collaborator_type. Must be 'user' or 'role'.")
+
+        return exists is not None
+
+    @staticmethod
+    def get_slice_ids_by_dashboard_id(dashboard_id: int) -> list[int]:
+        """
+        根据 dashboard_id 查找对应的 dashboard，并从其 json_metadata 中提取相关的 slice_id。
+
+        :param dashboard_id: 仪表盘的 ID
+        :return: 与该仪表盘相关的 slice_id 列表
+        :raises DashboardNotFoundError: 如果未找到对应的仪表盘
+        :raises DashboardAccessDeniedError: 如果用户无权访问该仪表盘
+        """
+        try:
+            # 获取仪表盘对象
+            dashboard = DashboardDAO.get_by_id_or_slug(dashboard_id)
+        except DashboardNotFoundError:
+            logger.error(f"Dashboard with id {dashboard_id} not found.")
+            raise
+        except DashboardAccessDeniedError:
+            logger.error(f"Access denied for dashboard with id {dashboard_id}.")
+            raise
+        except Exception as ex:
+            logger.error(f"Unexpected error when retrieving dashboard: {ex}",
+                         exc_info=True)
+            raise
+
+        # 获取 json_metadata
+        json_metadata_str = dashboard.json_metadata
+
+        # 判空处理：检查 json_metadata 是否为 None、空字符串或仅包含 {}
+        if not json_metadata_str or json_metadata_str.strip() == "{}":
+            logger.info(
+                f"Dashboard with id {dashboard_id} has empty or no json_metadata.")
+            return []
+
+        try:
+            json_metadata = json.loads(json_metadata_str)
+        except json.JSONDecodeError as ex:
+            logger.error(
+                f"Invalid JSON in json_metadata for dashboard id {dashboard_id}: {ex}")
+            raise ValueError(
+                f"Invalid JSON in json_metadata for dashboard id {dashboard_id}") from ex
+
+        slice_ids = []
+
+        # 遍历 json_metadata，提取所有的 slice_id（chartId）
+        for key, value in json_metadata.items():
+            if isinstance(value, dict):
+                meta = value.get("meta", {})
+                chart_id = meta.get("chartId")
+                if isinstance(chart_id, int):
+                    slice_ids.append(chart_id)
+
+        logger.info(f"Extracted slice_ids for dashboard id {dashboard_id}: {slice_ids}")
+        return slice_ids
+
+    @staticmethod
+    def extract_chart_info(json_data: str):
+        """
+        从JSON中提取chartId和sliceName的对应关系。
+
+        :param json_data: 包含dashboard的JSON字符串
+        :return: 一个包含chartId和sliceName的字典列表
+        """
+        try:
+            # 将JSON字符串解析为Python字典
+            data = json.loads(json_data)
+
+            # 初始化结果列表
+            chart_info = []
+
+            # 获取JSON中的 positions 节点
+            positions = data.get("positions", {})
+
+            # 遍历 positions 提取CHART类型的数据
+            for key, value in positions.items():
+                if isinstance(value, dict) and value.get("type") == "CHART":
+                    meta = value.get("meta", {})
+                    chart_id = meta.get("chartId")
+                    slice_name = meta.get("sliceName")
+                    if chart_id and slice_name:
+                        chart_info.append(
+                            {"chartId": chart_id, "sliceName": slice_name})
+
+            return chart_info
+        except (json.JSONDecodeError, KeyError) as e:
+            # 错误处理
+            print(f"解析JSON时出错: {e}")
+            return []
+
 
 class EmbeddedDashboardDAO(BaseDAO[EmbeddedDashboard]):
     # There isn't really a regular scenario where we would rather get Embedded by id

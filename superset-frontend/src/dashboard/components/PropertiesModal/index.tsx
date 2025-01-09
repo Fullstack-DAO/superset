@@ -38,7 +38,6 @@ import {
 
 import Modal from 'src/components/Modal';
 import { JsonEditor } from 'src/components/AsyncAceEditor';
-import DashboardCollaboratorModal from './DashboardCollaboratorModal'; // 管理协作者弹窗组件
 import ColorSchemeControlWrapper from 'src/dashboard/components/ColorSchemeControlWrapper';
 import FilterScopeModal from 'src/dashboard/components/filterscope/FilterScopeModal';
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
@@ -51,14 +50,12 @@ import {
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
 import { loadTags } from 'src/components/Tags/utils';
-
+import DashboardCollaboratorModal from './DashboardCollaboratorModal';
 const StyledFormItem = styled(FormItem)`
   margin-bottom: 0;
 `;
 
-const StyledHelpBlock = styled.span`
-  margin-bottom: 0;
-`;
+
 
 const StyledJsonEditor = styled(JsonEditor)`
   border-radius: ${({ theme }) => theme.borderRadius}px;

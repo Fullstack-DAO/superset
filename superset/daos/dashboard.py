@@ -23,7 +23,7 @@ from typing import Any, Optional
 
 from flask import g
 from flask_appbuilder.models.sqla.interface import SQLAInterface
-from sqlalchemy import literal_column
+from sqlalchemy import literal_column, case, literal, and_
 from flask_appbuilder.security.sqla.models import User, Role
 from superset import is_feature_enabled, security_manager
 from superset.commands.dashboard.exceptions import (
@@ -365,86 +365,92 @@ class DashboardDAO(BaseDAO[Dashboard]):
             permissions_data=properties
         )
 
-    @staticmethod
-    def get_dashboard_access_info(dashboard_id: int) -> list[dict]:
-        """
-        获取指定 dashboard 的访问权限信息，返回指定格式的结果。
-        """
-        try:
-            # 用户权限查询
-            user_permissions_query = (
-                db.session.query(
-                    literal_column("'user'").label("type"),
-                    User.id.label("id"),
-                    User.username.label("name"),
-                    UserPermission.can_read,
-                    UserPermission.can_edit,
-                    UserPermission.can_add,
-                    UserPermission.can_delete,
-                )
-                .join(User, UserPermission.user_id == User.id)
-                .filter(UserPermission.resource_type == "dashboard")
-                .filter(UserPermission.resource_id == dashboard_id)
+    @classmethod
+    def get_dashboard_access_info(cls, dashboard_id: int) -> list[dict]:
+        """获取仪表板的访问权限信息"""
+        
+        # 获取仪表板创建者ID
+        dashboard = db.session.query(Dashboard).filter_by(id=dashboard_id).first()
+        creator_id = dashboard.created_by_fk if dashboard else None
+
+        # 用户权限查询
+        user_permissions_query = (
+            db.session.query(
+                UserPermission.user_id.label('id'),
+                User.first_name.concat(' ').concat(User.last_name).label('name'),
+                literal('user').label('type'),
+                case(
+                    [
+                        (and_(
+                            UserPermission.can_read == True,
+                            UserPermission.can_edit == True,
+                            UserPermission.can_add == True,
+                            UserPermission.can_delete == True
+                        ), '可管理'),
+                        (and_(
+                            UserPermission.can_read == True,
+                            UserPermission.can_edit == True
+                        ), '可编辑'),
+                        (UserPermission.can_read == True, '可阅读')
+                    ],
+                    else_='无权限'
+                ).label('permission'),
+                # 添加 is_creator 字段
+                (User.id == creator_id).label('is_creator')
             )
-
-            # 角色权限查询
-            role_permissions_query = (
-                db.session.query(
-                    literal_column("'role'").label("type"),
-                    Role.id.label("id"),
-                    Role.name.label("name"),
-                    RolePermission.can_read,
-                    RolePermission.can_edit,
-                    RolePermission.can_add,
-                    RolePermission.can_delete,
-                )
-                .join(Role, RolePermission.role_id == Role.id)
-                .filter(RolePermission.resource_type == "dashboard")
-                .filter(RolePermission.resource_id == dashboard_id)
+            .join(User, User.id == UserPermission.user_id)
+            .filter(
+                UserPermission.resource_type == 'dashboard',
+                UserPermission.resource_id == dashboard_id
             )
+        )
 
-            # 合并查询结果
-            results = user_permissions_query.union_all(role_permissions_query).all()
+        # 角色权限查询
+        role_permissions_query = (
+            db.session.query(
+                RolePermission.role_id.label('id'),
+                Role.name.label('name'),
+                literal('role').label('type'),
+                case(
+                    [
+                        (and_(
+                            RolePermission.can_read == True,
+                            RolePermission.can_edit == True,
+                            RolePermission.can_add == True,
+                            RolePermission.can_delete == True
+                        ), '可管理'),
+                        (and_(
+                            RolePermission.can_read == True,
+                            RolePermission.can_edit == True
+                        ), '可编辑'),
+                        (RolePermission.can_read == True, '可阅读')
+                    ],
+                    else_='无权限'
+                ).label('permission'),
+                # 角色永远不是创建者
+                literal(False).label('is_creator')
+            )
+            .join(Role, Role.id == RolePermission.role_id)
+            .filter(
+                RolePermission.resource_type == 'dashboard',
+                RolePermission.resource_id == dashboard_id
+            )
+        )
 
-            # 检查查询结果是否为空
-            if not results:
-                return []
+        results = user_permissions_query.union_all(role_permissions_query).all()
+        
+        access_info = []
+        for row in results:
+            info = {
+                "id": row.id,
+                "name": row.name,
+                "type": row.type,
+                "permission": row.permission,
+                "is_creator": row.is_creator
+            }
+            access_info.append(info)
 
-            # 构建返回结果
-            access_info = []
-            for row in results:
-                # 根据权限布尔值正确映射权限标签
-                if (
-                    row.can_read
-                    and row.can_edit
-                    and row.can_add
-                    and row.can_delete
-                ):
-                    permission = "可管理"
-                elif (
-                    row.can_read
-                    and row.can_edit
-                ):
-                    permission = "可编辑"
-                elif row.can_read:
-                    permission = "可阅读"
-                else:
-                    permission = "无权限"  # 默认无权限
-
-                access_info.append(
-                    {
-                        "id": row.id,
-                        "name": row.name,
-                        "type": row.type,
-                        "permission": permission,
-                    }
-                )
-
-            return access_info
-
-        except Exception as ex:
-            logger.error(f"Error in get_chart_access_info: {ex}", exc_info=True)
-            raise
+        return access_info
 
     @staticmethod
     def is_collaborator_exist(dashboard_id: int, collaborator_id: int,

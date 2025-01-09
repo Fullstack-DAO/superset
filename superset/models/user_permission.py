@@ -18,7 +18,7 @@ class UserPermission(Model):
     can_edit = Column(Boolean, default=False)
     can_delete = Column(Boolean, default=False)
     can_add = Column(Boolean, default=False)
-
+    is_creator = Column(Boolean, default=False)
     user = relationship("User", backref="user_permissions")
     # dashboard = relationship('Dashboard', back_populates='user_permissions', foreign_keys=[resource_id])
     # slice = relationship('Slice', back_populates='user_permissions', foreign_keys=[resource_id])

@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import literal_column
+from sqlalchemy import literal_column, literal, case, and_
 
 from superset.charts.filters import ChartFilter
 from superset.charts.permissions import ChartPermissions
@@ -560,36 +560,71 @@ class ChartDAO(BaseDAO[Slice]):
         获取指定 chart 的访问权限信息，返回指定格式的结果。
         """
         try:
+            # 获取图表板创建者ID
+            dashboard = db.session.query(Slice).filter_by(id=chart_id).first()
+            creator_id = dashboard.created_by_fk if dashboard else None
             # 用户权限查询
             user_permissions_query = (
                 db.session.query(
-                    literal_column("'user'").label("type"),
-                    User.id.label("id"),
-                    User.username.label("name"),
-                    UserPermission.can_read,
-                    UserPermission.can_edit,
-                    UserPermission.can_add,
-                    UserPermission.can_delete,
+                    UserPermission.user_id.label('id'),
+                    User.first_name.concat(' ').concat(User.last_name).label('name'),
+                    literal('user').label('type'),
+                    case(
+                        [
+                            (and_(
+                                UserPermission.can_read == True,
+                                UserPermission.can_edit == True,
+                                UserPermission.can_add == True,
+                                UserPermission.can_delete == True
+                            ), '可管理'),
+                            (and_(
+                                UserPermission.can_read == True,
+                                UserPermission.can_edit == True
+                            ), '可编辑'),
+                            (UserPermission.can_read == True, '可阅读')
+                        ],
+                        else_='无权限'
+                    ).label('permission'),
+                    # 添加 is_creator 字段
+                    (User.id == creator_id).label('is_creator')
                 )
-                .join(User, UserPermission.user_id == User.id)
-                .filter(UserPermission.resource_type == "chart")
-                .filter(UserPermission.resource_id == chart_id)
+                .join(User, User.id == UserPermission.user_id)
+                .filter(
+                    UserPermission.resource_type == 'chart',
+                    UserPermission.resource_id == chart_id
+                )
             )
 
             # 角色权限查询
             role_permissions_query = (
                 db.session.query(
-                    literal_column("'role'").label("type"),
-                    Role.id.label("id"),
-                    Role.name.label("name"),
-                    RolePermission.can_read,
-                    RolePermission.can_edit,
-                    RolePermission.can_add,
-                    RolePermission.can_delete,
+                    RolePermission.role_id.label('id'),
+                    Role.name.label('name'),
+                    literal('role').label('type'),
+                    case(
+                        [
+                            (and_(
+                                RolePermission.can_read == True,
+                                RolePermission.can_edit == True,
+                                RolePermission.can_add == True,
+                                RolePermission.can_delete == True
+                            ), '可管理'),
+                            (and_(
+                                RolePermission.can_read == True,
+                                RolePermission.can_edit == True
+                            ), '可编辑'),
+                            (RolePermission.can_read == True, '可阅读')
+                        ],
+                        else_='无权限'
+                    ).label('permission'),
+                    # 角色永远不是创建者
+                    literal(False).label('is_creator')
                 )
-                .join(Role, RolePermission.role_id == Role.id)
-                .filter(RolePermission.resource_type == "chart")
-                .filter(RolePermission.resource_id == chart_id)
+                .join(Role, Role.id == RolePermission.role_id)
+                .filter(
+                    RolePermission.resource_type == 'chart',
+                    RolePermission.resource_id == chart_id
+                )
             )
 
             # 合并查询结果

@@ -629,40 +629,21 @@ class ChartDAO(BaseDAO[Slice]):
 
             # 合并查询结果
             results = user_permissions_query.union_all(role_permissions_query).all()
-
+            logger.info(f"合并查询的chart权限集合results: {results}")
             # 检查查询结果是否为空
             if not results:
                 return []
 
-            # 构建返回结果
             access_info = []
             for row in results:
-                # 根据权限布尔值正确映射权限标签
-                if (
-                    row.can_read
-                    and row.can_edit
-                    and row.can_add
-                    and row.can_delete
-                ):
-                    permission = "可管理"
-                elif (
-                    row.can_read
-                    and row.can_edit
-                ):
-                    permission = "可编辑"
-                elif row.can_read:
-                    permission = "可阅读"
-                else:
-                    permission = "无权限"  # 默认无权限
-
-                access_info.append(
-                    {
-                        "id": row.id,
-                        "name": row.name,
-                        "type": row.type,
-                        "permission": permission,
-                    }
-                )
+                info = {
+                    "id": row.id,
+                    "name": row.name,
+                    "type": row.type,
+                    "permission": row.permission,
+                    "is_creator": row.is_creator
+                }
+                access_info.append(info)
 
             return access_info
 

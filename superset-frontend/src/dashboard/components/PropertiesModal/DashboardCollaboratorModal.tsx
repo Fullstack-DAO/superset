@@ -131,7 +131,7 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
       );
     } catch (error: any) {
       console.error('Error fetching collaborators:', error);
-      message.error(t('无法获取协作者信息'));s
+      message.error(t('无法获取协作者信息'));
       setCollaborators([]); // 出现错误时设置为空数组
     } finally {
       setLoading(false);

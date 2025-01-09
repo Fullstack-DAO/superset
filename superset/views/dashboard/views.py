@@ -123,11 +123,15 @@ class Dashboard(BaseSupersetView):
         )
         db.session.add(new_dashboard)
         db.session.commit()
+        
+        # 设置默认权限，将当前用户设为创建者
         DashboardPermissions.set_default_permissions(
             dashboard=new_dashboard,
             user=g.user,
-            permissions=["can_read", "can_edit", "can_add", "can_delete"]
+            permissions=["can_read", "can_edit", "can_add", "can_delete"],
+            is_creator=True
         )
+        
         return redirect(f"/superset/dashboard/{new_dashboard.id}/?edit=true")
 
     @expose("/<dashboard_id_or_slug>/embedded")

@@ -25,23 +25,29 @@ class DashboardPermissions:
         user: User,
         roles: list[Role] = None,
         permissions: list[str] = None,
+        is_creator: bool = False,  # 默认值设为 False
     ) -> None:
         """
         设置仪表盘的默认权限。
         """
-        roles = roles or []  # 如果没有传入角色，默认使用空列表
-        permissions = permissions or ["can_read", "can_edit"]  # 默认权限
-        logger.info(f"创建dashboard传入的permissions: {permissions}")
-        logger.info(f"创建dashboard传入的roles: {roles}")
         try:
-            # 为用户分配权限
-            DashboardPermissions.add_permissions_to_user(dashboard.id, user.id,
-                                                         permissions)
+            # 为用户分配权限，传递 is_creator 参数
+            DashboardPermissions.add_permissions_to_user(
+                dashboard_id=dashboard.id,
+                user_id=user.id,
+                permissions=["can_read", "can_edit", "can_add", "can_delete"],  # 创建者拥有所有权限
+                is_creator=True  # 设置为创建者
+            )
 
-            # 为每个角色分配权限
-            for role in roles:
-                DashboardPermissions.add_permissions_to_role(dashboard.id, role.id,
-                                                             permissions)
+            # 为每个角色分配权限（如果有的话）
+            if roles:
+                for role in roles:
+                    DashboardPermissions.add_permissions_to_role(
+                        dashboard_id=dashboard.id,
+                        role_id=role.id,
+                        permissions=permissions or ["can_read", "can_edit"]
+                    )
+
         except Exception as ex:
             logger.error(
                 f"Error setting default permissions for dashboard {dashboard.id}: {ex}"
@@ -238,73 +244,74 @@ class DashboardPermissions:
         dashboard_id: int,
         entity_id: int,
         permissions: list[str],
-        entity_type: str
+        entity_type: str,
+        is_creator: bool = False,  # 添加 is_creator 参数
     ) -> None:
         """
         通用方法，为用户或角色添加权限。
 
         :param dashboard_id: 仪表盘 ID
         :param entity_id: 用户或角色 ID
-        :param permissions: 权限列表（前端传递，如 ['read', 'edit']）
+        :param permissions: 权限列表
         :param entity_type: 实体类型 ('user' 或 'role')
-        :raises ValueError: 如果存在无效权限或实体类型错误
+        :param is_creator: 是否为创建者，仅对用户有效
         """
-        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-        invalid_permissions = [perm for perm in permissions if
-                               perm not in valid_permissions]
-
-        # 检查是否存在无效权限
-        if invalid_permissions:
-            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
-
-        # 根据 entity_type 确定使用哪个模型
-        permission_model = UserPermission if entity_type == "user" else RolePermission
-
         try:
             # 查询现有权限记录
+            permission_model = UserPermission if entity_type == "user" else RolePermission
             existing_permission = db.session.query(permission_model).filter_by(
                 resource_type="dashboard",
                 resource_id=dashboard_id,
-                **{f"{entity_type}_id": entity_id},
+                **{f"{entity_type}_id": entity_id}
             ).first()
 
             if not existing_permission:
                 # 创建新的权限记录
-                permission_data = {perm: True for perm in permissions}
-                permission = permission_model(
-                    resource_type="dashboard",
-                    resource_id=dashboard_id,
-                    **{f"{entity_type}_id": entity_id},
-                    **permission_data,
-                )
+                permission_data = {
+                    "resource_type": "dashboard",
+                    "resource_id": dashboard_id,
+                    f"{entity_type}_id": entity_id,
+                    **{perm: True for perm in permissions}
+                }
+                
+                # 如果是用户且是创建者，添加 is_creator 标识
+                if entity_type == "user":
+                    permission_data["is_creator"] = is_creator
+
+                permission = permission_model(**permission_data)
                 db.session.add(permission)
-                logger.info(
-                    f"Added new permissions {permission_data} to {entity_type} ID {entity_id} for dashboard ID {dashboard_id}"
-                )
             else:
-                # 更新现有权限记录
+                # 更新现有权限
                 for perm in permissions:
                     setattr(existing_permission, perm, True)
-                logger.info(
-                    f"Updated permissions {permissions} for {entity_type} ID {entity_id} on dashboard ID {dashboard_id}"
-                )
+                if entity_type == "user":
+                    existing_permission.is_creator = is_creator
 
-        except SQLAlchemyError as ex:
+            db.session.commit()
+
+        except Exception as ex:
             db.session.rollback()
-            logger.error(
-                f"Failed to add permissions {permissions} to {entity_type} {entity_id} for dashboard {dashboard_id}: {ex}",
-                exc_info=True
-            )
+            logger.error(f"Error adding permissions: {ex}")
             raise
 
     @staticmethod
-    def add_permissions_to_user(dashboard_id: int, user_id: int,
-                                permissions: list[str]) -> None:
+    def add_permissions_to_user(
+        dashboard_id: int,
+        user_id: int,
+        permissions: list[str],
+        is_creator: bool = False
+    ) -> None:
         """
-        为用户添加权限，使用通用方法。
+        为用户添加权限，使用通用方法，并处理 is_creator 标识。
         """
-        DashboardPermissions._add_permissions(dashboard_id, user_id, permissions,
-                                              "user")
+        logger.info(f"add_permissions_to_user的参数is_creator: {is_creator}")
+        DashboardPermissions._add_permissions(
+            dashboard_id=dashboard_id,
+            entity_id=user_id,
+            permissions=permissions,
+            entity_type="user",
+            is_creator=is_creator  # 使用关键字参数
+        )
 
     @staticmethod
     def add_permissions_to_role(dashboard_id: int, role_id: int,
@@ -314,69 +321,6 @@ class DashboardPermissions:
         """
         DashboardPermissions._add_permissions(dashboard_id, role_id, permissions,
                                               "role")
-
-    @staticmethod
-    def _add_permissions(
-        dashboard_id: int,
-        entity_id: int,
-        permissions: list[str],
-        entity_type: str
-    ) -> None:
-        """
-        通用方法，为用户或角色添加权限。
-
-        :param dashboard_id: 仪表盘 ID
-        :param entity_id: 用户或角色 ID
-        :param permissions: 权限列表（如 ['can_read', 'can_edit']）
-        :param entity_type: 实体类型 ('user' 或 'role')
-        :raises ValueError: 如果存在无效权限或实体类型错误
-        """
-        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-        invalid_permissions = [perm for perm in permissions if
-                               perm not in valid_permissions]
-        if invalid_permissions:
-            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
-
-        # 根据 entity_type 确定使用哪个模型
-        permission_model = UserPermission if entity_type == "user" else RolePermission
-
-        try:
-            # 查询是否已存在权限记录
-            existing_permission = db.session.query(permission_model).filter_by(
-                resource_type="dashboard",
-                resource_id=dashboard_id,
-                **{f"{entity_type}_id": entity_id},
-            ).first()
-
-            if not existing_permission:
-                # 如果没有现有权限记录，创建新记录
-                permission_data = {perm: True for perm in permissions}
-                permission = permission_model(
-                    resource_type="dashboard",
-                    resource_id=dashboard_id,
-                    **{f"{entity_type}_id": entity_id},
-                    **permission_data,
-                )
-                db.session.add(permission)
-                logger.info(
-                    f"Added new permissions {permissions} to {entity_type} ID {entity_id} for dashboard ID {dashboard_id}"
-                )
-            else:
-                # 如果已有权限记录，更新权限
-                for perm in permissions:
-                    setattr(existing_permission, perm, True)
-                logger.info(
-                    f"Updated permissions {permissions} for {entity_type} ID {entity_id} on dashboard ID {dashboard_id}"
-                )
-
-            db.session.commit()
-        except SQLAlchemyError as ex:
-            db.session.rollback()
-            logger.error(
-                f"Failed to add permissions {permissions} to {entity_type} {entity_id} for dashboard {dashboard_id}: {ex}",
-                exc_info=True
-            )
-            raise
 
     @staticmethod
     def remove_permissions_to_user(dashboard_id: int, user_id: int,
@@ -607,7 +551,7 @@ class DashboardPermissions:
         user_id: int, resource_type: str, resource_id: int
     ) -> bool:
         """
-        判断 user_id 对该资源是否是“管理员”（can_delete && can_edit && can_add && can_read）。
+        判断 user_id 对该资源是否是"管理员"（can_delete && can_edit && can_add && can_read）。
         """
         if not user_id:
             return False

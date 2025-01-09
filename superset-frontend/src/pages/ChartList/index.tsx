@@ -464,10 +464,7 @@ function ChartList(props: ChartListProps) {
             );
           const openEditModal = () => openChartEditModal(original);
           const handleExport = () => handleBulkChartExport([original]);
-          const handleEditPermissions = () => {
-            history.push(`/chart/permission/${original.id}`);
-          };
-          if (!canEdit && !canDelete && !canExport && !canEditPermission) {
+          if (!canEdit && !canDelete && !canExport ) {
             return null;
           }
 
@@ -535,25 +532,7 @@ function ChartList(props: ChartListProps) {
                   </span>
                 </Tooltip>
               )}
-              {canEditPermission && (
-                <Tooltip
-                  id="edit-permission-tooltip"
-                  title={t("Edit Permissions")}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleEditPermissions}
-                  >
-                    <Icons.EditAlt data-test="edit-alt" />
-                  </span>
 
-                </Tooltip>
-                )
-
-              }
             </StyledActions>
           );
         },

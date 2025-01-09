@@ -46,7 +46,7 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
         self._properties = data.copy()
         self._model: Optional[Dashboard] = None
 
-    def run(self) -> Dashboard:
+    def run(self) -> Model:
         self.validate()
         assert self._model
 

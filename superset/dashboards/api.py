@@ -587,40 +587,48 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             return self.response_400(message=error.messages)
 
         try:
-            # 获取当前用户
-            user = get_current_user_object()
-            if not user:
-                logger.warning("No user found while updating dashboard.")
-                raise DashboardForbiddenError("No user found to assign permissions.")
-            user_id = user.id  # 获取当前用户的ID
-            # 获取用户的角色
-            role_ids = DashboardRestApi.get_user_role_ids(user)
-            logger.info(f"Current user's role IDs: {role_ids}")
-            json_data = item.get("json_metadata")
-            logger.info(f"json_data: {json_data}")
-            charts = DashboardDAO.extract_chart_info(json_data=json_data)
-            logger.info(f"charts: {charts}")
-            for chart in charts:
-                chart_id = chart.get("chartId")
-                slice_name = chart.get("sliceName")
+            # 检查是否需要跳过权限检查
+            if item.get('published') is True:
+                logger.info("Published flag is True. Skipping permission checks.")
+                # 直接执行更新操作
+                changed_model = UpdateDashboardCommand(pk, item).run()
+            else:
+                # 获取当前用户
+                user = get_current_user_object()
+                if not user:
+                    logger.warning("No user found while updating dashboard.")
+                    raise DashboardForbiddenError("No user found to assign permissions.")
+                user_id = user.id  # 获取当前用户的ID
+                # 获取用户的角色
+                role_ids = DashboardRestApi.get_user_role_ids(user)
+                logger.info(f"Current user's role IDs: {role_ids}")
+                json_data = item.get("json_metadata")
+                logger.info(f"json_data: {json_data}")
+                charts = DashboardDAO.extract_chart_info(json_data=json_data)
+                logger.info(f"charts: {charts}")
+                for chart in charts:
+                    chart_id = chart.get("chartId")
+                    slice_name = chart.get("sliceName")
 
-                # 调用 DashboardDAO 的方法检查权限
-                is_admin = DashboardPermissions.check_chart_admin_permissions(
-                    user_id=user_id, role_ids=role_ids, chart_id=chart_id
-                )
+                    # 调用 DashboardDAO 的方法检查权限
+                    is_admin = DashboardPermissions.check_chart_admin_permissions(
+                        user_id=user_id, role_ids=role_ids, chart_id=chart_id
+                    )
 
-                if not is_admin:
-                    logger.warning(
-                        f"User does not have admin permissions for chartId={chart_id}, sliceName={slice_name}"
-                    )
-                    # 返回 403 错误并提示 sliceName
-                    return make_response(
-                        {
-                            "message": f"chart:{slice_name}, chartId: {chart_id}你没有管理员权限，无法保存"
-                        },
-                        403,
-                    )
-            changed_model = UpdateDashboardCommand(pk, item).run()
+                    if not is_admin:
+                        logger.warning(
+                            f"User does not have admin permissions for chartId={chart_id}, "
+                            f"sliceName={slice_name}"
+                        )
+                        # 返回 403 错误并提示 sliceName
+                        return make_response(
+                            {
+                                "message": f"chart:{slice_name}, chartId: {chart_id}"
+                                           f"你没有管理员权限，无法保存"
+                            },
+                            403,
+                        )
+                changed_model = UpdateDashboardCommand(pk, item).run()
             last_modified_time = changed_model.changed_on.replace(
                 microsecond=0
             ).timestamp()

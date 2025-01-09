@@ -663,6 +663,116 @@ class DashboardDAO(BaseDAO[Dashboard]):
         # 其他资源类型的处理
         return []
 
+    @staticmethod
+    def modify_permissions(
+        chart_id: int,
+        entity_type: str,
+        entity_id: int,
+        permissions: list[str],
+        action: str
+    ) -> None:
+        """
+        修改图表的权限。
+
+        :param chart_id: 图表 ID
+        :param entity_type: 实体类型 ('user' 或 'role')
+        :param entity_id: 用户或角色 ID
+        :param permissions: 权限列表 ['can_read', 'can_edit', 'can_add', 'can_delete']
+        :param action: 操作类型 ('add' 或 'remove')
+        """
+        if action not in ["add", "remove"]:
+            raise ValueError("Invalid action type: must be 'add' or 'remove'.")
+        if entity_type not in ["user", "role"]:
+            raise ValueError("Invalid entity type: must be 'user' or 'role'.")
+        valid_permissions = ["can_read", "can_edit", "can_add", "can_delete"]
+        logger.info(f"当前的permissions: {permissions}")
+        for perm in permissions:
+            if perm not in valid_permissions:
+                raise ValueError(f"Invalid permission: {perm}")
+
+        try:
+            if entity_type == "user":
+                permission_model = db.session.query(UserPermission).filter_by(
+                    resource_type="dashboard",
+                    resource_id=chart_id,
+                    user_id=entity_id
+                ).first()
+                if action == "add":
+                    if not permission_model:
+                        # 创建新的 UserPermission 记录
+                        permission_model = UserPermission(
+                            resource_type="dashboard",
+                            resource_id=chart_id,
+                            user_id=entity_id,
+                            can_read=False,
+                            can_edit=False,
+                            can_add=False,
+                            can_delete=False,
+                        )
+                        db.session.add(permission_model)
+                    # 先将所有权限设为 False
+                    for perm in valid_permissions:
+                        setattr(permission_model, perm, False)
+                    # 设置指定的权限为 True
+                    for perm in permissions:
+                        logger.info(f"更新前的perm: {perm}")
+                        setattr(permission_model, perm, True)
+                        logger.info(f"更新后的perm: {perm}")
+                elif action == "remove":
+                    if permission_model:
+                        # 删除 UserPermission 记录
+                        db.session.delete(permission_model)
+                    else:
+                        # 尝试从不存在的权限中移除
+                        raise ValueError(
+                            f"User (ID: {entity_id}) is not a collaborator.")
+
+            elif entity_type == "role":
+                permission_model = db.session.query(RolePermission).filter_by(
+                    resource_type="dashboard",
+                    resource_id=chart_id,
+                    role_id=entity_id
+                ).first()
+                if action == "add":
+                    if not permission_model:
+                        # 创建新的 RolePermission 记录
+                        permission_model = RolePermission(
+                            resource_type="dashboard",
+                            resource_id=chart_id,
+                            role_id=entity_id,
+                            can_read=False,
+                            can_edit=False,
+                            can_add=False,
+                            can_delete=False,
+                        )
+                        db.session.add(permission_model)
+                    # 先将所有权限设为 False
+                    for perm in valid_permissions:
+                        setattr(permission_model, perm, False)
+                    # 设置指定的权限为 True
+                    for perm in permissions:
+                        logger.info(f"更新前的perm: {perm}")
+                        setattr(permission_model, perm, True)
+                        logger.info(f"更新后的perm: {perm}")
+                elif action == "remove":
+                    if permission_model:
+                        # 删除 RolePermission 记录
+                        db.session.delete(permission_model)
+                    else:
+                        # 尝试从不存在的权限中移除
+                        raise ValueError(
+                            f"Role (ID: {entity_id}) is not a collaborator.")
+
+            db.session.commit()
+            logger.info(
+                f"Successfully {'added' if action == 'add' else 'removed'}"
+                f" permissions for {entity_type} ID {entity_id} on chart ID {chart_id}.")
+
+        except Exception as ex:
+            db.session.rollback()
+            logger.error(f"Error modifying permissions: {ex}")
+            raise
+
 
 class EmbeddedDashboardDAO(BaseDAO[EmbeddedDashboard]):
     # There isn't really a regular scenario where we would rather get Embedded by id

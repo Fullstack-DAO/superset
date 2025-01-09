@@ -34,7 +34,8 @@ class ChartPermissions:
         user: User,
         roles: list[Role] = None,
         permissions: list[str] = None,
-        datasource_id: int = None
+        datasource_id: int = None,
+        is_creator: bool = False,  # 默认值设为 False
     ) -> None:
         """
         设置图表的默认权限，并插入 datasource_id。
@@ -46,18 +47,29 @@ class ChartPermissions:
         datasource_id = datasource_id or chart.datasource_id
 
         try:
-            # 为用户分配权限
-            ChartPermissions.add_permissions_to_user(chart.id, user.id, permissions,
-                                                     datasource_id)
+            # 为用户分配权限，并传递 is_creator 参数
+            ChartPermissions.add_permissions_to_user(
+                chart_id=chart.id,
+                user_id=user.id,
+                permissions=permissions,
+                datasource_id=datasource_id,
+                is_creator=is_creator  # 传递 is_creator 参数
+            )
 
             # 为每个角色分配权限
             for role in roles:
-                ChartPermissions.add_permissions_to_role(chart.id, role.id, permissions,
-                                                         datasource_id)
+                ChartPermissions.add_permissions_to_role(
+                    chart_id=chart.id,
+                    role_id=role.id,
+                    permissions=permissions,
+                    datasource_id=datasource_id
+                )
         except Exception as ex:
             logger.error(
-                f"Error setting default permissions for chart {chart.id}: {ex}")
+                f"Error setting default permissions for chart {chart.id}: {ex}"
+            )
             raise
+
 
     @staticmethod
     def has_permission(chart_id: int, user, permission_type: str) -> bool:
@@ -231,21 +243,26 @@ class ChartPermissions:
 
     @staticmethod
     def _add_permissions(
-        chart_id: int, entity_id: int, permissions: list[str], entity_type: str,
-        datasource_id: int
+        chart_id: int,
+        entity_id: int,
+        permissions: list[str],
+        entity_type: str,
+        datasource_id: int,
+        is_creator: bool = False  # 添加 is_creator 参数，默认为 False
     ) -> None:
         """
-        通用方法，为用户或角色添加权限，并插入或更新数据时包含 datasource_id。
+        通用方法，为用户或角色添加权限，并插入或更新数据时包含 datasource_id 和 is_creator。
 
         :param chart_id: 图表 ID
         :param entity_id: 用户或角色 ID
         :param permissions: 权限列表
         :param entity_type: 实体类型 ('user' 或 'role')
         :param datasource_id: 数据源 ID
+        :param is_creator: 是否为创建者，仅对用户有效
         """
         valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
-        invalid_permissions = [perm for perm in permissions if
-                               perm not in valid_permissions]
+        invalid_permissions = [perm for perm in permissions if perm not in
+                               valid_permissions]
         if invalid_permissions:
             raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
 
@@ -262,15 +279,25 @@ class ChartPermissions:
             ).first()
 
             if not existing_permission:
-                # 如果没有现有权限记录，创建新记录并包含 datasource_id
+                # 如果没有现有权限记录，创建新记录并包含 datasource_id 和 is_creator
                 permission_data = {perm: True for perm in permissions}
-                permission = permission_model(
-                    resource_type="chart",
-                    resource_id=chart_id,
-                    datasource_id=datasource_id,  # 插入 datasource_id
-                    **{f"{entity_type}_id": entity_id},
-                    **permission_data,
-                )
+                if entity_type == "user":
+                    permission = permission_model(
+                        resource_type="chart",
+                        resource_id=chart_id,
+                        user_id=entity_id,
+                        datasource_id=datasource_id,  # 插入 datasource_id
+                        is_creator=is_creator,  # 插入 is_creator
+                        **permission_data,
+                    )
+                else:
+                    permission = permission_model(
+                        resource_type="chart",
+                        resource_id=chart_id,
+                        role_id=entity_id,
+                        datasource_id=datasource_id,  # 插入 datasource_id
+                        **permission_data,
+                    )
                 db.session.add(permission)
                 logger.info(
                     f"Added new permissions {permission_data} to {entity_type} ID "
@@ -280,6 +307,8 @@ class ChartPermissions:
                 # 如果已有权限记录，更新权限
                 for perm in permissions:
                     setattr(existing_permission, perm, True)
+                if entity_type == "user" and is_creator:
+                    existing_permission.is_creator = True  # 更新 is_creator
                 logger.info(
                     f"Updated permissions {permissions} for {entity_type} ID {entity_id} on chart ID {chart_id}"
                 )
@@ -292,18 +321,27 @@ class ChartPermissions:
             )
             raise
 
+
     @staticmethod
-    def add_permissions_to_user(chart_id: int, user_id: int, permissions: list[str],
-                                datasource_id: int) -> None:
+    def add_permissions_to_user(
+        chart_id: int,
+        user_id: int,
+        permissions: list[str],
+        datasource_id: int,
+        is_creator: bool = False  # 添加 is_creator 参数
+    ) -> None:
         """
-        为用户添加权限，使用通用方法，并传入 datasource_id。
+        为用户添加权限，使用通用方法，并传入 datasource_id 和 is_creator 标识。
         """
         ChartPermissions._add_permissions(
-            chart_id,
-            user_id,
-            permissions,
-            "user",
-            datasource_id)
+            chart_id=chart_id,
+            entity_id=user_id,
+            permissions=permissions,
+            entity_type="user",
+            datasource_id=datasource_id,
+            is_creator=is_creator  # 传递 is_creator 参数
+        )
+
 
     @staticmethod
     def add_permissions_to_role(chart_id: int, role_id: int, permissions: list[str],

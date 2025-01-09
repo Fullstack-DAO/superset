@@ -560,14 +560,15 @@ class ChartDAO(BaseDAO[Slice]):
         获取指定 chart 的访问权限信息，返回指定格式的结果。
         """
         try:
-            # 获取图表板创建者ID
-            dashboard = db.session.query(Slice).filter_by(id=chart_id).first()
-            creator_id = dashboard.created_by_fk if dashboard else None
+            # 获取图表的创建者ID
+            chart = db.session.query(Slice).filter_by(id=chart_id).first()
+            creator_id = chart.created_by_fk if chart else None
+
             # 用户权限查询
             user_permissions_query = (
                 db.session.query(
                     UserPermission.user_id.label('id'),
-                    User.first_name.concat(' ').concat(User.last_name).label('name'),
+                    (User.first_name.concat(' ').concat(User.last_name)).label('name'),
                     literal('user').label('type'),
                     case(
                         [
@@ -585,8 +586,8 @@ class ChartDAO(BaseDAO[Slice]):
                         ],
                         else_='无权限'
                     ).label('permission'),
-                    # 添加 is_creator 字段
-                    (User.id == creator_id).label('is_creator')
+                    # 直接读取 UserPermission 表中的 is_creator 字段
+                    UserPermission.is_creator.label('is_creator')
                 )
                 .join(User, User.id == UserPermission.user_id)
                 .filter(
@@ -630,6 +631,7 @@ class ChartDAO(BaseDAO[Slice]):
             # 合并查询结果
             results = user_permissions_query.union_all(role_permissions_query).all()
             logger.info(f"合并查询的chart权限集合results: {results}")
+
             # 检查查询结果是否为空
             if not results:
                 return []
@@ -646,10 +648,10 @@ class ChartDAO(BaseDAO[Slice]):
                 access_info.append(info)
 
             return access_info
-
         except Exception as ex:
-            logger.error(f"Error in get_chart_access_info: {ex}", exc_info=True)
-            raise
+            logger.error(f"获取 chart 权限信息时发生错误: {ex}")
+            return []
+
 
     @staticmethod
     def is_collaborator_exist(chart_id: int, collaborator_id: int,

@@ -1,7 +1,7 @@
 // CollaboratorModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Dropdown, Menu, Spin, message} from 'antd';
-import { UserOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
+import { Modal, Button, Spin, message, Select} from 'antd';
+import { UserOutlined, PlusOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
 import SearchUserOrRoleModal from './SearchUserOrRoleModal';
@@ -30,6 +30,7 @@ interface Collaborator {
   permissions: Permission[]; // 使用枚举
   key: string; // 唯一键值，确保 React 不重复
   isUpdating?: boolean; // 更新状态
+  isCreator?: boolean; // 创建者状态
 }
 
 interface CollaboratorModalProps {
@@ -75,10 +76,6 @@ const CollaboratorInfo = styled.div`
   }
 `;
 
-const DropdownMenuStyled = styled(Dropdown)`
-  min-width: 150px;
-`;
-
 const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                                                                visible,
                                                                onClose,
@@ -100,32 +97,32 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
     setLoading(true);
     try {
       const res = await SupersetClient.get({
-        endpoint: `/api/v1/chart/${chartId}/access-info`, // 确保使用正确的API版本和路径
+        endpoint: `/api/v1/chart/${chartId}/access-info`,
       });
 
-      // 假设 SupersetClient 在非 2xx 响应时会抛出错误
       const { result: access_info } = res.json;
 
       if (!access_info || !Array.isArray(access_info)) {
         console.error('API 返回的数据格式不正确:', res.json);
-        setCollaborators([]); // 设置为空数组，避免报错
+        setCollaborators([]);
         return;
       }
 
       // 映射协作者数据
       setCollaborators(
-        access_info.map((item: { id: number; name: string; type: string; permission: string }) => ({
+        access_info.map((item: { id: number; name: string; is_creator: boolean; permission: string; type: string }) => ({
           id: item.id,
           name: item.name,
-          type: item.type as 'user' | 'role',
+          isCreator: item.is_creator,
           permissions: getPermissionsFromLabel(item.permission),
+          type: item.type as 'user' | 'role',
           key: `${item.id}-${item.type}`,
         })),
       );
     } catch (error: any) {
       console.error('Error fetching collaborators:', error);
       message.error(t('无法获取协作者信息'));
-      setCollaborators([]); // 出现错误时设置为空数组
+      setCollaborators([]);
     } finally {
       setLoading(false);
     }
@@ -214,81 +211,43 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
 
   // 更新协作者权限
   const handlePermissionChange = async (collaborator: Collaborator, newPermissions: Permission[]) => {
-    const { type: entityType, id: entityId } = collaborator;
-    const collaboratorKey = `${entityId}-${entityType}`;
-
-    // 添加到正在更新的集合中
-    setUpdatingIds((prev) => new Set(prev).add(collaboratorKey));
-
-    // 根据新权限确定 action
-    const hasAllPermissions =
-      newPermissions.includes(Permission.CanRead) &&
-      newPermissions.includes(Permission.CanEdit) &&
-      newPermissions.includes(Permission.CanAdd) &&
-      newPermissions.includes(Permission.CanDelete);
-
-    const hasEditPermissions =
-      newPermissions.includes(Permission.CanRead) &&
-      newPermissions.includes(Permission.CanEdit);
-
-    let action: 'add' | 'remove' = 'add'; // 使用原始字段名
-    let permissionsToModify: Permission[] = [];
-
-    if (hasAllPermissions) {
-      permissionsToModify = [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
-    } else if (hasEditPermissions) {
-      permissionsToModify = [Permission.CanRead, Permission.CanEdit];
-    } else if (newPermissions.includes(Permission.CanRead)) {
-      permissionsToModify = [Permission.CanRead];
-    } else {
-      // 如果没有任何权限，则进行移除
-      action = 'remove';
-      permissionsToModify = []; // 移除所有权限
-    }
-
-    const data: ModifyPermissionsData = {
-      entity_type: entityType,
-      entity_id: entityId,
-      permissions: permissionsToModify,
-      action, // 使用原始字段名
-    };
+    const { key, type, id } = collaborator;  // 使用对象解构
+    setUpdatingIds(prev => new Set(prev).add(key));
 
     try {
+      const data: ModifyPermissionsData = {
+        entity_type: type,
+        entity_id: id,
+        permissions: newPermissions,
+        action: 'add'
+      };
+
       await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       // 更新本地状态
-      setCollaborators((prevCollaborators) =>
-        prevCollaborators.map((c) =>
-          c.id === entityId && c.type === entityType
-            ? { ...c, permissions: newPermissions }
-            : c,
-        ),
+      setCollaborators(prev =>
+        prev.map(c =>
+          c.key === key ? { ...c, permissions: newPermissions } : c
+        )
       );
 
       message.success(t('权限更新成功'));
     } catch (error: any) {
       console.error('Error updating permissions:', error);
-      // 修改错误处理逻辑
-      if (error.status === 403) {
-        // 处理 403 Forbidden 错误
-        const errorData = await error.json();
-        message.error(t(errorData.error || '您没有足够的权限执行此操作'));
-      } else if (error.response?.json) {
+      if (error.response?.json) {
         const errorMsg = await error.response.json();
-        message.error(t(`更新权限失败: ${errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'}`));
+        message.error(t(`更新权限失败: ${errorMsg.errors[0].message}`));
       } else {
         message.error(t('更新权限失败'));
       }
     } finally {
-      setUpdatingIds((prev) => {
+      setUpdatingIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(collaboratorKey);
+        newSet.delete(key);
         return newSet;
       });
     }
@@ -296,28 +255,23 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
 
   // 删除协作者
   const handleRemoveCollaborator = async (collaborator: Collaborator) => {
-    console.log('Removing collaborator', collaborator);
-    const { type: entityType, id: entityId } = collaborator;
-
     const data: ModifyPermissionsData = {
-      entity_type: entityType,
-      entity_id: entityId,
-      permissions: [], // 空权限表示移除
-      action: 'remove', // 使用原始字段名
+      entity_type: collaborator.type,
+      entity_id: collaborator.id,
+      permissions: [],
+      action: 'remove'
     };
 
     try {
       await SupersetClient.post({
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json', // 确保设置 Content-Type
-        },
       });
 
-      // 更新本地状态
-      setCollaborators((prev) => prev.filter((c) => !(c.id === entityId && c.type === entityType)));
-
+      setCollaborators(prev => 
+        prev.filter(c => c.key !== collaborator.key)
+      );
       message.success(t('协作者移除成功'));
     } catch (error: any) {
       console.error('Error removing collaborator:', error);
@@ -329,58 +283,6 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       }
     }
   };
-
-  // 权限菜单
-  const permissionMenu = (collaborator: Collaborator) => (
-    <Menu>
-      <Menu.Item
-        key="可管理"
-        onClick={() => {
-          const newPermissions = [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
-          handlePermissionChange(collaborator, newPermissions);
-        }}
-      >
-        {t('可管理')}
-      </Menu.Item>
-      <Menu.Item
-        key="可编辑"
-        onClick={() => {
-          const newPermissions = [Permission.CanRead, Permission.CanEdit];
-          handlePermissionChange(collaborator, newPermissions);
-        }}
-      >
-        {t('可编辑')}
-      </Menu.Item>
-      <Menu.Item
-        key="可阅读"
-        onClick={() => {
-          const newPermissions = [Permission.CanRead];
-          handlePermissionChange(collaborator, newPermissions);
-        }}
-      >
-        {t('可阅读')}
-      </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="移除">
-        <span
-          role="button"
-          style={{ color: 'red', cursor: 'pointer' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            Modal.confirm({
-              title: t('确定要移除这个协作者吗？'),
-              onOk: () => handleRemoveCollaborator(collaborator),
-              okText: t('确定'),
-              cancelText: t('取消'),
-              okButtonProps: { danger: true },
-            });
-          }}
-        >
-          {t('移除')}
-        </span>
-      </Menu.Item>
-    </Menu>
-  );
 
   return (
     <>
@@ -399,6 +301,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
             ) : (
               collaborators.map((collaborator) => {
                 const isUpdating = updatingIds.has(collaborator.key);
+
                 return (
                   <CollaboratorItem key={collaborator.key}>
                     <CollaboratorInfo>
@@ -406,18 +309,33 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                         <UserOutlined />
                       </div>
                       <div className="name">{collaborator.name}</div>
+                      {collaborator.isCreator && <span style={{ color: 'blue', marginLeft: '8px' }}>创建者</span>}
                       <div style={{ marginLeft: '8px', color: '#888' }}>
                         {collaborator.type === 'user' ? t('用户') : t('角色')}
                       </div>
                     </CollaboratorInfo>
-                    <DropdownMenuStyled
-                      overlay={permissionMenu(collaborator)}
-                      trigger={['click']}
+                    <Select
+                      disabled={collaborator.isCreator}
+                      defaultValue={getPermissionLabel(collaborator.permissions)}
+                      onChange={(value) => {
+                        if (value === '移除') {
+                          Modal.confirm({
+                            title: t('确定要移除这个协作者吗？'),
+                            onOk: () => handleRemoveCollaborator(collaborator),
+                            okText: t('确定'),
+                            cancelText: t('取消'),
+                            okButtonProps: { danger: true },
+                          });
+                        } else {
+                          handlePermissionChange(collaborator, getPermissionsFromLabel(value));
+                        }
+                      }}
                     >
-                      <Button disabled={isUpdating}>
-                        {getPermissionLabel(collaborator.permissions)} <DownOutlined />
-                      </Button>
-                    </DropdownMenuStyled>
+                      <Select.Option value="可管理">{t('可管理')}</Select.Option>
+                      <Select.Option value="可编辑">{t('可编辑')}</Select.Option>
+                      <Select.Option value="可阅读">{t('可阅读')}</Select.Option>
+                      <Select.Option value="移除" style={{ color: 'red' }}>{t('移除')}</Select.Option>
+                    </Select>
                     {isUpdating && <Spin size="small" style={{ marginLeft: 8 }} />}
                   </CollaboratorItem>
                 );

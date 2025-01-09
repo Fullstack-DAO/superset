@@ -588,8 +588,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
         try:
             # 检查是否需要跳过权限检查
-            if item.get('published') is True:
-                logger.info("Published flag is True. Skipping permission checks.")
+            if 'published' in item:
+                logger.info("Published flag is exist. Skipping permission checks.")
                 # 直接执行更新操作
                 changed_model = UpdateDashboardCommand(pk, item).run()
             else:

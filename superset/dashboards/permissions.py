@@ -256,6 +256,13 @@ class DashboardPermissions:
         :param entity_type: 实体类型 ('user' 或 'role')
         :param is_creator: 是否为创建者，仅对用户有效
         """
+        valid_permissions = ["can_read", "can_edit", "can_delete", "can_add"]
+        invalid_permissions = [perm for perm in permissions if
+                               perm not in valid_permissions]
+
+        # 检查是否存在无效权限
+        if invalid_permissions:
+            raise ValueError(f"Invalid permissions: {', '.join(invalid_permissions)}")
         try:
             # 查询现有权限记录
             permission_model = UserPermission if entity_type == "user" else RolePermission

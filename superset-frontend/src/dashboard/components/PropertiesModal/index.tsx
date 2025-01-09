@@ -843,9 +843,9 @@ const PropertiesModal = ({
         <Row gutter={16} style={{ marginTop: '1em' }}>
           <Col span={24}>
             <CollaboratorSection>
-              <h3 style={{ marginBottom: '8px' }}>{t('Manage Collaborators')}</h3>
+              <h3 style={{ marginBottom: '8px' }}>{t('管理协作者')}</h3>
               <Button type="primary" onClick={showCollaboratorsModal}>
-                {t('Manage Collaborators')}
+                {t('管理协作者')}
               </Button>
             </CollaboratorSection>
           </Col>

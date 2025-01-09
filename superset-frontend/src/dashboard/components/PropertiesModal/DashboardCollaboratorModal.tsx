@@ -1,6 +1,6 @@
 // DashboardCollaboratorModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Dropdown, Menu, Spin, message } from 'antd';
+import { Modal, Button, Dropdown, Menu, Spin, message, Tag } from 'antd';
 import { UserOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
@@ -29,6 +29,7 @@ interface Collaborator {
   type: 'user' | 'role'; // 统一为 'user' | 'role'
   permissions: Permission[]; // 使用枚举
   key: string; // 唯一键值，确保 React 不重复
+  isCreator: boolean; // 添加创建者标识
   isUpdating?: boolean; // 更新状态
 }
 
@@ -113,17 +114,24 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
 
       // 映射协作者数据
       setCollaborators(
-        access_info.map((item: { id: number; name: string; type: string; permission: string }) => ({
+        access_info.map((item: { 
+          id: number; 
+          name: string; 
+          type: string; 
+          permission: string;
+          is_creator: boolean; 
+        }) => ({
           id: item.id,
           name: item.name,
           type: item.type as 'user' | 'role',
           permissions: getPermissionsFromLabel(item.permission),
           key: `${item.id}-${item.type}`,
+          isCreator: item.is_creator,
         })),
       );
     } catch (error: any) {
       console.error('Error fetching collaborators:', error);
-      message.error(t('无法获取协作者信息'));
+      message.error(t('无法获取协作者信息'));s
       setCollaborators([]); // 出现错误时设置为空数组
     } finally {
       setLoading(false);
@@ -196,6 +204,7 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
           type: newCollaborator.type,
           permissions: permissionsToAdd, // ['can_read']
           key: `${newCollaborator.id}-${newCollaborator.type}`,
+          isCreator: false,
         },
       ]);
 
@@ -359,25 +368,30 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
       >
         {t('可阅读')}
       </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="移除">
-        <span
-          role="button"
-          style={{ color: 'red', cursor: 'pointer' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            Modal.confirm({
-              title: t('确定要移除这个协作者吗？'),
-              onOk: () => handleRemoveCollaborator(collaborator),
-              okText: t('确定'),
-              cancelText: t('取消'),
-              okButtonProps: { danger: true },
-            });
-          }}
-        >
-          {t('移除')}
-        </span>
-      </Menu.Item>
+      {/* 只有非创建者才显示删除选项 */}
+      {!collaborator.isCreator && (
+        <>
+          <Menu.Divider />
+          <Menu.Item key="移除">
+            <span
+              role="button"
+              style={{ color: 'red', cursor: 'pointer' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                Modal.confirm({
+                  title: t('确定要移除这个协作者吗？'),
+                  onOk: () => handleRemoveCollaborator(collaborator),
+                  okText: t('确定'),
+                  cancelText: t('取消'),
+                  okButtonProps: { danger: true },
+                });
+              }}
+            >
+              {t('移除')}
+            </span>
+          </Menu.Item>
+        </>
+      )}
     </Menu>
   );
 
@@ -404,19 +418,34 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
                       <div className="avatar">
                         <UserOutlined />
                       </div>
-                      <div className="name">{collaborator.name}</div>
+                      <div className="name">
+                        {collaborator.name}
+                        {collaborator.isCreator && (
+                          <Tag color="blue" style={{ marginLeft: 8 }}>
+                            {t('创建者')}
+                          </Tag>
+                        )}
+                      </div>
                       <div style={{ marginLeft: '8px', color: '#888' }}>
                         {collaborator.type === 'user' ? t('用户') : t('角色')}
                       </div>
                     </CollaboratorInfo>
-                    <DropdownMenuStyled
-                      overlay={permissionMenu(collaborator)}
-                      trigger={['click']}
-                    >
-                      <Button disabled={isUpdating}>
-                        {getPermissionLabel(collaborator.permissions)} <DownOutlined />
+                    {collaborator.isCreator ? (
+                      // 创建者显示不可点击的按钮
+                      <Button disabled style={{ minWidth: 150 }}>
+                        {t('可管理')}
                       </Button>
-                    </DropdownMenuStyled>
+                    ) : (
+                      // 非创建者显示下拉菜单
+                      <DropdownMenuStyled
+                        overlay={permissionMenu(collaborator)}
+                        trigger={['click']}
+                      >
+                        <Button disabled={isUpdating}>
+                          {getPermissionLabel(collaborator.permissions)} <DownOutlined />
+                        </Button>
+                      </DropdownMenuStyled>
+                    )}
                     {isUpdating && <Spin size="small" style={{ marginLeft: 8 }} />}
                   </CollaboratorItem>
                 );

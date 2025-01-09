@@ -4,6 +4,7 @@ from typing import Any, Optional, Dict
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 
+from superset.charts.permissions import get_current_user_role_id
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
 from superset.models.dashboard import Dashboard
@@ -650,7 +651,7 @@ class DashboardPermissions:
                 RolePermission.role_id.in_(role_ids),
                 RolePermission.resource_id == chart_id,
                 RolePermission.resource_type == "chart",
-                )
+            )
             .all()
         )
 
@@ -676,3 +677,80 @@ class DashboardPermissions:
             )
 
         return is_admin
+
+    @staticmethod
+    def interpret_frontend_permissions(perm_list: list[str]) -> dict[str, bool]:
+        """
+        将前端传来的["can_read", "can_edit", "can_add", "can_delete"]等转换为
+        {can_read, can_edit, can_add, can_delete} 的布尔值，并根据这些权限推导出
+        高层权限（例如 'admin', 'edit', 'read'）。
+        """
+        can_read = can_edit = can_add = can_delete = False
+        logger.info(f"检查前端到底勾选的是什么内容: {perm_list}")
+
+        # 逐个检查前端传过来的权限
+        if "can_read" in perm_list:
+            can_read = True
+        if "can_edit" in perm_list:
+            can_edit = True
+        if "can_add" in perm_list:
+            can_add = True
+        if "can_delete" in perm_list:
+            can_delete = True
+
+        # 低层次权限字典
+        permissions = {
+            "can_read": can_read,
+            "can_edit": can_edit,
+            "can_add": can_add,
+            "can_delete": can_delete,
+        }
+
+        # # 推导出高层次权限
+        # # 如果命中了can_read, can_edit, can_add, can_delete，返回admin
+        # if can_read and can_edit and can_add and can_delete:
+        #     permissions["admin"] = True
+        # # 如果只命中了can_edit或can_add，返回edit
+        # elif can_edit or can_add:
+        #     permissions["edit"] = True
+        # # 如果命中了can_read，返回read
+        # elif can_read:
+        #     permissions["read"] = True
+
+        return permissions
+
+    @staticmethod
+    def get_permissions_for_dashboard(user_id, dashboard_id):
+        # 获取用户权限
+        user_permissions = db.session.query(UserPermission).filter_by(
+            user_id=user_id,
+            resource_type='dashboard',
+            resource_id=dashboard_id
+        ).first()
+
+        # 获取当前登录用户的角色 ID
+        role_id = get_current_user_role_id()
+
+        # 获取角色权限
+        role_permission = None
+        if role_id:
+            role_permission = db.session.query(RolePermission).filter_by(
+                role_id=role_id,
+                resource_type='dashboard',
+                resource_id=dashboard_id
+            ).first()
+
+        # 合并权限：用户权限和角色权限平级
+        permissions = {
+            'can_read': (user_permissions.can_read if user_permissions else False) or
+                        (role_permission.can_read if role_permission else False),
+            'can_edit': (user_permissions.can_edit if user_permissions else False) or
+                        (role_permission.can_edit if role_permission else False),
+            'can_delete': (
+                              user_permissions.can_delete if user_permissions else False) or
+                          (role_permission.can_delete if role_permission else False),
+            'can_add': (user_permissions.can_add if user_permissions else False) or
+                       (role_permission.can_add if role_permission else False),
+        }
+
+        return permissions

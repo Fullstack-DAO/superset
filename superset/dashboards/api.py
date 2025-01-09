@@ -37,6 +37,7 @@ from werkzeug.wrappers import Response as WerkzeugResponse
 from werkzeug.wsgi import FileWrapper
 
 from superset import is_feature_enabled, thumbnail_cache
+from superset.charts.permissions import ChartPermissions
 from superset.charts.schemas import ChartEntityResponseSchema
 from superset.commands.dashboard.create import CreateDashboardCommand
 from superset.commands.dashboard.delete import DeleteDashboardCommand
@@ -55,6 +56,7 @@ from superset.commands.dashboard.update import UpdateDashboardCommand
 from superset.commands.importers.exceptions import NoValidFilesFoundError
 from superset.commands.importers.v1.utils import get_contents_from_bundle
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
+from superset.daos.chart import ChartDAO
 from superset.daos.dashboard import DashboardDAO, EmbeddedDashboardDAO
 from superset.dashboards.filters import (
     DashboardAccessFilter,
@@ -152,6 +154,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         "thumbnail",
         "copy_dash",
         "get_access_info",
+        "modify_permissions",
+        "add_collaborator",
     }
     resource_name = "dashboard"
     allow_browser_login = True
@@ -1613,6 +1617,10 @@ class DashboardRestApi(BaseSupersetModelRestApi):
 
         # 检查协作者是否已经存在
         try:
+            dashboard = DashboardDAO.find_dashboard(dashboard_id=dashboard_id)
+            if not dashboard:
+                return self.response_404(message=f"Dashboard ID {dashboard_id} 不存在。")
+
             if DashboardDAO.is_collaborator_exist(dashboard_id, collaborator_id,
                                                   collaborator_type):
                 response = make_response(
@@ -1623,39 +1631,245 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                     }), 400
                 )
                 return response
-            resource_type = 'dashboard'
+            # 去查询跟dashboard_id关联的chart列表
+            chart_ids = DashboardDAO.get_slice_ids_by_dashboard_id(
+                dashboard_id=dashboard_id
+            )
+            chart_datasource_map = {}
+            for chart_id in chart_ids:
+                datasource_id = ChartDAO.get_datasource_id_by_resource('chart',
+                                                                       chart_id)
+                if datasource_id:
+                    chart_datasource_map[chart_id] = datasource_id
+                else:
+                    logger.warning(f"Chart ID {chart_id} 没有关联的 Datasource。")
+            # 获取 Dashboard 的 Datasource ID
+            dashboard_datasource_id = DashboardDAO.get_datasource_ids_by_resource(
+                'dashboard',
+                resource_id=dashboard_id
+            )
+            # 检查协作者对 Dashboard 的权限
+            if dashboard_datasource_id:
+                if collaborator_type == "user":
+                    has_dashboard_permission = ChartPermissions.check_user_permission(
+                        collaborator_id,
+                        dashboard_datasource_id
+                    )
+                elif collaborator_type == "role":
+                    has_dashboard_permission = ChartPermissions.check_role_permission(
+                        collaborator_id,
+                        dashboard_datasource_id
+                    )
+            else:
+                # 如果 Dashboard 没有关联的 Datasource，假设可以赋予基本权限
+                # 根据业务需求调整，此处假设没有 Datasource 时不赋予权限
+                has_dashboard_permission = False
+
+            # 如果 Dashboard 有 Datasource 且协作者没有权限，拒绝
+            if dashboard_datasource_id and not has_dashboard_permission:
+                return make_response(
+                    jsonify({
+                        "error": f"该{'用户' if collaborator_type == 'user' else '角色'}"
+                                 f"没有权限访问 Dashboard 的数据源！",
+                        "code": 403,
+                        "message": "Forbidden"
+                    }), 403
+                )
+
+            # 检查协作者是否有权限
+            authorized_charts = []
 
             if collaborator_type == "user":
                 # 如果是用户类型，检查用户对 chart 是否有权限
-                has_permission = DashboardPermissions.check_user_permission(
-                    collaborator_id)
+                for chart_id, datasource_id in chart_datasource_map.items():
+                    has_permission = ChartPermissions.check_user_permission(
+                        collaborator_id,
+                        datasource_id
+                    )
+                    if has_permission:
+                        authorized_charts.append(chart_id)
             elif collaborator_type == "role":
                 # 如果是角色类型，检查角色对 chart 是否有权限
-                has_permission = DashboardPermissions.check_role_permission(
-                    collaborator_id)
+                for chart_id, datasource_id in chart_datasource_map.items():
+                    has_permission = ChartPermissions.check_role_permission(
+                        collaborator_id,
+                        datasource_id
+                    )
+                    if has_permission:
+                        authorized_charts.append(chart_id)
+            # 处理 Dashboard 的授权
+            if dashboard_datasource_id and has_dashboard_permission:
+                # 将 Dashboard 作为一个特殊的资源类型处理
+                authorized_resources = {
+                    'dashboard': dashboard_id,
+                    'charts': authorized_charts
+                }
+            else:
+                authorized_resources = {
+                    'dashboard': None,  # 无法授权 Dashboard
+                    'charts': authorized_charts
+                }
 
-            if not has_permission:
+            if not authorized_resources:
                 return make_response(
                     jsonify({
-                        "error": f"该{'用户' if collaborator_type == 'user' else '角色'}没有权限访问数据源！",
+                        "error": f"该{'用户' if collaborator_type == 'user' else '角色'}"
+                                 f"对 Dashboard 下的所有 Charts 都没有权限。",
                         "code": 403,
                         "message": "Forbidden"
                     }), 403
                 )
                 # 如果不存在，则添加协作者
+            # 检查协作者是否已经是协作者
+            existing_collaborators_charts = []
+            existing_collaborators_dashboard = False
+            charts_to_add = []
+            if authorized_resources['dashboard']:
+                if DashboardDAO.is_collaborator_exist(dashboard_id,
+                                                      collaborator_id,
+                                                      collaborator_type):
+                    existing_collaborators_dashboard = True
+            for chart_id in authorized_resources['charts']:
+                if ChartDAO.is_collaborator_exist(chart_id, collaborator_id,
+                                                  collaborator_type):
+                    existing_collaborators_charts.append(chart_id)
+                else:
+                    charts_to_add.append(chart_id)
 
-            DashboardDAO.add_collaborator(
-                dashboard_id,
-                collaborator_id,
-                collaborator_type)
+            # 判断是否需要添加 Dashboard
+            if authorized_resources[
+                'dashboard'] and not existing_collaborators_dashboard:
+                add_dashboard = True
+            else:
+                add_dashboard = False
 
-            return self.response(
-                200,
-                message=f"{collaborator_type} (ID: {collaborator_id}) 添加成功！",
+            # 分配权限
+            if add_dashboard:
+                DashboardDAO.add_collaborator(dashboard_id,
+                                              collaborator_id, collaborator_type)
+            for chart_id in authorized_charts:
+                datasource_id = chart_datasource_map[chart_id]
+                ChartDAO.add_collaborator(
+                    chart_id,
+                    collaborator_id,
+                    collaborator_type,
+                    datasource_id
+                )
+            response_data = {
+                "message": f"协作者成功添加到 {len(charts_to_add)} 个 Charts。" + (
+                    "以及 Dashboard。" if add_dashboard else ""),
+                "authorized_charts": charts_to_add,
+                "existing_collaborators_charts": existing_collaborators_charts,
+                "existing_collaborators_dashboard": existing_collaborators_dashboard
+            }
+            if add_dashboard:
+                response_data["dashboard"] = dashboard_id
+
+            return make_response(
+                jsonify(response_data), 200
             )
+
+            # return self.response(
+            #     200,
+            #     message=f"{collaborator_type} (ID: {collaborator_id}) 添加成功！",
+            # )
         except Exception as ex:
             logger.error(f"Error adding collaborator: {ex}")
             return self.response_500(message="Failed to add collaborator.")
+
+    # 增加权限管理的接口
+    @expose("/<pk>/permissions/modify", methods=["POST"])
+    @safe
+    @statsd_metrics
+    def modify_permissions(self, pk: int) -> Response:
+        """
+        修改图表的权限。
+        JSON 请求体格式:
+        {
+          "entity_type": "user" or "role",
+          "entity_id": 123,
+          "permissions": ["can_read", "can_edit", "can_add", "can_delete"],
+          "action": "add" or "remove"
+        }
+        """
+        try:
+            current_user = get_current_user_object()
+            user_id = current_user.id
+            logger.info(f"current_user id is: {user_id}")
+            # 检查当前用户对该图表是否具备 can_read, can_edit, can_delete, can_add 四种权限
+            user_permissions = DashboardPermissions.get_permissions_for_dashboard(
+                user_id,
+                pk)
+            if not all(user_permissions.get(permission, False) for permission in
+                       ["can_read", "can_edit", "can_delete", "can_add"]):
+                response = make_response(
+                    jsonify({
+                        "error": "您没有足够的权限来修改其他人的图表权限。",
+                        "code": 403,
+                        "message": "Forbidden"
+                    }), 403
+                )
+                return response
+            data = request.json
+            entity_type = data.get("entity_type")
+            entity_id = data.get("entity_id")
+            permissions = data.get("permissions", [])
+            action = data.get("action")
+
+            # 验证输入
+            if entity_type not in ["user", "role"]:
+                return self.response_400(
+                    message=f"Invalid entity_type: {entity_type}. "
+                            f"Must be 'user' or 'role'."
+                )
+            if not isinstance(entity_id, int):
+                return self.response_400(
+                    message=f"Invalid entity_id: {entity_id}. Must be an integer."
+                )
+            if not isinstance(permissions, list) or not all(
+                isinstance(p, str) for p in permissions):
+                return self.response_400(
+                    message="Invalid permissions format. Must be a list of strings."
+                )
+            if action not in ["add", "remove"]:
+                return self.response_400(
+                    message=f"Invalid action: {action}. Must be 'add' or 'remove'."
+                )
+
+            # Interpret the frontend permissions
+            perm_dict = DashboardPermissions.interpret_frontend_permissions(permissions)
+            logger.info(f"推导出的权限集合: {perm_dict}")
+
+            if action == "add":
+                add_perms = [k for k, v in perm_dict.items() if v]
+                DashboardDAO.modify_permissions(
+                    chart_id=pk,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    permissions=add_perms,
+                    action="add",
+                )
+            elif action == "remove":
+                remove_perms = [k for k, v in perm_dict.items() if v]
+                if "admin" in permissions:
+                    # 移除管理员权限时，需要移除所有相关权限
+                    remove_perms = ["can_read", "can_edit", "can_add", "can_delete"]
+                DashboardDAO.modify_permissions(
+                    chart_id=pk,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    permissions=remove_perms,
+                    action="remove",
+                )
+
+            return self.response(200, message="权限更新成功。")
+
+        except ValueError as ve:
+            logger.error(f"ValueError modifying permissions: {ve}")
+            return self.response_400(message=str(ve))
+        except Exception as ex:
+            logger.error(f"Error modifying permissions: {ex}", exc_info=True)
+            return self.response_500(message="权限更新失败。")
 
     @staticmethod
     def get_user_role_ids(user) -> list:

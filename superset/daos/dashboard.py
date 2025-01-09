@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from flask import g
 from flask_appbuilder.models.sqla.interface import SQLAInterface
@@ -569,6 +569,99 @@ class DashboardDAO(BaseDAO[Dashboard]):
             # 错误处理
             print(f"解析JSON时出错: {e}")
             return []
+
+    @staticmethod
+    def add_collaborator(resource_id: int, collaborator_id: int,
+                         collaborator_type: str):
+        """
+        为资源（chart 或 dashboard）添加协作者，向 UserPermission 或 RolePermission 表中插入记录。
+
+        :param resource_type: 'chart' 或 'dashboard'
+        :param resource_id: Chart ID 或 Dashboard ID
+        :param collaborator_id: 用户或角色 ID
+        :param collaborator_type: 'user' 或 'role'
+        """
+        if collaborator_type == "user":
+            # 为资源分配用户权限
+            user_permission = db.session.query(UserPermission).filter_by(
+                user_id=collaborator_id,
+                resource_type="dashboard",
+                resource_id=resource_id
+            ).one_or_none()
+
+            if not user_permission:
+                user_permission = UserPermission(
+                    user_id=collaborator_id,
+                    resource_type="dashboard",
+                    resource_id=resource_id,
+                    can_read=True,
+                    can_add=True,
+                    can_edit=True,
+                    can_delete=True
+                )
+                db.session.add(user_permission)
+            else:
+                # 更新现有权限
+                user_permission.can_read = True
+                user_permission.can_add = True
+                user_permission.can_edit = True
+                user_permission.can_delete = True
+        elif collaborator_type == "role":
+            # 为资源分配角色权限
+            role_permission = db.session.query(RolePermission).filter_by(
+                role_id=collaborator_id,
+                resource_type="dashboard",
+                resource_id=resource_id
+            ).one_or_none()
+
+            if not role_permission:
+                role_permission = RolePermission(
+                    role_id=collaborator_id,
+                    resource_type="dashboard",
+                    resource_id=resource_id,
+                    can_read=True,
+                    can_add=True,
+                    can_edit=True,
+                    can_delete=True
+                )
+                db.session.add(role_permission)
+            else:
+                # 更新现有权限
+                role_permission.can_read = True
+                role_permission.can_add = True
+                role_permission.can_edit = True
+                role_permission.can_delete = True
+        else:
+            raise ValueError("协作者类型必须是 'user' 或 'role'。")
+
+    @staticmethod
+    def find_dashboard(dashboard_id: int) -> Dashboard:
+        dashboard = db.session.query(Dashboard).filter_by(id=dashboard_id).one_or_none()
+        return dashboard
+
+    @staticmethod
+    def get_datasource_ids_by_resource(resource_type: str, resource_id: int) -> list:
+        """
+        根据资源类型和资源ID获取关联的 datasource_id 列表。
+
+        :param resource_type: 资源类型，如 'chart', 'dashboard'
+        :param resource_id: 资源ID
+        :return: datasource_ids 列表
+        """
+        if resource_type == 'chart':
+            chart = db.session.query(Slice).filter_by(id=resource_id).one_or_none()
+            if chart and chart.datasource:
+                return [chart.datasource.id]
+        elif resource_type == 'dashboard':
+            dashboard = db.session.query(Dashboard).filter_by(id=resource_id).one_or_none()
+            if dashboard:
+                datasource_ids = set()
+                for slice_ in dashboard.slices:
+                    if slice_.datasource:
+                        datasource_ids.add(slice_.datasource.id)
+                return list(datasource_ids)
+        # 其他资源类型的处理
+        return []
 
 
 class EmbeddedDashboardDAO(BaseDAO[EmbeddedDashboard]):

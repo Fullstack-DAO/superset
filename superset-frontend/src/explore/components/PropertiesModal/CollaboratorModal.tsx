@@ -4,6 +4,7 @@ import { Modal, Button, Spin, message, Select} from 'antd';
 import { UserOutlined, PlusOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
+import SearchUserOrRoleModal from './SearchUserOrRoleModal';
 
 // 定义权限枚举
 export enum Permission {
@@ -351,6 +352,13 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
           </CollaboratorContainer>
         )}
       </Modal>
+
+      <SearchUserOrRoleModal
+        visible={searchModalVisible}
+        onClose={() => setSearchModalVisible(false)}
+        onAdd={handleAddCollaborator}
+        chartId={chartId}
+      />
     </>
   );
 };

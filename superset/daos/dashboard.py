@@ -463,7 +463,6 @@ class DashboardDAO(BaseDAO[Dashboard]):
             logger.error(f"获取 dashboard 权限信息时发生错误: {ex}")
             return []
 
-
     @staticmethod
     def is_collaborator_exist(dashboard_id: int, collaborator_id: int,
                               collaborator_type: str) -> bool:
@@ -671,7 +670,8 @@ class DashboardDAO(BaseDAO[Dashboard]):
             if chart and chart.datasource:
                 return [chart.datasource.id]
         elif resource_type == 'dashboard':
-            dashboard = db.session.query(Dashboard).filter_by(id=resource_id).one_or_none()
+            dashboard = db.session.query(Dashboard).filter_by(
+                id=resource_id).one_or_none()
             if dashboard:
                 datasource_ids = set()
                 for slice_ in dashboard.slices:

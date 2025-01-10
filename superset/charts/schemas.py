@@ -249,7 +249,7 @@ class ChartPutSchema(Schema):
     Schema to update or patch a chart
     """
     slice_id = fields.Integer(
-        required=True,
+        required=False,
         metadata={"description": "The unique ID of the chart slice."},
     )
     slice_name = fields.String(

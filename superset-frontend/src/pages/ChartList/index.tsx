@@ -463,7 +463,7 @@ function ChartList(props: ChartListProps) {
             );
           const openEditModal = () => openChartEditModal(original);
           const handleExport = () => handleBulkChartExport([original]);
-          if (!canEdit && !canDelete && !canExport ) {
+          if (!canEdit && !canDelete && !canExport) {
             return null;
           }
 
@@ -537,8 +537,8 @@ function ChartList(props: ChartListProps) {
         },
         Header: t('Actions'),
         id: 'actions',
+        hidden: false,
         disableSortBy: true,
-        hidden: !canEdit && !canDelete,
       },
       {
         accessor: QueryObjectColumns.changed_by,

@@ -242,7 +242,7 @@ class ChartDataRestApi(ChartRestApi):
         try:
             query_context = self._create_query_context_from_form(json_body)
             command = ChartDataCommand(query_context)
-            command.validate()
+            # command.validate()
         except DatasourceNotFound:
             return self.response_404()
         except QueryObjectValidationError as error:

@@ -45,7 +45,7 @@ class ExploreRestApi(BaseSupersetApi):
     openapi_spec_component_schemas = (ExploreContextSchema,)
 
     @expose("/", methods=("GET",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -105,6 +105,7 @@ class ExploreRestApi(BaseSupersetApi):
               $ref: '#/components/responses/500'
         """
         try:
+            logger.info(f"the request is coming...")
             params = CommandParameters(
                 actor=g.user,
                 permalink_key=request.args.get("permalink_key", type=str),

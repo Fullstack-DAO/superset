@@ -22,7 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from superset.commands.base import BaseCommand
 from superset.commands.explore.form_data.parameters import CommandParameters
 from superset.commands.explore.form_data.state import TemporaryExploreState
-from superset.commands.explore.form_data.utils import check_access
+from superset.commands.explore.form_data.utils import check_access, check_special_access
 from superset.commands.temporary_cache.exceptions import TemporaryCacheCreateFailedError
 from superset.extensions import cache_manager
 from superset.key_value.utils import random_key
@@ -46,6 +46,48 @@ class CreateFormDataCommand(BaseCommand):
             tab_id = self._cmd_params.tab_id
             form_data = self._cmd_params.form_data
             check_access(datasource_id, chart_id, datasource_type)
+            contextual_key = cache_key(
+                session.get("_id"), tab_id, datasource_id, chart_id, datasource_type
+            )
+            key = cache_manager.explore_form_data_cache.get(contextual_key)
+            if not key or not tab_id:
+                key = random_key()
+            if form_data:
+                state: TemporaryExploreState = {
+                    "owner": get_user_id(),
+                    "datasource_id": datasource_id,
+                    "datasource_type": DatasourceType(datasource_type),
+                    "chart_id": chart_id,
+                    "form_data": form_data,
+                }
+                cache_manager.explore_form_data_cache.set(key, state)
+                cache_manager.explore_form_data_cache.set(contextual_key, key)
+            return key
+        except SQLAlchemyError as ex:
+            logger.exception("Error running create command")
+            raise TemporaryCacheCreateFailedError() from ex
+
+    def validate(self) -> None:
+        if self._cmd_params.form_data:
+            validate_json(self._cmd_params.form_data)
+
+
+class CreateSpecialFormDataCommand(BaseCommand):
+    def __init__(self, cmd_params: CommandParameters):
+        self._cmd_params = cmd_params
+
+    def run(self) -> str:
+        self.validate()
+        try:
+            datasource_id = self._cmd_params.datasource_id
+            datasource_type = self._cmd_params.datasource_type
+            chart_id = self._cmd_params.chart_id
+            tab_id = self._cmd_params.tab_id
+            form_data = self._cmd_params.form_data
+            logger.info(f"CreateFormDataCommand's datasource_id: {datasource_id}")
+            logger.info(f"CreateFormDataCommand's datasource_type: {datasource_type}")
+            logger.info(f"CreateFormDataCommand's chart_id: {chart_id}")
+            check_special_access(datasource_id, chart_id)
             contextual_key = cache_key(
                 session.get("_id"), tab_id, datasource_id, chart_id, datasource_type
             )

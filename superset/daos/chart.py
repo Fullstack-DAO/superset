@@ -378,11 +378,11 @@ class ChartDAO(BaseDAO[Slice]):
         return ChartPermissions.get_chart_and_check_permission(pk, permission_type)
 
     @classmethod
-    def find_by_ids(
+    def find_by_chart_ids(
         cls,
         model_ids: list[str] | list[int],
         session: Session = None,
-        skip_base_filter: bool = False,
+        skip_base_filter: bool = True,
         permission_type: str = "read",  # 权限类型，默认为 "read"
         check_permission: bool = True,  # 是否进行权限校验
     ) -> list[Slice]:
@@ -398,10 +398,9 @@ class ChartDAO(BaseDAO[Slice]):
         :return: List of charts that match the IDs and pass the permission check.
         """
         # Step 1: Get the base result using the inherited method
-        session = db.session
-        charts = super().find_by_ids(model_ids, session=session,
-                                     skip_base_filter=skip_base_filter)
-
+        # session = db.session
+        charts = super().find_by_ids(model_ids, skip_base_filter=skip_base_filter)
+        logger.info(f"charts: {charts}")
         # Step 2: If no permission check is needed, return the results
         if not check_permission:
             return charts
@@ -423,7 +422,7 @@ class ChartDAO(BaseDAO[Slice]):
         return [chart for chart in charts if chart.id in allowed_chart_ids]
 
     @classmethod
-    def find_by_id(
+    def find_by_chart_id(
         cls,
         model_id: str | int,
         session: Session = None,
@@ -652,7 +651,6 @@ class ChartDAO(BaseDAO[Slice]):
             logger.error(f"获取 chart 权限信息时发生错误: {ex}")
             return []
 
-
     @staticmethod
     def is_collaborator_exist(chart_id: int, collaborator_id: int,
                               collaborator_type: str) -> bool:
@@ -690,7 +688,8 @@ class ChartDAO(BaseDAO[Slice]):
         return exists is not None
 
     @staticmethod
-    def get_datasource_id_by_resource(resource_type: str, resource_id: int) -> Optional[int]:
+    def get_datasource_id_by_resource(resource_type: str, resource_id: int) -> Optional[
+        int]:
         """
         根据 resource_type 和 resource_id 查询 UserPermission 表，返回对应的 datasource_id
 
@@ -760,4 +759,3 @@ class ChartDAO(BaseDAO[Slice]):
             db.session.rollback()  # 确保事务回滚
             logger.error(f"Error adding collaborator: {ex}")
             raise
-

@@ -1,8 +1,10 @@
 import logging
+from typing import Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 from superset.connectors.sqla.models import SqlaTable
+from superset.commands.dataset.exceptions import DatasetAccessDeniedError
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
 from superset.models.slice import Slice
@@ -69,7 +71,6 @@ class ChartPermissions:
                 f"Error setting default permissions for chart {chart.id}: {ex}"
             )
             raise
-
 
     @staticmethod
     def has_permission(chart_id: int, user, permission_type: str) -> bool:
@@ -321,7 +322,6 @@ class ChartPermissions:
             )
             raise
 
-
     @staticmethod
     def add_permissions_to_user(
         chart_id: int,
@@ -341,7 +341,6 @@ class ChartPermissions:
             datasource_id=datasource_id,
             is_creator=is_creator  # 传递 is_creator 参数
         )
-
 
     @staticmethod
     def add_permissions_to_role(chart_id: int, role_id: int, permissions: list[str],
@@ -945,3 +944,43 @@ class ChartPermissions:
         }
 
         return permissions
+
+    @staticmethod
+    def check_datasource_permissions(user_id=None, role_id=None, datasource_id=None) -> Optional[bool]:
+        # 查询 UserPermission
+        logger.info(f"query datasource permissions user_id: {user_id}")
+        logger.info(f"query datasource permissions role_id: {role_id}")
+        logger.info(f"query datasource permissions datasource_id: {datasource_id}")
+
+        user_permission = None
+        if user_id:
+            user_permission = db.session.query(UserPermission).filter_by(
+                user_id=user_id, datasource_id=datasource_id).first()
+
+        # 查询 RolePermission
+        role_permission = None
+        if role_id:
+            role_permission = db.session.query(RolePermission).filter_by(
+                role_id=role_id, datasource_id=datasource_id).first()
+
+        # 确保 user_permission 和 role_permission 都不为 None
+        if user_permission:
+            logger.info(f"query datasource permissions user_permission.can_read: {user_permission.can_read}")
+            logger.info(f"query datasource permissions user_permission.can_edit: {user_permission.can_edit}")
+        else:
+            logger.info("user_permission is None")
+
+        if role_permission:
+            logger.info(f"query datasource permissions role_permission.can_read: {role_permission.can_read}")
+            logger.info(f"query datasource permissions role_permission.can_edit: {role_permission.can_edit}")
+        else:
+            logger.info("role_permission is None")
+
+        # 判断 UserPermission 和 RolePermission 中是否同时满足 can_read 和 can_edit
+        if user_permission and user_permission.can_read and user_permission.can_edit:
+            return True  # 用户权限同时具备阅读和编辑权限
+
+        if role_permission and role_permission.can_read and role_permission.can_edit:
+            return True  # 角色权限同时具备阅读和编辑权限
+
+        raise DatasetAccessDeniedError()  # 没有权限

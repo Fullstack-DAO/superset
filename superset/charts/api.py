@@ -13,6 +13,7 @@ from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.api.schemas import get_item_schema, get_list_schema
 from superset.tasks.utils import get_current_user_object
 from flask_appbuilder.security.sqla.models import User, Role
+from flask_appbuilder.exceptions import FABException
 from flask_babel import ngettext
 from marshmallow import ValidationError
 from werkzeug.wrappers import Response as WerkzeugResponse
@@ -79,6 +80,7 @@ from superset.views.base_api import (
     statsd_metrics,
 )
 from superset.views.filters import BaseFilterRelatedUsers, FilterRelatedOwners
+from flask_appbuilder.exceptions import InvalidOrderByColumnFABException
 
 logger = logging.getLogger(__name__)
 config = app.config
@@ -882,10 +884,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
         requested_ids = kwargs["rison"]
         logging.info(f"Requested IDs: {requested_ids}")
         # 调用 ChartDAO.find_by_ids 时，检查权限
-        charts = ChartDAO.find_by_ids(
+        charts = ChartDAO.find_by_chart_ids(
             requested_ids,
-            check_permission=False,  # 校验权限
-            permission_type="read"  # 权限类型为 'read'，可以根据需要调整
+            permission_type="read",  # 权限类型为 'read'，可以根据需要调整
+            check_permission=True  # 校验权限
         )
         if not charts:
             return self.response_404()
@@ -932,7 +934,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartDAO.find_by_id(
+        chart = ChartDAO.find_by_chart_id(
             pk,
             check_permission=False,
             permission_type="read"  # 读取权限
@@ -979,7 +981,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
-        chart = ChartDAO.find_by_id(
+        chart = ChartDAO.find_by_chart_id(
             pk,
             check_permission=False,
             permission_type="delete"  # 删除权限
@@ -1276,8 +1278,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
         logger.info(f"current login user's role is: {current_user.roles}")
         # 第二步：获取图表列表，根据解析后的 rison 参数
         response = self._get_charts_list(rison)
-        logger.info(f"response‘s all content: {response}")
-
+        result = response.json.get("result", [])
+        logger.info(f"response‘s result: {result}")
+        ids = response.json.get("ids", [])
+        logger.info(f"response‘s ids: {ids}")
         if response.status_code != 200:
             return response  # 如果原始列表获取失败，直接返回响应
 
@@ -1299,7 +1303,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         调用原始的 get_list_headless 方法，获取图表列表。
         通过 rison 参数传递分页、排序和过滤信息。
         """
-        return super().get_list_headless(rison=rison)
+        return self.get_list_headless(rison=rison)
 
     def _filter_charts_based_on_permissions(
         self, original_result: list, original_ids: list, current_user
@@ -1454,3 +1458,58 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             logger.error(f"Error adding collaborator: {ex}")
             return self.response_500(message="Failed to add collaborator.")
+
+    def get_list_headless(self, **kwargs: Any) -> Response:
+        """
+        获取图表列表，管理员可以绕过权限过滤，查看所有图表。
+        """
+        response = dict()
+        args = kwargs.get("rison", {})
+
+        joined_filters = {}
+
+        # 处理列选择
+        select_cols = args.get("columns", [])
+        pruned_select_cols = [col for col in select_cols if col in self.list_columns]
+
+        self.set_response_key_mappings(
+            response,
+            self.get_list,
+            args,
+            **{"columns": pruned_select_cols},
+        )
+
+        # 确定返回的模式
+        if pruned_select_cols:
+            list_model_schema = self.model2schemaconverter.convert(pruned_select_cols)
+        else:
+            list_model_schema = self.list_model_schema
+
+        # 处理排序
+        try:
+            order_column, order_direction = self._handle_order_args(args)
+        except InvalidOrderByColumnFABException as e:
+            return self.response_400(message=str(e))
+
+        # 处理分页
+        page_index, page_size = self._handle_page_args(args)
+
+        # 执行数据库查询
+        count, lst = self.datamodel.query(
+            joined_filters,
+            order_column,
+            order_direction,
+            page=page_index,
+            page_size=page_size,
+            select_columns=self.list_select_columns,
+            outer_default_load=self.list_outer_default_load,
+        )
+
+        # 获取主键列表
+        pks = self.datamodel.get_keys(lst)
+        response["result"] = list_model_schema.dump(lst, many=True)
+        response["ids"] = pks
+        response["count"] = count
+
+        self.pre_get_list(response)
+        return self.response(200, **response)

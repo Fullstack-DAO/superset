@@ -946,7 +946,8 @@ class ChartPermissions:
         return permissions
 
     @staticmethod
-    def check_datasource_permissions(user_id=None, role_id=None, datasource_id=None) -> Optional[bool]:
+    def check_datasource_permissions(user_id=None, role_id=None, datasource_id=None) -> \
+    Optional[bool]:
         # 查询 UserPermission
         logger.info(f"query datasource permissions user_id: {user_id}")
         logger.info(f"query datasource permissions role_id: {role_id}")
@@ -965,14 +966,18 @@ class ChartPermissions:
 
         # 确保 user_permission 和 role_permission 都不为 None
         if user_permission:
-            logger.info(f"query datasource permissions user_permission.can_read: {user_permission.can_read}")
-            logger.info(f"query datasource permissions user_permission.can_edit: {user_permission.can_edit}")
+            logger.info(
+                f"query datasource permissions user_permission.can_read: {user_permission.can_read}")
+            logger.info(
+                f"query datasource permissions user_permission.can_edit: {user_permission.can_edit}")
         else:
             logger.info("user_permission is None")
 
         if role_permission:
-            logger.info(f"query datasource permissions role_permission.can_read: {role_permission.can_read}")
-            logger.info(f"query datasource permissions role_permission.can_edit: {role_permission.can_edit}")
+            logger.info(
+                f"query datasource permissions role_permission.can_read: {role_permission.can_read}")
+            logger.info(
+                f"query datasource permissions role_permission.can_edit: {role_permission.can_edit}")
         else:
             logger.info("role_permission is None")
 
@@ -984,3 +989,53 @@ class ChartPermissions:
             return True  # 角色权限同时具备阅读和编辑权限
 
         raise DatasetAccessDeniedError()  # 没有权限
+
+    @staticmethod
+    def check_datasource_read_permissions(user_id: int, role_id: int,
+                                          datasource_id: int) -> None:
+        """
+        检查用户和角色对数据源的权限。
+        如果有权限，什么也不做；如果没有权限，抛出异常。
+        """
+        logger.info(
+            f"Checking permissions for user_id: {user_id}, role_id: {role_id}, datasource_id: {datasource_id}")
+
+        # 查询 UserPermission
+        user_permission = None
+        if user_id:
+            user_permission = db.session.query(UserPermission).filter_by(
+                user_id=user_id, datasource_id=datasource_id
+            ).first()
+
+        # 查询 RolePermission
+        role_permission = None
+        if role_id:
+            role_permission = db.session.query(RolePermission).filter_by(
+                role_id=role_id, datasource_id=datasource_id
+            ).first()
+
+        # 日志记录
+        if user_permission:
+            logger.info(
+                f"UserPermission - can_read: {user_permission.can_read}, can_edit: {user_permission.can_edit}")
+        else:
+            logger.info("UserPermission is None")
+
+        if role_permission:
+            logger.info(
+                f"RolePermission - can_read: {role_permission.can_read}, can_edit: {role_permission.can_edit}")
+        else:
+            logger.info("RolePermission is None")
+
+        # 判断权限
+        if user_permission and user_permission.can_read:
+            logger.info("User has read and edit permissions.")
+            return  # 有权限，返回
+
+        if role_permission and role_permission.can_read:
+            logger.info("Role has read and edit permissions.")
+            return  # 有权限，返回
+
+        logger.error(
+            "Permission denied: User and Role do not have required permissions.")
+        raise DatasetAccessDeniedError()  # 没有权限，抛出异常

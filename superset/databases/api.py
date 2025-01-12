@@ -749,7 +749,7 @@ class DatabaseRestApi(BaseSupersetModelRestApi):
         return self.response(200, **table_info)
 
     @expose("/<int:pk>/table_extra/<path:table_name>/<schema_name>/", methods=("GET",))
-    @protect()
+    # @protect()
     @check_datasource_access
     @safe
     @statsd_metrics

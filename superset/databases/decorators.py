@@ -20,7 +20,11 @@ from typing import Any, Callable, Optional
 
 from flask import g
 from flask_babel import lazy_gettext as _
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
+from superset.charts.permissions import ChartPermissions
+from superset.commands.dataset.exceptions import DatasetAccessDeniedError
+from superset.connectors.sqla.models import SqlaTable
 from superset.extensions import stats_logger_manager
 from superset.models.core import Database
 from superset.sql_parse import Table
@@ -58,12 +62,32 @@ def check_datasource_access(f: Callable[..., Any]) -> Callable[..., Any]:
                 f"permission_denied_{self.__class__.__name__}.select_star"
             )
             logger.warning(
-                "Permission denied for user %s on table: %s schema: %s",
+                "Permission denied for user %s on table: %s schema: %s then query"
+                " UserPermission and RolePermission check access",
                 g.user,
                 table_name_parsed,
                 schema_name_parsed,
             )
-            return self.response_404()
+            # 获取表的 ID
+            try:
+                table_id = SqlaTable.get_id_by_table_name(table_name_parsed)
+            except NoResultFound:
+                return self.response_404(message=_("Table not found"))
+            except MultipleResultsFound:
+                return self.response_400(message=_("Multiple tables found"))
+
+            datasource_id = table_id
+            user_id = g.user.id
+            role_id = g.user.roles[0].id
+            # 检查权限
+            try:
+                ChartPermissions.check_datasource_read_permissions(
+                    user_id=user_id,
+                    role_id=role_id,
+                    datasource_id=datasource_id
+                )
+            except DatasetAccessDeniedError:
+                return self.response_403(message=_("Permission denied"))
         return f(self, database, table_name_parsed, schema_name_parsed)
 
     return functools.update_wrapper(wraps, f)

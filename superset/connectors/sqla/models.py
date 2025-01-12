@@ -56,6 +56,7 @@ from sqlalchemy import (
     create_engine
 )
 from sqlalchemy.engine.base import Connection
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
@@ -123,10 +124,14 @@ from superset.superset_typing import (
 from superset.utils import core as utils
 from superset.utils.backports import StrEnum
 from superset.utils.core import GenericDataType, MediumText
-from superset.daos.dynamic_model import reinit_dynamic_table, refresh_dynamic_table_datas_by_condition
+from superset.daos.dynamic_model import reinit_dynamic_table, \
+    refresh_dynamic_table_datas_by_condition
 from superset.daos.dynamic_model import delete_dynamic_table_datas_by_condition
 import traceback
 from dateutil.relativedelta import relativedelta
+
+from superset.utils.db import get_session
+
 config = app.config
 metadata = Model.metadata  # pylint: disable=no-member
 logger = logging.getLogger(__name__)
@@ -500,7 +505,7 @@ class BaseDatasource(
         verbose_map.update(
             {
                 column_["column_name"]: column_["verbose_name"]
-                or column_["column_name"]
+                                        or column_["column_name"]
                 for column_ in filtered_columns
             }
         )
@@ -543,9 +548,9 @@ class BaseDatasource(
                     target_generic_type == utils.GenericDataType.NUMERIC
                     and operator
                     not in {
-                        utils.FilterOperator.ILIKE,
-                        utils.FilterOperator.LIKE,
-                    }
+                    utils.FilterOperator.ILIKE,
+                    utils.FilterOperator.LIKE,
+                }
                 ):
                     # For backwards compatibility and edge cases
                     # where a column data type might have changed
@@ -762,7 +767,6 @@ class AnnotationDatasource(BaseDatasource):
 
 
 class TableColumn(AuditMixinNullable, ImportExportMixin, CertificationMixin, Model):
-
     """ORM object for table columns, each table can have multiple columns"""
 
     __tablename__ = "table_columns"
@@ -976,7 +980,6 @@ class TableColumn(AuditMixinNullable, ImportExportMixin, CertificationMixin, Mod
 
 
 class SqlMetric(AuditMixinNullable, ImportExportMixin, CertificationMixin, Model):
-
     """ORM object for metrics, each table can have multiple metrics"""
 
     __tablename__ = "sql_metrics"
@@ -1157,7 +1160,7 @@ class SqlaTable(
     always_filter_main_dttm = Column(Boolean, default=False)
     dynamic_ready = Column(Boolean, default=False)
     dynamic_refresh_time_type = Column(String(10), default="evening")
-    dynamic_refresh_type = Column(String(10), default="increment")   
+    dynamic_refresh_type = Column(String(10), default="increment")
     dynamic_refresh_year_column = Column(String(250), default="year")
     dynamic_refresh_month_column = Column(String(250), default="month")
 
@@ -1213,6 +1216,25 @@ class SqlaTable(
         if cte:
             sql = f"{cte}\n{sql}"
         return sql
+
+    @staticmethod
+    def get_id_by_table_name(table_name: str) -> int:
+        """
+        根据 table_name 查找对应的 id。
+
+        :param table_name: 要查询的表名
+        :return: 表的 id
+        :raises NoResultFound: 如果未找到对应的表
+        :raises MultipleResultsFound: 如果找到多个匹配的表
+        """
+        try:
+            table = db.session.query(SqlaTable).filter_by(table_name=table_name).one()
+            return table.id
+        except NoResultFound:
+            raise NoResultFound(f"未找到 table_name 为 '{table_name}' 的表。")
+        except MultipleResultsFound:
+            raise MultipleResultsFound(f"找到多个 table_name 为 '{table_name}' 的表。请提供更具体的查询条件。")
+
 
     @property
     def db_engine_spec(self) -> __builtins__.type[BaseEngineSpec]:
@@ -1771,17 +1793,18 @@ class SqlaTable(
             groups.append(and_(*group))
 
         return or_(*groups)
-    
-    @classmethod
-    def down_single_dataset_datas(cls, dataset):        
-        if("trino" in dataset.database.sqlalchemy_uri):
-          exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
-          res_gen = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, exe_sql)
-          dv_table_name = "dv_" + str(dataset.uuid)
-          reinit_dynamic_table(dv_table_name, res_gen)
 
     @classmethod
-    def refresh_single_dataset_datas(cls,dataset):
+    def down_single_dataset_datas(cls, dataset):
+        if ("trino" in dataset.database.sqlalchemy_uri):
+            exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
+            res_gen = cls.execute_query_and_get_datas_by_sql(dataset.database,
+                                                             dataset.schema, exe_sql)
+            dv_table_name = "dv_" + str(dataset.uuid)
+            reinit_dynamic_table(dv_table_name, res_gen)
+
+    @classmethod
+    def refresh_single_dataset_datas(cls, dataset):
         now = datetime.now()
         year_column = dataset.dynamic_refresh_year_column
         month_column = dataset.dynamic_refresh_month_column
@@ -1796,38 +1819,43 @@ class SqlaTable(
         years = list(set([year, prev_month_year]))
         try:
             query_obj = {
-              "columns": [year_column],
-              "filter": [ 
-                { "col": year_column, "op": "IN", "val": years },
-                { "col": month_column, "op": "IN", "val": [month, prev_month_month] },
-              ],
-              "is_timeseries": False,
-              "is_rowcount": False,
+                "columns": [year_column],
+                "filter": [
+                    {"col": year_column, "op": "IN", "val": years},
+                    {"col": month_column, "op": "IN", "val": [month, prev_month_month]},
+                ],
+                "is_timeseries": False,
+                "is_rowcount": False,
             }
             query_data = {
-              'filters': [
-                {'col': year_column, 'op': 'IN', 'val': years},
-                {'col': month_column, 'op': 'IN', 'val': [month, prev_month_month]}
-              ],
-              'columns': ['year'],
+                'filters': [
+                    {'col': year_column, 'op': 'IN', 'val': years},
+                    {'col': month_column, 'op': 'IN', 'val': [month, prev_month_month]}
+                ],
+                'columns': ['year'],
             }
             g.form_data = query_data
             query_str_ext = dataset.get_query_str_extended(query_obj)
             sub_sql = query_str_ext.sub_sql
-            logger.info("Refresh dataset datas processing, table_name: %s, sub_sql: %s", dv_table_name, sub_sql)
+            logger.info("Refresh dataset datas processing, table_name: %s, sub_sql: %s",
+                        dv_table_name, sub_sql)
             # 就方案无法将表函数中的jinja参数解析替换，因此导致查询时间过长，因此弃用掉，改成新方案
             # exe_sql = dataset.get_rendered_sql(dataset.get_template_processor())
             # exe_sql = f"select * from ({exe_sql}) where {year_column} in({', '.join(map(str, years))}) and {month_column} in({month},{prev_month_month}) "
-            datas = cls.execute_query_and_get_datas_by_sql(dataset.database, dataset.schema, sub_sql)
+            datas = cls.execute_query_and_get_datas_by_sql(dataset.database,
+                                                           dataset.schema, sub_sql)
             # ##remove old datas
-            conditions = [{'col': year_column, 'op': 'IN', 'val': years}, {'col': month_column, 'op': 'IN', 'val': [month, prev_month_month]}]
+            conditions = [{'col': year_column, 'op': 'IN', 'val': years},
+                          {'col': month_column, 'op': 'IN',
+                           'val': [month, prev_month_month]}]
             delete_dynamic_table_datas_by_condition(dv_table_name, conditions)
             refresh_dynamic_table_datas_by_condition(dv_table_name, conditions, datas)
 
-        except Exception as ex:  
+        except Exception as ex:
             traceback.print_exc()
             error_message = utils.error_msg_from_exception(ex)
-            logger.error("Refresh dataset datas error table: %s, error: %s", dv_table_name, error_message)
+            logger.error("Refresh dataset datas error table: %s, error: %s",
+                         dv_table_name, error_message)
 
     @classmethod
     def down_dataset_datas(cls, session):
@@ -1837,16 +1865,20 @@ class SqlaTable(
 
     @classmethod
     def refresh_dataset_datas(cls):
-        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready, cls.dynamic_refresh_time_type == 'evening').all()
+        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '',
+                                                cls.dynamic_ready,
+                                                cls.dynamic_refresh_time_type == 'evening').all()
         #先执行胶水还原表的函数处理
         # cls.refresh_glue_reduction_datas()
         for dataset in datasets:
             dv_table_name = "dv_" + str(dataset.uuid)
-            logger.info("Schedule exec refresh dataset datas, table_name: %s, refresh_type: %s", dv_table_name, dataset.dynamic_refresh_type)
-            if(dataset.dynamic_refresh_type == 'full'):
+            logger.info(
+                "Schedule exec refresh dataset datas, table_name: %s, refresh_type: %s",
+                dv_table_name, dataset.dynamic_refresh_type)
+            if (dataset.dynamic_refresh_type == 'full'):
                 dataset.dynamic_ready = False
                 db.session.commit()
-                cls.down_single_dataset_datas(dataset)    
+                cls.down_single_dataset_datas(dataset)
                 dataset.dynamic_ready = True
                 db.session.commit()
             else:
@@ -1858,16 +1890,20 @@ class SqlaTable(
 
     @classmethod
     def refresh_dataset_datas_daily(cls):
-        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '', cls.dynamic_ready, cls.dynamic_refresh_time_type == 'morning').all()
+        datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '',
+                                                cls.dynamic_ready,
+                                                cls.dynamic_refresh_time_type == 'morning').all()
         #先执行胶水还原表的函数处理
         # cls.refresh_glue_reduction_datas()
         for dataset in datasets:
             dv_table_name = "dv_" + str(dataset.uuid)
-            logger.info("Schedule exec refresh dataset daily datas, table_name: %s, refresh_type: %s", dv_table_name, dataset.dynamic_refresh_type)
-            if(dataset.dynamic_refresh_type == 'full'):
+            logger.info(
+                "Schedule exec refresh dataset daily datas, table_name: %s, refresh_type: %s",
+                dv_table_name, dataset.dynamic_refresh_type)
+            if (dataset.dynamic_refresh_type == 'full'):
                 dataset.dynamic_ready = False
                 db.session.commit()
-                cls.down_single_dataset_datas(dataset)    
+                cls.down_single_dataset_datas(dataset)
                 dataset.dynamic_ready = True
                 db.session.commit()
             else:
@@ -1896,20 +1932,22 @@ class SqlaTable(
         """
         Executes a SQL query and returns query results.
         """
-        if("trino" in database.sqlalchemy_uri):
+        if ("trino" in database.sqlalchemy_uri):
             with database.get_raw_connection(schema) as conn:
                 cursor = conn.cursor()
                 cursor.execute(sql)
-                column_info_dict = {col.name: col.type_code for col in cursor.description}
+                column_info_dict = {col.name: col.type_code for col in
+                                    cursor.description}
                 yield {'columns': column_info_dict}
-                
-                while True: 
-                  records = cursor.fetchmany(size=100000)
-                  if not records:
-                      break
-                  yield {'records': records}
 
-    def query(self, query_obj: QueryObjectDict, is_ad_hoc_refresh: bool = False) -> QueryResult:
+                while True:
+                    records = cursor.fetchmany(size=100000)
+                    if not records:
+                        break
+                    yield {'records': records}
+
+    def query(self, query_obj: QueryObjectDict,
+              is_ad_hoc_refresh: bool = False) -> QueryResult:
         qry_start_dttm = datetime.now()
         query_str_ext = self.get_query_str_extended(query_obj)
         sql = query_str_ext.sql
@@ -1939,18 +1977,24 @@ class SqlaTable(
                         _("Db engine did not return all queried columns")
                     )
                 if len(df.columns) > len(labels_expected):
-                    df = df.iloc[:, 0 : len(labels_expected)]
+                    df = df.iloc[:, 0: len(labels_expected)]
                 df.columns = labels_expected
             return df
-        
+
         try:
             if is_ad_hoc_refresh and self.is_virtual and "trino" in self.database.sqlalchemy_uri and self.check_dynamic_ready:
                 # 如果是刷新缓存查询，则将结果增量添加到动态缓存表中，同时在添加之前需要根据条件将动态缓存表中的老数据删除
                 dv_table_name = "dv_" + str(self.uuid)
-                logger.info("Ad hoc refresh dataset datas processing, table_name: %s, sql: %s", dv_table_name, sub_sql)
-                datas = SqlaTable.execute_query_and_get_datas_by_sql(self.database, self.schema, sub_sql)
-                delete_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"])
-                refresh_dynamic_table_datas_by_condition(dv_table_name, query_obj["filter"], datas)
+                logger.info(
+                    "Ad hoc refresh dataset datas processing, table_name: %s, sql: %s",
+                    dv_table_name, sub_sql)
+                datas = SqlaTable.execute_query_and_get_datas_by_sql(self.database,
+                                                                     self.schema,
+                                                                     sub_sql)
+                delete_dynamic_table_datas_by_condition(dv_table_name,
+                                                        query_obj["filter"])
+                refresh_dynamic_table_datas_by_condition(dv_table_name,
+                                                         query_obj["filter"], datas)
                 # 设置更新时间为当前时间
                 self.changed_on = datetime.now()
                 db.session.commit()

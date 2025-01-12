@@ -113,7 +113,7 @@ class ExploreFormDataRestApi(BaseSupersetApi):
             return self.response(404, message=str(ex))
 
     @expose("/form_data/<string:key>", methods=("PUT",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(

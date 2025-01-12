@@ -24,7 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from superset.commands.base import BaseCommand
 from superset.commands.explore.form_data.parameters import CommandParameters
 from superset.commands.explore.form_data.state import TemporaryExploreState
-from superset.commands.explore.form_data.utils import check_access
+from superset.commands.explore.form_data.utils import check_access, check_special_access
 from superset.commands.temporary_cache.exceptions import (
     TemporaryCacheAccessDeniedError,
     TemporaryCacheUpdateFailedError,
@@ -53,7 +53,10 @@ class UpdateFormDataCommand(BaseCommand, ABC):
             datasource_type = self._cmd_params.datasource_type
             key = self._cmd_params.key
             form_data = self._cmd_params.form_data
-            check_access(datasource_id, chart_id, datasource_type)
+            logger.info(f"UpdateFormDataCommand's datasource_id: {datasource_id}")
+            logger.info(f"UpdateFormDataCommand's datasource_type: {datasource_type}")
+            logger.info(f"UpdateFormDataCommand's chart_id: {chart_id}")
+            check_special_access(datasource_id, chart_id)
             state: TemporaryExploreState = cache_manager.explore_form_data_cache.get(
                 key
             )

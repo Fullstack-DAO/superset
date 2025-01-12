@@ -130,7 +130,6 @@ from superset.daos.dynamic_model import delete_dynamic_table_datas_by_condition
 import traceback
 from dateutil.relativedelta import relativedelta
 
-from superset.utils.db import get_session
 
 config = app.config
 metadata = Model.metadata  # pylint: disable=no-member

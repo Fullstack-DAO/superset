@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
@@ -947,7 +947,7 @@ class ChartPermissions:
 
     @staticmethod
     def check_datasource_permissions(user_id=None, role_id=None, datasource_id=None) -> \
-    Optional[bool]:
+        Optional[bool]:
         # 查询 UserPermission
         logger.info(f"query datasource permissions user_id: {user_id}")
         logger.info(f"query datasource permissions role_id: {role_id}")
@@ -1039,3 +1039,171 @@ class ChartPermissions:
         logger.error(
             "Permission denied: User and Role do not have required permissions.")
         raise DatasetAccessDeniedError()  # 没有权限，抛出异常
+
+    # -------------------------------------------------------------------------
+    # 权限映射方法
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def map_permissions_to_role(
+        can_edit: bool,
+        can_export: bool,
+        can_delete: bool
+    ) -> str:
+        """
+        根据权限映射为角色。
+        - can_write, can_export, can_delete -> admin
+        - can_write -> editor
+        - 其他 -> viewer
+
+        :param can_write: 是否有写权限
+        :param can_export: 是否有导出权限
+        :param can_delete: 是否有删除权限
+        :return: 角色标签
+        """
+        if can_edit and can_export and can_delete:
+            return "admin"
+        elif can_edit and can_export:
+            return "editor"
+        elif can_export:
+            return "viewer"
+
+    # -------------------------------------------------------------------------
+    # 权限获取所有图表的方法
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def get_all_chart_permissions(user: User) -> dict[int, dict[str, Any]]:
+        """
+        获取当前用户对所有图表的权限，并映射为角色标签。
+
+        :param user: 当前用户对象
+        :return: 权限字典，键为 chart_id，值为权限信息
+        """
+        permissions = {}
+
+        # 获取所有涉及的 chart_ids
+        user_perms = db.session.query(UserPermission).filter_by(
+            user_id=user.id,
+            resource_type="chart"
+        ).all()
+        role_ids = [role.id for role in user.roles] if user.roles else []
+        role_perms = db.session.query(RolePermission).filter(
+            RolePermission.role_id.in_(role_ids),
+            RolePermission.resource_type == "chart"
+        ).all()
+
+        # 组织用户权限
+        user_permissions_dict = {}
+        for perm in user_perms:
+            chart_id = perm.resource_id
+            user_permissions_dict[chart_id] = {
+                "can_read": perm.can_read,
+                "can_edit": perm.can_edit,
+                "can_delete": perm.can_delete,
+                "can_add": perm.can_add
+            }
+
+        # 组织角色权限（合并所有角色的权限）
+        role_permissions_dict = {}
+        for perm in role_perms:
+            chart_id = perm.resource_id
+            if chart_id not in role_permissions_dict:
+                role_permissions_dict[chart_id] = {
+                    "can_read": False,
+                    "can_edit": False,
+                    "can_delete": False,
+                    "can_add": False
+                }
+            role_permissions_dict[chart_id]["can_read"] = \
+            role_permissions_dict[chart_id]["can_read"] or perm.can_read
+            role_permissions_dict[chart_id]["can_edit"] = \
+            role_permissions_dict[chart_id]["can_edit"] or perm.can_edit
+            role_permissions_dict[chart_id]["can_delete"] = \
+            role_permissions_dict[chart_id]["can_delete"] or perm.can_delete
+            role_permissions_dict[chart_id]["can_add"] = \
+            role_permissions_dict[chart_id]["can_add"] or perm.can_add
+
+        # 获取所有 chart_ids
+        all_chart_ids = set(user_permissions_dict.keys()).union(
+            set(role_permissions_dict.keys()))
+
+        for chart_id in all_chart_ids:
+            user_perm = user_permissions_dict.get(chart_id, {
+                "can_read": False,
+                "can_edit": False,
+                "can_delete": False,
+                "can_add": False
+            })
+            role_perm = role_permissions_dict.get(chart_id, {
+                "can_read": False,
+                "can_edit": False,
+                "can_delete": False,
+                "can_add": False
+            })
+
+            # 合并权限
+            final_permissions = {
+                "can_read": user_perm["can_read"] or role_perm["can_read"],
+                "can_edit": user_perm["can_edit"] or role_perm["can_edit"],
+                "can_delete": user_perm["can_delete"] or role_perm["can_delete"],
+                "can_add": user_perm["can_add"] or role_perm["can_add"]
+            }
+
+            # 根据权限映射角色标签
+            role_label = ChartPermissions.map_permissions_to_role(
+                can_edit=final_permissions["can_edit"],
+                can_export=final_permissions["can_read"],  # 基于 can_read 推导 can_export
+                can_delete=final_permissions["can_delete"]
+            )
+
+            # 基于 can_read 推导 can_export
+            can_export = final_permissions["can_read"]
+
+            permissions[chart_id] = {
+                "can_read": final_permissions["can_read"],
+                "can_write": final_permissions["can_edit"],  # 替换 can_edit 为 can_write
+                "can_delete": final_permissions["can_delete"],
+                "can_add": final_permissions["can_add"],
+                "can_export": can_export,
+                "role": role_label
+            }
+
+        return permissions
+
+    @staticmethod
+    def has_can_edit_permission(user_id: int, role_ids: list[int],
+                                chart_id: int) -> bool:
+        """
+        判断用户或其角色是否对指定图表拥有 can_edit 权限。
+
+        :param user_id: 用户 ID
+        :param role_ids: 角色 ID 列表
+        :param chart_id: 图表 ID
+        :return: 如果拥有 can_edit 权限，返回 True；否则返回 False
+        """
+        # 查询用户权限
+        user_perm = db.session.query(UserPermission).filter_by(
+            user_id=user_id,
+            resource_type='chart',
+            resource_id=chart_id
+        ).first()
+
+        if user_perm and user_perm.can_edit:
+            logger.debug(f"用户 ID {user_id} 对图表 ID {chart_id} 拥有 can_edit 权限。")
+            return True
+
+        # 查询角色权限
+        role_perms = db.session.query(RolePermission).filter(
+            RolePermission.role_id.in_(role_ids),
+            RolePermission.resource_type == 'chart',
+            RolePermission.resource_id == chart_id
+        ).all()
+
+        for perm in role_perms:
+            if perm.can_edit:
+                logger.debug(
+                    f"用户的角色 ID {perm.role_id} 对图表 ID {chart_id} 拥有 can_edit 权限。")
+                return True
+
+        logger.debug(
+            f"用户 ID {user_id} 及其角色对图表 ID {chart_id} 不拥有 can_edit 权限。")
+        return False

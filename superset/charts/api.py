@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime
 from io import BytesIO
-from typing import Any, cast, Optional
+from typing import Any, cast, Optional, Union
 from zipfile import is_zipfile, ZipFile
 
 from flask import redirect, request, Response, send_file, url_for, jsonify, \
@@ -11,6 +11,8 @@ from flask_appbuilder.api import expose, protect, rison, safe
 from flask_appbuilder.hooks import before_request
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.api.schemas import get_item_schema, get_list_schema
+
+from superset.exceptions import SupersetException
 from superset.tasks.utils import get_current_user_object
 from flask_appbuilder.security.sqla.models import User, Role
 from flask_appbuilder.exceptions import FABException
@@ -1513,3 +1515,223 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         self.pre_get_list(response)
         return self.response(200, **response)
+
+    @expose("/_info", methods=["GET"])
+    @protect()  # 确保用户已认证
+    def info(self) -> Any:
+        """
+        获取当前用户对所有图表的权限信息。
+        ---
+        get:
+          summary: 获取所有图表的权限信息
+          responses:
+            200:
+              description: 成功获取权限信息
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      permissions:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            can_write:
+                              type: boolean
+                            can_add:
+                              type: boolean
+                            can_delete:
+                              type: boolean
+                            can_read:
+                              type: boolean
+                            can_export:
+                              type: boolean
+                            role:
+                              type: string
+            403:
+              description: 权限不足
+            500:
+              description: 服务器内部错误
+        """
+        logger.debug("访问 /_info 接口。")
+
+        # 获取当前用户对象
+        user = get_current_user_object()
+        if not user:
+            logger.error("没有用户登录。")
+            return self.response_403(message="权限拒绝。")
+
+        logger.info(f"current login user is: {user.first_name} {user.last_name}")
+        logger.info(
+            f"current login user's role is: {[role.name for role in user.roles]}")
+
+        try:
+            # 获取用户对所有图表的权限
+            all_permissions = ChartPermissions.get_all_chart_permissions(user)
+        except Exception as e:
+            logger.error(f"获取权限信息时出错: {e}")
+            return self.response_500(message="内部服务器错误。")
+
+        # 过滤并格式化权限信息
+        filtered_permissions = {}
+        for chart_id, perm in all_permissions.items():
+            # 仅包含用户拥有至少一种权限的图表
+            if perm["can_write"] or perm["can_add"] or perm["can_delete"] or perm[
+                "can_read"]:
+                filtered_permissions[chart_id] = {
+                    "can_write": perm["can_write"],  # 替换 can_edit 为 can_write
+                    "can_add": perm["can_add"],
+                    "can_delete": perm["can_delete"],
+                    "can_read": perm["can_read"],
+                    "can_export": perm["can_export"],  # 基于 can_read 推导
+                    "role": perm["role"]
+                }
+
+        logger.debug(f"获取到的权限信息: {filtered_permissions}")
+
+        # 返回 JSON 响应
+        return self.response(200, info={"permissions": filtered_permissions})
+
+    ModelKeyType = Union[str, int]
+
+    @expose("/<int:pk>", methods=["GET"])
+    @protect()
+    @safe
+    @rison(get_item_schema)
+    def get(self, pk: ModelKeyType, **kwargs: Any) -> Response:
+        """
+        获取指定 ID 的图表，并返回其权限信息。
+        ---
+        get:
+          description: >-
+            获取一个图表模型及其权限信息
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+          - in: query
+            name: q
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/get_item_schema'
+          responses:
+            200:
+              description: 成功获取图表及其权限信息
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      label_columns:
+                        type: object
+                        properties:
+                          column_name:
+                            description: >-
+                              列名称的标签。
+                              会被 babel 翻译
+                            example: A Nice label for the column
+                            type: string
+                      show_columns:
+                        description: >-
+                          列的列表
+                        type: array
+                        items:
+                          type: string
+                      description_columns:
+                        type: object
+                        properties:
+                          column_name:
+                            description: >-
+                              列名称的描述。
+                              会被 babel 翻译
+                            example: A Nice description for the column
+                            type: string
+                      show_title:
+                        description: >-
+                          显示的标题。
+                          会被 babel 翻译
+                        example: Show Item Details
+                        type: string
+                      id:
+                        description: 图表的 ID
+                        type: string
+                      result:
+                        $ref: '#/components/schemas/{{self.__class__.__name__}}.get'
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        return self.get_headless(pk, **kwargs)
+
+    def get_headless(self, pk: int, **kwargs: Any) -> Response:
+        """
+        获取图表的详细信息，并进行权限检查。
+
+        :param pk: 图表的主键
+        :param kwargs: 查询参数
+        :return: HTTP 响应
+        """
+        try:
+            # 获取图表对象
+            chart = self.datamodel.get(
+                pk,
+            )
+            if not chart:
+                logger.warning(f"图表 ID {pk} 未找到。")
+                return self.response_404()
+
+            # 获取当前用户对象
+            user = get_current_user_object()
+            if not user:
+                logger.error("没有用户登录。")
+                return self.response_403(message="权限拒绝。")
+
+            user_id = user.id
+            role_ids = [role.id for role in user.roles] if user.roles else []
+
+            # 使用 ChartPermissions 类进行权限检查
+            has_permission = ChartPermissions.has_can_edit_permission(user_id, role_ids, pk)
+
+            # 权限检查：如果没有 can_edit 权限，则返回 403
+            if not has_permission:
+                logger.warning(f"用户 ID {user_id} 对图表 ID {pk} 不拥有 can_edit 权限，拒绝访问。")
+                return self.response_403(message="权限拒绝。")
+
+            # 构建响应数据
+            response = {}
+            args = kwargs.get("q", {})
+            select_cols = args.get("show_columns", [])
+            pruned_select_cols = [col for col in select_cols if col in self.show_columns]
+
+            # 设置响应的键映射
+            self.set_response_key_mappings(
+                response, self.get, args, **{"show_columns": pruned_select_cols}
+            )
+
+            if pruned_select_cols:
+                show_model_schema = self.model2schemaconverter.convert(pruned_select_cols)
+            else:
+                show_model_schema = self.show_model_schema
+
+            response["id"] = pk
+            response["result"] = show_model_schema.dump(chart, many=False)
+            self.pre_get(response)
+
+            return self.response(200, **response)
+        except SupersetException as e:
+            logger.error(f"获取图表时出错: {e}")
+            return self.response_500(message="服务器内部错误。")
+        except Exception as e:
+            logger.exception(f"未知错误: {e}")
+            return self.response_500(message="服务器内部错误。")
+

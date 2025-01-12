@@ -26,7 +26,7 @@ import {
   SupersetClient,
   t,
 } from '@superset-ui/core';
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import rison from 'rison';
 import { uniqBy } from 'lodash';
 import { useSelector } from 'react-redux';
@@ -157,6 +157,14 @@ const StyledActions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
 `;
 
+// 添加权限类型定义
+type ChartPermissions = {
+  can_write: boolean;
+  can_export: boolean;
+  can_delete: boolean;
+  role: string;
+};
+
 function ChartList(props: ChartListProps) {
   const {
     addDangerToast,
@@ -178,6 +186,7 @@ function ChartList(props: ChartListProps) {
     fetchData,
     toggleBulkSelect,
     refreshData,
+    getResourcePermissions,
   } = useListViewResource<Chart>('chart', t('chart'), addDangerToast);
 
   const chartIds = useMemo(() => charts.map(c => c.id), [charts]);
@@ -215,6 +224,35 @@ function ChartList(props: ChartListProps) {
   // TODO: Fix usage of localStorage keying on the user id
   const userSettings = dangerouslyGetItemDoNotUse(userId?.toString(), null) as {
     thumbnails: boolean;
+  };
+
+  const [chartPermissions, setChartPermissions] = useState<Record<number, ChartPermissions>>({});
+
+  const fetchChartPermissions = useCallback(async () => {
+    try {
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/chart/_info?q=(keys:!(permissions))`,
+      });
+      if (response?.json?.permissions) {
+        setChartPermissions(response.json.permissions);
+      }
+    } catch (err) {
+      console.error('Failed to fetch chart permissions:', err);
+      addDangerToast(t('Failed to fetch chart permissions'));
+    }
+  }, [addDangerToast]);
+
+  useEffect(() => {
+    fetchChartPermissions();
+  }, [fetchChartPermissions]);
+
+  const getChartPermissions = (chartId: number): ChartPermissions => {
+    return chartPermissions[chartId] || {
+      can_write: false,
+      can_export: false,
+      can_delete: false,
+      role: 'viewer'
+    };
   };
 
   const openChartImportModal = () => {
@@ -463,13 +501,18 @@ function ChartList(props: ChartListProps) {
             );
           const openEditModal = () => openChartEditModal(original);
           const handleExport = () => handleBulkChartExport([original]);
-          if (!canEdit && !canDelete && !canExport) {
+
+          // 使用 hook 提供的权限检查函数
+          const permissions = getResourcePermissions(original.id);
+          
+          // 如果没有读权限，不显示任何操作按钮
+          if (!permissions.can_read) {
             return null;
           }
 
           return (
             <StyledActions className="actions">
-              {canDelete && (
+              {permissions.can_delete && (
                 <ConfirmStatusChange
                   title={t('Please confirm')}
                   description={
@@ -499,7 +542,7 @@ function ChartList(props: ChartListProps) {
                   )}
                 </ConfirmStatusChange>
               )}
-              {canExport && (
+              {permissions.can_export && (
                 <Tooltip
                   id="export-action-tooltip"
                   title={t('Export')}
@@ -515,7 +558,7 @@ function ChartList(props: ChartListProps) {
                   </span>
                 </Tooltip>
               )}
-              {canEdit && (
+              {permissions.can_write && (
                 <Tooltip
                   id="edit-action-tooltip"
                   title={t('Edit')}
@@ -531,7 +574,6 @@ function ChartList(props: ChartListProps) {
                   </span>
                 </Tooltip>
               )}
-
             </StyledActions>
           );
         },
@@ -555,6 +597,8 @@ function ChartList(props: ChartListProps) {
       refreshData,
       addSuccessToast,
       addDangerToast,
+      chartPermissions,
+      getResourcePermissions,
     ],
   );
 

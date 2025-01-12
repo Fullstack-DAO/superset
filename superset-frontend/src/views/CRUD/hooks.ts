@@ -45,6 +45,7 @@ interface ListViewResourceState<D extends object = any> {
   lastFetchDataConfig: FetchDataConfig | null;
   bulkSelectEnabled: boolean;
   lastFetched?: string;
+  resourcePermissions: Record<string, ResourcePermissions>;  // 修改为string key
 }
 
 const parsedErrorMessage = (
@@ -63,22 +64,33 @@ const parsedErrorMessage = (
     .join('\n');
 };
 
+// 修改权限类型定义
+type ResourcePermissions = {
+  can_add: boolean;
+  can_delete: boolean;
+  can_export: boolean;
+  can_read: boolean;
+  can_write: boolean;
+  role: string;
+};
+
 export function useListViewResource<D extends object = any>(
   resource: string,
-  resourceLabel: string, // resourceLabel for translations
+  resourceLabel: string,
   handleErrorMsg: (errorMsg: string) => void,
   infoEnable = true,
   defaultCollectionValue: D[] = [],
-  baseFilters?: FilterValue[], // must be memoized
+  baseFilters?: FilterValue[],
   initialLoadingState = true,
 ) {
   const [state, setState] = useState<ListViewResourceState<D>>({
-    count: 0,
-    collection: defaultCollectionValue,
     loading: initialLoadingState,
-    lastFetchDataConfig: null,
+    collection: defaultCollectionValue,
+    count: 0,
     permissions: [],
+    lastFetchDataConfig: null,
     bulkSelectEnabled: false,
+    resourcePermissions: {},  // 修改为string key
   });
 
   function updateState(update: Partial<ListViewResourceState<D>>) {
@@ -89,29 +101,42 @@ export function useListViewResource<D extends object = any>(
     updateState({ bulkSelectEnabled: !state.bulkSelectEnabled });
   }
 
+  // 修改获取权限的函数
+  const fetchResourcePermissions = useCallback(async () => {
+    try {
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/${resource}/_info?q=(keys:!(permissions))`,
+      });
+      if (response?.json?.info?.permissions) {  // 注意这里改为 info.permissions
+        setState(currentState => ({
+          ...currentState,
+          resourcePermissions: response.json.info.permissions,
+        }));
+      }
+    } catch (err) {
+      console.error(`Failed to fetch ${resource} permissions:`, err);
+      handleErrorMsg(t(`Failed to fetch ${resourceLabel} permissions`));
+    }
+  }, [resource, resourceLabel, handleErrorMsg]);
+
+  // 修改检查具体资源权限的函数
+  const getResourcePermissions = useCallback((resourceId: number): ResourcePermissions => {
+    return state.resourcePermissions[resourceId.toString()] || {
+      can_add: false,
+      can_delete: false,
+      can_export: false,
+      can_read: false,
+      can_write: false,
+      role: 'viewer'
+    };
+  }, [state.resourcePermissions]);
+
+  // 在初始化时获取权限
   useEffect(() => {
-    if (!infoEnable) return;
-    SupersetClient.get({
-      endpoint: `/api/v1/${resource}/_info?q=${rison.encode({
-        keys: ['permissions'],
-      })}`,
-    }).then(
-      ({ json: infoJson = {} }) => {
-        updateState({
-          permissions: infoJson.permissions,
-        });
-      },
-      createErrorHandler(errMsg =>
-        handleErrorMsg(
-          t(
-            'An error occurred while fetching %s info: %s',
-            resourceLabel,
-            errMsg,
-          ),
-        ),
-      ),
-    );
-  }, []);
+    if (infoEnable) {
+      fetchResourcePermissions();
+    }
+  }, [fetchResourcePermissions, infoEnable]);
 
   function hasPerm(perm: string) {
     if (!state.permissions.length) {
@@ -195,9 +220,10 @@ export function useListViewResource<D extends object = any>(
       lastFetched: state.lastFetched,
     },
     setResourceCollection: (update: D[]) =>
-      updateState({
+      setState(currentState => ({
+        ...currentState,
         collection: update,
-      }),
+      })),
     hasPerm,
     fetchData,
     toggleBulkSelect,
@@ -210,6 +236,7 @@ export function useListViewResource<D extends object = any>(
       }
       return null;
     },
+    getResourcePermissions,  // 暴露权限检查函数
   };
 }
 

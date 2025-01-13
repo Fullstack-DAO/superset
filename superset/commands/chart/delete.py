@@ -58,6 +58,8 @@ class DeleteChartCommand(BaseCommand):
     def validate(self) -> None:
         # Validate/populate model exists
         self._models = ChartDAO.find_by_ids(self._model_ids)
+        logger.info(f"DeleteChartCommand's self._models: {self._models}")
+        logger.info(f"DeleteChartCommand's self._model_ids: {self._model_ids}")
         if not self._models or len(self._models) != len(self._model_ids):
             raise ChartNotFoundError()
         # Check there are no associated ReportSchedules
@@ -70,7 +72,9 @@ class DeleteChartCommand(BaseCommand):
                 ))
         # Check ownership
         for model in self._models:
+            logger.info(f"DeleteChartCommand's request comes")
             try:
                 security_manager.raise_for_ownership(model)
             except SupersetSecurityException as ex:
+
                 raise ChartForbiddenError() from ex

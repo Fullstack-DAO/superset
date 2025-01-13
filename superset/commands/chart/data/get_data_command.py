@@ -128,7 +128,7 @@ class ChartDataCommand(BaseCommand):
         # 查询 UserPermission
         try:
             user_permission = db.session.query(UserPermission).filter_by(
-                user_id=user_id, datasource_id=datasource_id
+                user_id=user_id, resource_id = slice_id
             ).one_or_none()
             if user_permission:
                 logger.debug(f"UserPermission found: can_read={user_permission.can_read}, can_edit={user_permission.can_edit}")
@@ -146,7 +146,7 @@ class ChartDataCommand(BaseCommand):
             try:
                 role_permissions = db.session.query(RolePermission).filter(
                     RolePermission.role_id.in_(role_ids),
-                    RolePermission.datasource_id == datasource_id,
+                    RolePermission.resource_id == slice_id,
                     RolePermission.can_read == True,
                     RolePermission.can_edit == True
                 ).all()

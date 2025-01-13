@@ -378,7 +378,7 @@ class ChartDAO(BaseDAO[Slice]):
         return ChartPermissions.get_chart_and_check_permission(pk, permission_type)
 
     @classmethod
-    def find_by_chart_ids(
+    def find_by_ids(
         cls,
         model_ids: list[str] | list[int],
         session: Session = None,

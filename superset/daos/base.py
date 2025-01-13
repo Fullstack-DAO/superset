@@ -85,21 +85,26 @@ class BaseDAO(Generic[T]):
         cls,
         model_ids: list[str] | list[int],
         session: Session = None,
-        skip_base_filter: bool = False,
+        skip_base_filter: bool = True,
     ) -> list[T]:
         """
         Find a List of models by a list of ids, if defined applies `base_filter`
         """
         id_col = getattr(cls.model_cls, cls.id_column_name, None)
+        logging.info(f"BaseDAO's model_ids: {cls.model_cls}")
         if id_col is None:
             return []
+        logging.info(f"BaseDAO's id_col: {id_col}")
         session = session or db.session
         query = session.query(cls.model_cls).filter(id_col.in_(model_ids))
+        logging.info(f"BaseDAO's query: {query}")
         if cls.base_filter and not skip_base_filter:
             data_model = SQLAInterface(cls.model_cls, session)
             query = cls.base_filter(  # pylint: disable=not-callable
                 cls.id_column_name, data_model
             ).apply(query, None)
+        logging.info(f"BaseDAO's final query: {query}")
+        logging.info(f"BaseDAO's query.all: {query.all()}")
         return query.all()
 
     @classmethod

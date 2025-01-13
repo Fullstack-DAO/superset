@@ -783,7 +783,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         )
 
     @expose("/export/", methods=("GET",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @rison(get_export_ids_schema)
@@ -886,7 +886,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         requested_ids = kwargs["rison"]
         logging.info(f"Requested IDs: {requested_ids}")
         # 调用 ChartDAO.find_by_ids 时，检查权限
-        charts = ChartDAO.find_by_chart_ids(
+        charts = ChartDAO.find_by_ids(
             requested_ids,
             permission_type="read",  # 权限类型为 'read'，可以根据需要调整
             check_permission=True  # 校验权限

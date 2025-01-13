@@ -70,6 +70,6 @@ class ExportChartsCommand(ExportModelsCommand):
 
         file_content = yaml.safe_dump(payload, sort_keys=False)
         yield file_path, file_content
-
+        logger.info(f"ExportChartsCommand's tableId: {model.table.id}")
         if model.table and export_related:
             yield from ExportDatasetsCommand([model.table.id]).run()

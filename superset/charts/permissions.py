@@ -1169,7 +1169,8 @@ class ChartPermissions:
                 "can_export": can_export,
                 "role": role_label
             }
-
+        # 添加日志记录，帮助调试
+        logger.info(f"User {user.id} permissions: {permissions}")
         return permissions
 
     @staticmethod

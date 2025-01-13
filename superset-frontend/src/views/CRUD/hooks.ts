@@ -64,7 +64,7 @@ const parsedErrorMessage = (
     .join('\n');
 };
 
-// 修改权限类型定义
+// 定义权限类型
 type ResourcePermissions = {
   can_add: boolean;
   can_delete: boolean;
@@ -90,7 +90,7 @@ export function useListViewResource<D extends object = any>(
     permissions: [],
     lastFetchDataConfig: null,
     bulkSelectEnabled: false,
-    resourcePermissions: {},  // 修改为string key
+    resourcePermissions: {},  // 存储每个资源的具体权限
   });
 
   function updateState(update: Partial<ListViewResourceState<D>>) {
@@ -101,13 +101,13 @@ export function useListViewResource<D extends object = any>(
     updateState({ bulkSelectEnabled: !state.bulkSelectEnabled });
   }
 
-  // 修改获取权限的函数
+  // 获取具体资源的权限
   const fetchResourcePermissions = useCallback(async () => {
     try {
       const response = await SupersetClient.get({
         endpoint: `/api/v1/${resource}/_info?q=(keys:!(permissions))`,
       });
-      if (response?.json?.info?.permissions) {  // 注意这里改为 info.permissions
+      if (response?.json?.info?.permissions) {
         setState(currentState => ({
           ...currentState,
           resourcePermissions: response.json.info.permissions,
@@ -119,7 +119,7 @@ export function useListViewResource<D extends object = any>(
     }
   }, [resource, resourceLabel, handleErrorMsg]);
 
-  // 修改检查具体资源权限的函数
+  // 检查具体资源的权限
   const getResourcePermissions = useCallback((resourceId: number): ResourcePermissions => {
     return state.resourcePermissions[resourceId.toString()] || {
       can_add: false,

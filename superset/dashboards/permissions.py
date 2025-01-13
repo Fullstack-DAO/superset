@@ -280,7 +280,7 @@ class DashboardPermissions:
                     f"{entity_type}_id": entity_id,
                     **{perm: True for perm in permissions}
                 }
-                
+
                 # 如果是用户且是创建者，添加 is_creator 标识
                 if entity_type == "user":
                     permission_data["is_creator"] = is_creator
@@ -705,3 +705,128 @@ class DashboardPermissions:
         }
 
         return permissions
+
+    def map_permissions_to_role(
+        can_edit: bool,
+        can_export: bool,
+        can_delete: bool
+    ) -> str:
+        """
+        根据权限映射为角色。
+        - can_write, can_export, can_delete -> admin
+        - can_write -> editor
+        - 其他 -> viewer
+
+        :param can_write: 是否有写权限
+        :param can_export: 是否有导出权限
+        :param can_delete: 是否有删除权限
+        :return: 角色标签
+        """
+        if can_edit and can_export and can_delete:
+            return "admin"
+        elif can_edit and can_export:
+            return "editor"
+        elif can_export:
+            return "viewer"
+
+    @staticmethod
+    def get_all_dashboard_permissions(user: User) -> dict[int, dict[str, Any]]:
+        """
+        获取当前用户对所有图表的权限，并映射为角色标签。
+
+        :param user: 当前用户对象
+        :return: 权限字典，键为 dashboard_id，值为权限信息
+        """
+        permissions = {}
+
+        # 获取所有涉及的 dashboard_ids
+        user_perms = db.session.query(UserPermission).filter_by(
+            user_id=user.id,
+            resource_type="dashboard"
+        ).all()
+        role_ids = [role.id for role in user.roles] if user.roles else []
+        role_perms = db.session.query(RolePermission).filter(
+            RolePermission.role_id.in_(role_ids),
+            RolePermission.resource_type == "dashboard"
+        ).all()
+
+        # 组织用户权限
+        user_permissions_dict = {}
+        for perm in user_perms:
+            dashboard_id = perm.resource_id
+            user_permissions_dict[dashboard_id] = {
+                "can_read": perm.can_read,
+                "can_edit": perm.can_edit,
+                "can_delete": perm.can_delete,
+                "can_add": perm.can_add
+            }
+
+        # 组织角色权限（合并所有角色的权限）
+        role_permissions_dict = {}
+        for perm in role_perms:
+            dashboard_id = perm.resource_id
+            if dashboard_id not in role_permissions_dict:
+                role_permissions_dict[dashboard_id] = {
+                    "can_read": False,
+                    "can_edit": False,
+                    "can_delete": False,
+                    "can_add": False
+                }
+            role_permissions_dict[dashboard_id]["can_read"] = \
+                role_permissions_dict[dashboard_id]["can_read"] or perm.can_read
+            role_permissions_dict[dashboard_id]["can_edit"] = \
+                role_permissions_dict[dashboard_id]["can_edit"] or perm.can_edit
+            role_permissions_dict[dashboard_id]["can_delete"] = \
+                role_permissions_dict[dashboard_id]["can_delete"] or perm.can_delete
+            role_permissions_dict[dashboard_id]["can_add"] = \
+                role_permissions_dict[dashboard_id]["can_add"] or perm.can_add
+
+        # 获取所有 dashboard_ids
+        all_dashboard_ids = set(user_permissions_dict.keys()).union(
+            set(role_permissions_dict.keys()))
+
+        for dashboard_id in all_dashboard_ids:
+            user_perm = user_permissions_dict.get(dashboard_id, {
+                "can_read": False,
+                "can_edit": False,
+                "can_delete": False,
+                "can_add": False
+            })
+            role_perm = role_permissions_dict.get(dashboard_id, {
+                "can_read": False,
+                "can_edit": False,
+                "can_delete": False,
+                "can_add": False
+            })
+
+            # 合并权限
+            final_permissions = {
+                "can_read": user_perm["can_read"] or role_perm["can_read"],
+                "can_edit": user_perm["can_edit"] or role_perm["can_edit"],
+                "can_delete": user_perm["can_delete"] or role_perm["can_delete"],
+                "can_add": user_perm["can_add"] or role_perm["can_add"]
+            }
+
+            # 根据权限映射角色标签
+            role_label = DashboardPermissions.map_permissions_to_role(
+                can_edit=final_permissions["can_edit"],
+                can_export=final_permissions["can_read"],  # 基于 can_read 推导 can_export
+                can_delete=final_permissions["can_delete"]
+            )
+            # 基于 can_read 推导 can_export
+            can_export = final_permissions["can_read"]
+
+            # 将处理后的权限和角色标签存储到 permissions 字典中
+            permissions[dashboard_id] = {
+                "can_read": final_permissions["can_read"],
+                "can_write": final_permissions["can_edit"],  # 替换 can_edit 为 can_write
+                "can_delete": final_permissions["can_delete"],
+                "can_add": final_permissions["can_add"],
+                "can_export": can_export,
+                "role": role_label
+            }
+
+        # 添加日志记录，帮助调试
+        logger.info(f"User {user.id} permissions: {permissions}")
+        
+        return permissions  # 返回处理后的权限字典

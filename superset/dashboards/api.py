@@ -597,7 +597,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 user = get_current_user_object()
                 if not user:
                     logger.warning("No user found while updating dashboard.")
-                    raise DashboardForbiddenError("No user found to assign permissions.")
+                    raise DashboardForbiddenError(
+                        "No user found to assign permissions.")
                 user_id = user.id  # 获取当前用户的ID
                 # 获取用户的角色
                 role_ids = DashboardRestApi.get_user_role_ids(user)
@@ -1887,3 +1888,85 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         :return: 用户角色ID列表
         """
         return [role.id for role in user.roles]  # 假设 user.roles 是用户角色的列表
+
+    @expose("/_info", methods=["GET"])
+    # @protect()  # 确保用户已认证
+    def info(self) -> Any:
+        """
+        获取当前用户对所有图表的权限信息。
+        ---
+        get:
+          summary: 获取所有图表的权限信息
+          responses:
+            200:
+              description: 成功获取权限信息
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      permissions:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            can_write:
+                              type: boolean
+                            can_add:
+                              type: boolean
+                            can_delete:
+                              type: boolean
+                            can_read:
+                              type: boolean
+                            can_export:
+                              type: boolean
+                            role:
+                              type: string
+            403:
+              description: 权限不足
+            500:
+              description: 服务器内部错误
+        """
+        logger.debug("访问 /_info 接口。")
+
+        # 获取当前用户对象
+        user = get_current_user_object()
+        if not user:
+            logger.error("没有用户登录。")
+            return self.response_403(message="权限拒绝。")
+
+        logger.info(f"current login user is: {user.first_name} {user.last_name}")
+        logger.info(
+            f"current login user's role is: {[role.name for role in user.roles]}")
+
+        try:
+            # 获取用户对所有仪表盘的权限
+            all_permissions = DashboardPermissions.get_all_dashboard_permissions(user)
+            if all_permissions is None:
+                # 如果没有权限数据，返回空列表
+                return self.response(200, info={"permissions": []})
+
+        except Exception as e:
+            logger.error(f"获取权限信息时出错: {e}")
+            return self.response_500(message="内部服务器错误。")
+
+        # 过滤并格式化权限信息
+        filtered_permissions = {}
+        for dashboard_id, perm in all_permissions.items():
+            # 仅包含用户拥有至少一种权限的图表
+            if perm["can_write"] or perm["can_add"] or perm["can_delete"] or perm[
+                "can_read"]:
+                filtered_permissions[dashboard_id] = {
+                    "can_write": perm["can_write"],  # 替换 can_edit 为 can_write
+                    "can_add": perm["can_add"],
+                    "can_delete": perm["can_delete"],
+                    "can_read": perm["can_read"],
+                    "can_export": perm["can_export"],  # 基于 can_read 推导
+                    "role": perm["role"]
+                }
+
+        logger.debug(f"获取到的权限信息: {filtered_permissions}")
+
+        # 返回 JSON 响应
+        return self.response(200, info={"permissions": filtered_permissions})
+

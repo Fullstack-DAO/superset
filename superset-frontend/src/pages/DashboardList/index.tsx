@@ -131,6 +131,7 @@ function DashboardList(props: DashboardListProps) {
     fetchData,
     toggleBulkSelect,
     refreshData,
+    getResourcePermissions,
   } = useListViewResource<Dashboard>(
     'dashboard',
     t('dashboard'),
@@ -385,9 +386,43 @@ function DashboardList(props: DashboardListProps) {
           const handleEdit = () => openDashboardEditModal(original);
           const handleExport = () => handleBulkDashboardExport([original]);
 
+          const permissions = getResourcePermissions(original.id);
+
           return (
             <Actions className="actions">
-              {canDelete && (
+              {permissions.can_write && (
+                <Tooltip
+                  id="edit-action-tooltip"
+                  title={t('Edit')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleEdit}
+                  >
+                    <Icons.EditAlt data-test="edit-alt" />
+                  </span>
+                </Tooltip>
+              )}
+              {permissions.can_export && (
+                <Tooltip
+                  id="export-action-tooltip"
+                  title={t('Export')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleExport}
+                  >
+                    <Icons.Share />
+                  </span>
+                </Tooltip>
+              )}
+              {permissions.can_delete && (
                 <ConfirmStatusChange
                   title={t('Please confirm')}
                   description={
@@ -410,50 +445,17 @@ function DashboardList(props: DashboardListProps) {
                         className="action-button"
                         onClick={confirmDelete}
                       >
-                        <Icons.Trash data-test="dashboard-list-trash-icon" />
+                        <Icons.Trash />
                       </span>
                     </Tooltip>
                   )}
                 </ConfirmStatusChange>
-              )}
-              {canExport && (
-                <Tooltip
-                  id="export-action-tooltip"
-                  title={t('Export')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleExport}
-                  >
-                    <Icons.Share />
-                  </span>
-                </Tooltip>
-              )}
-              {canEdit && (
-                <Tooltip
-                  id="edit-action-tooltip"
-                  title={t('Edit')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleEdit}
-                  >
-                    <Icons.EditAlt data-test="edit-alt" />
-                  </span>
-                </Tooltip>
               )}
             </Actions>
           );
         },
         Header: t('Actions'),
         id: 'actions',
-        hidden: !canEdit && !canDelete && !canExport,
         disableSortBy: true,
       },
       {
@@ -471,6 +473,7 @@ function DashboardList(props: DashboardListProps) {
       refreshData,
       addSuccessToast,
       addDangerToast,
+      getResourcePermissions,
     ],
   );
 

@@ -5,6 +5,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 from superset.connectors.sqla.models import SqlaTable
 from superset.commands.dataset.exceptions import DatasetAccessDeniedError
+from superset.errors import SupersetError, SupersetErrorType, ErrorLevel
+from superset.exceptions import SupersetSecurityException
 from superset.models.role_permission import RolePermission
 from superset.models.user_permission import UserPermission
 from superset.models.slice import Slice
@@ -12,6 +14,7 @@ from superset.tasks.utils import get_current_user_object
 from superset.extensions import db, security_manager
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.security.sqla.models import User, Role
+from flask_babel import lazy_gettext as _
 
 from superset.utils.core import get_user_id
 
@@ -1114,13 +1117,13 @@ class ChartPermissions:
                     "can_add": False
                 }
             role_permissions_dict[chart_id]["can_read"] = \
-            role_permissions_dict[chart_id]["can_read"] or perm.can_read
+                role_permissions_dict[chart_id]["can_read"] or perm.can_read
             role_permissions_dict[chart_id]["can_edit"] = \
-            role_permissions_dict[chart_id]["can_edit"] or perm.can_edit
+                role_permissions_dict[chart_id]["can_edit"] or perm.can_edit
             role_permissions_dict[chart_id]["can_delete"] = \
-            role_permissions_dict[chart_id]["can_delete"] or perm.can_delete
+                role_permissions_dict[chart_id]["can_delete"] or perm.can_delete
             role_permissions_dict[chart_id]["can_add"] = \
-            role_permissions_dict[chart_id]["can_add"] or perm.can_add
+                role_permissions_dict[chart_id]["can_add"] or perm.can_add
 
         # 获取所有 chart_ids
         all_chart_ids = set(user_permissions_dict.keys()).union(
@@ -1207,3 +1210,19 @@ class ChartPermissions:
         logger.debug(
             f"用户 ID {user_id} 及其角色对图表 ID {chart_id} 不拥有 can_edit 权限。")
         return False
+
+    @staticmethod
+    def check_can_edit(user_id, chart_id):
+        # 获取权限
+        permissions = ChartPermissions.get_permissions_for_chart(user_id, chart_id)
+
+        # 如果没有 can_edit 权限，则抛出异常
+        if not permissions.get('can_edit', False):
+            raise SupersetSecurityException(
+                SupersetError(
+                    error_type=SupersetErrorType.MISSING_OWNERSHIP_ERROR,
+                    message=_("You don't have the rights to alter %(resource)s",
+                              resource="chart"),
+                    level=ErrorLevel.ERROR,
+                )
+            )

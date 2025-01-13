@@ -477,7 +477,7 @@ class ChartDAO(BaseDAO[Slice]):
         cls,
         model_id: str | int,
         session: Session = None,
-        skip_base_filter: bool = False,
+        skip_base_filter: bool = True,
     ) -> Slice | None:
         """
         Find a chart by id without applying permission checks.
@@ -489,6 +489,7 @@ class ChartDAO(BaseDAO[Slice]):
         """
         # Step 1: 调用父类方法获取对象
         session = db.session
+        logger.info(f"ChartDAO's model_id: {model_id}")
         chart = super().find_by_id(
             model_id, session=session, skip_base_filter=skip_base_filter
         )

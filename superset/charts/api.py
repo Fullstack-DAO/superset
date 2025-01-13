@@ -338,7 +338,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             return self.response_422(message=str(ex))
 
     @expose("/<pk>", methods=("PUT",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -395,6 +395,8 @@ class ChartRestApi(BaseSupersetModelRestApi):
             logger.info(f"current_user id is: {user_id}")
             # 检查当前用户对该图表是否具备 can_read, can_edit, can_delete, can_add 四种权限
             user_permissions = ChartPermissions.get_permissions_for_chart(user_id, pk)
+            can_edit = user_permissions.get("can_edit", False)
+            logger.info(f"ChartRestApi's can edit: {can_edit}")
             if not user_permissions.get("can_edit", False):
                 response = make_response(
                     jsonify({
@@ -429,7 +431,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         return response
 
     @expose("/<pk>", methods=("DELETE",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -485,7 +487,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
             return self.response_422(message=str(ex))
 
     @expose("/", methods=("DELETE",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @rison(get_delete_ids_schema)

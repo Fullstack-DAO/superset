@@ -99,7 +99,9 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
         # ownership so the update can be performed by report workers
         if not is_query_context_update(self._properties):
             try:
-                security_manager.raise_for_ownership(self._model)
+                # security_manager.raise_for_ownership(self._model)
+                user_id = g.user.id
+                ChartPermissions.check_can_edit(user_id, self._model_id)
                 owners = self.populate_owners(owner_ids)
                 self._properties["owners"] = owners
             except SupersetSecurityException as ex:

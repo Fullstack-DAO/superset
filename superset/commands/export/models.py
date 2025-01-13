@@ -19,13 +19,11 @@ from collections.abc import Iterator
 from datetime import datetime, timezone
 
 import yaml
-from flask import g
 from flask_appbuilder import Model
 
 from superset.commands.base import BaseCommand
 from superset.commands.exceptions import CommandException
 from superset.daos.base import BaseDAO
-from superset.daos.chart import ChartDAO
 from superset.utils.dict_import_export import EXPORT_VERSION
 
 METADATA_FILE_NAME = "metadata.yaml"

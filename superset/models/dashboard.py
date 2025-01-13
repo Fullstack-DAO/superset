@@ -350,7 +350,11 @@ class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
 
     @debounce(0.1)
     def clear_cache(self) -> None:
-        cache_manager.cache.delete_memoized(Dashboard.datasets_trimmed_for_slices, self)
+        # cache_manager.cache.delete_memoized(Dashboard.datasets_trimmed_for_slices,
+        # self) 手动生成缓存键，避免依赖 make_cache_key
+        cache_key = f"dashboard_cache_{self.id}"
+        # 直接删除缓存
+        cache_manager.cache.delete(cache_key)
 
     @classmethod
     @debounce(0.1)

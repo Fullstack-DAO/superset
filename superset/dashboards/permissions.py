@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Optional, Dict
 
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 
@@ -847,7 +848,8 @@ class DashboardPermissions:
                 raise ValueError("resource_type must be either 'chart' or 'dashboard'")
 
             # 记录原始的 resource_ids 类型和内容
-            logger.info(f"原始 resource_ids: {resource_ids} (类型: {type(resource_ids)})")
+            logger.info(
+                f"原始 resource_ids: {resource_ids} (类型: {type(resource_ids)})")
 
             # 如果 resource_ids 是单一值，则将其包装成列表
             if isinstance(resource_ids, int):
@@ -858,7 +860,8 @@ class DashboardPermissions:
                     resource_ids = [int(resource_ids)]
                 except ValueError:
                     # 如果是逗号分隔的字符串，分割并转换为整数列表
-                    resource_ids = [int(id_str) for id_str in resource_ids.split(',') if id_str.strip().isdigit()]
+                    resource_ids = [int(id_str) for id_str in resource_ids.split(',') if
+                                    id_str.strip().isdigit()]
             elif isinstance(resource_ids, list):
                 # 如果是列表，确保所有元素都是整数
                 resource_ids = [int(id_) for id_ in resource_ids]
@@ -866,14 +869,16 @@ class DashboardPermissions:
                 raise TypeError("resource_ids must be an int, str, or list of ints")
 
             # 记录转换后的 resource_ids
-            logger.info(f"转换后的 resource_ids: {resource_ids} (类型: {type(resource_ids)})")
+            logger.info(
+                f"转换后的 resource_ids: {resource_ids} (类型: {type(resource_ids)})")
 
             if not resource_ids:
                 logger.warning("没有有效的 resource_ids 供删除操作使用。")
                 return 0, 0
 
             # 记录要删除的 resource_ids 和 resource_type
-            logger.info(f"开始删除资源类型为 '{resource_type}' 的权限记录，删除的资源ID：{resource_ids}")
+            logger.info(
+                f"开始删除资源类型为 '{resource_type}' 的权限记录，删除的资源ID：{resource_ids}")
 
             # 查询是否存在匹配的记录
             user_perm_count = db.session.query(UserPermission).filter(
@@ -887,7 +892,8 @@ class DashboardPermissions:
             ).count()
 
             if user_perm_count == 0 and role_perm_count == 0:
-                logger.warning(f"没有找到要删除的 {resource_type} 权限记录，资源ID：{resource_ids}")
+                logger.warning(
+                    f"没有找到要删除的 {resource_type} 权限记录，资源ID：{resource_ids}")
                 return 0, 0
 
             # 批量删除 UserPermission 表中的相关记录
@@ -906,7 +912,8 @@ class DashboardPermissions:
             db.session.commit()
 
             # 记录成功删除的记录数
-            logger.info(f"成功批量删除 {deleted_user_perm_count} 条 UserPermission 记录和 {deleted_role_perm_count} 条 RolePermission 记录")
+            logger.info(
+                f"成功批量删除 {deleted_user_perm_count} 条 UserPermission 记录和 {deleted_role_perm_count} 条 RolePermission 记录")
 
             return deleted_user_perm_count, deleted_role_perm_count
 
@@ -915,3 +922,97 @@ class DashboardPermissions:
             db.session.rollback()
             logger.error(f"批量删除权限时发生异常: {e}", exc_info=True)
             return 0, 0
+
+    @staticmethod
+    def check_dashboard_datasource_user_permission(user_id=None,
+                                                   user_name=None) -> bool:
+        # 确保传入了有效的 user_id 或 user_name
+        if not user_id and not user_name:
+            raise ValueError("必须提供 user_id 或 user_name")
+
+        # SQL 查询，检查用户是否有权限
+        query = """
+        SELECT
+            u.username AS user_name,
+            p.name AS permission_name
+        FROM
+            ab_user u
+        JOIN
+            ab_user_role ur ON u.id = ur.user_id
+        JOIN
+            ab_role r ON ur.role_id = r.id
+        JOIN
+            ab_permission_view_role pvr ON r.id = pvr.role_id
+        JOIN
+            ab_permission_view pv ON pvr.permission_view_id = pv.id
+        JOIN
+            ab_permission p ON pv.permission_id = p.id
+        WHERE
+        """
+
+        # 根据提供的参数构建查询条件
+        params = {}
+
+        if user_id:
+            query += " u.id = :user_id"
+            params['user_id'] = user_id
+        elif user_name:
+            query += " u.username = :user_name"
+            params['user_name'] = user_name
+
+        # 执行查询
+        result = db.session.execute(
+            text(query),
+            params
+        ).fetchall()
+
+        # 如果查询结果不为空，说明该用户有权限
+        if result:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def check_dashboard_datasource_role_permission(role_id=None,
+                                                   role_name=None) -> bool:
+        # 确保至少传入一个 role_id 或 role_name
+        if not role_id and not role_name:
+            raise ValueError("必须提供 role_id 或 role_name")
+
+        # SQL 查询，检查角色是否有权限
+        query = """
+        SELECT
+            r.name AS role_name,
+            p.name AS permission_name
+        FROM
+            ab_role r
+        JOIN
+            ab_permission_view_role pvr ON r.id = pvr.role_id
+        JOIN
+            ab_permission_view pv ON pvr.permission_view_id = pv.id
+        JOIN
+            ab_permission p ON pv.permission_id = p.id
+        WHERE
+        """
+
+        # 根据传入的参数选择 role_id 或 role_name 作为查询条件
+        params = {}
+
+        if role_id:
+            query += " r.id = :role_id"
+            params['role_id'] = role_id
+        elif role_name:
+            query += " r.name = :role_name"
+            params['role_name'] = role_name
+
+        # 执行查询
+        result = db.session.execute(
+            text(query),
+            params
+        ).fetchall()
+
+        # 如果查询结果不为空，说明角色有权限
+        if result:
+            return True
+        else:
+            return False

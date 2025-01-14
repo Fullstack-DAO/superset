@@ -534,24 +534,33 @@ class DashboardDAO(BaseDAO[Dashboard]):
 
         try:
             json_metadata = json.loads(json_metadata_str)
+            logger.info(f"DashboardDAO's json_metadata: {json_metadata}")
         except json.JSONDecodeError as ex:
             logger.error(
                 f"Invalid JSON in json_metadata for dashboard id {dashboard_id}: {ex}")
             raise ValueError(
                 f"Invalid JSON in json_metadata for dashboard id {dashboard_id}") from ex
 
-        slice_ids = []
+        # 提取 global_chart_configuration 中的 chartsInScope
+        global_chart_config = json_metadata.get('global_chart_configuration', {})
+        charts_in_scope = global_chart_config.get('chartsInScope', [])
+        if not isinstance(charts_in_scope, list):
+            logger.warning("'chartsInScope' 不是一个列表，忽略此部分。")
+            charts_in_scope = []
+        else:
+            logger.debug(f"Extracted chartsInScope: {charts_in_scope}")
 
-        # 遍历 json_metadata，提取所有的 slice_id（chartId）
-        for key, value in json_metadata.items():
-            if isinstance(value, dict):
-                meta = value.get("meta", {})
-                chart_id = meta.get("chartId")
-                if isinstance(chart_id, int):
-                    slice_ids.append(chart_id)
+        # 过滤出有效的整数 chart_id
+        valid_charts_in_scope = []
+        for chart_id in charts_in_scope:
+            if isinstance(chart_id, int):
+                valid_charts_in_scope.append(chart_id)
+                logger.debug(f"Valid chart_id found in chartsInScope: {chart_id}")
+            else:
+                logger.warning(f"Invalid chart_id in chartsInScope: {chart_id}")
 
-        logger.info(f"Extracted slice_ids for dashboard id {dashboard_id}: {slice_ids}")
-        return slice_ids
+        logger.info(f"Final chartsInScope for dashboard id {dashboard_id}: {valid_charts_in_scope}")
+        return valid_charts_in_scope
 
     @staticmethod
     def extract_chart_info(json_data: str):

@@ -35,7 +35,8 @@ class DashboardPermissions:
             DashboardPermissions.add_permissions_to_user(
                 dashboard_id=dashboard.id,
                 user_id=user.id,
-                permissions=["can_read", "can_edit", "can_add", "can_delete"],  # 创建者拥有所有权限
+                permissions=["can_read", "can_edit", "can_add", "can_delete"],
+                # 创建者拥有所有权限
                 is_creator=True  # 设置为创建者
             )
 
@@ -828,5 +829,89 @@ class DashboardPermissions:
 
         # 添加日志记录，帮助调试
         logger.info(f"User {user.id} permissions: {permissions}")
-        
+
         return permissions  # 返回处理后的权限字典
+
+    @staticmethod
+    def delete_permissions_by_resource_ids(resource_ids, resource_type: str):
+        """
+        根据多个 resource_id 批量删除 role_permissions 和 user_permissions 中对应的记录。
+        如果 resource_ids 是单一值，自动转换为列表进行处理。
+
+        :param resource_ids: 要删除权限记录的 resource_id，可以是单个值或列表（如 chart_id 或 dashboard_id）
+        :param resource_type: 资源类型，可以是 'chart' 或 'dashboard'
+        """
+        try:
+            # 确保 resource_type 是合法的
+            if resource_type not in ['chart', 'dashboard']:
+                raise ValueError("resource_type must be either 'chart' or 'dashboard'")
+
+            # 记录原始的 resource_ids 类型和内容
+            logger.info(f"原始 resource_ids: {resource_ids} (类型: {type(resource_ids)})")
+
+            # 如果 resource_ids 是单一值，则将其包装成列表
+            if isinstance(resource_ids, int):
+                resource_ids = [resource_ids]
+            elif isinstance(resource_ids, str):
+                # 如果是字符串，尝试将其转换为整数
+                try:
+                    resource_ids = [int(resource_ids)]
+                except ValueError:
+                    # 如果是逗号分隔的字符串，分割并转换为整数列表
+                    resource_ids = [int(id_str) for id_str in resource_ids.split(',') if id_str.strip().isdigit()]
+            elif isinstance(resource_ids, list):
+                # 如果是列表，确保所有元素都是整数
+                resource_ids = [int(id_) for id_ in resource_ids]
+            else:
+                raise TypeError("resource_ids must be an int, str, or list of ints")
+
+            # 记录转换后的 resource_ids
+            logger.info(f"转换后的 resource_ids: {resource_ids} (类型: {type(resource_ids)})")
+
+            if not resource_ids:
+                logger.warning("没有有效的 resource_ids 供删除操作使用。")
+                return 0, 0
+
+            # 记录要删除的 resource_ids 和 resource_type
+            logger.info(f"开始删除资源类型为 '{resource_type}' 的权限记录，删除的资源ID：{resource_ids}")
+
+            # 查询是否存在匹配的记录
+            user_perm_count = db.session.query(UserPermission).filter(
+                UserPermission.resource_id.in_(resource_ids),
+                UserPermission.resource_type == resource_type
+            ).count()
+
+            role_perm_count = db.session.query(RolePermission).filter(
+                RolePermission.resource_id.in_(resource_ids),
+                RolePermission.resource_type == resource_type
+            ).count()
+
+            if user_perm_count == 0 and role_perm_count == 0:
+                logger.warning(f"没有找到要删除的 {resource_type} 权限记录，资源ID：{resource_ids}")
+                return 0, 0
+
+            # 批量删除 UserPermission 表中的相关记录
+            deleted_user_perm_count = db.session.query(UserPermission).filter(
+                UserPermission.resource_id.in_(resource_ids),
+                UserPermission.resource_type == resource_type
+            ).delete(synchronize_session=False)
+
+            # 批量删除 RolePermission 表中的相关记录
+            deleted_role_perm_count = db.session.query(RolePermission).filter(
+                RolePermission.resource_id.in_(resource_ids),
+                RolePermission.resource_type == resource_type
+            ).delete(synchronize_session=False)
+
+            # 提交事务
+            db.session.commit()
+
+            # 记录成功删除的记录数
+            logger.info(f"成功批量删除 {deleted_user_perm_count} 条 UserPermission 记录和 {deleted_role_perm_count} 条 RolePermission 记录")
+
+            return deleted_user_perm_count, deleted_role_perm_count
+
+        except Exception as e:
+            # 异常处理，记录日志并回滚
+            db.session.rollback()
+            logger.error(f"批量删除权限时发生异常: {e}", exc_info=True)
+            return 0, 0

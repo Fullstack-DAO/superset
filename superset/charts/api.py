@@ -472,6 +472,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         try:
             DeleteChartCommand([pk]).run()
+            logger.info(f"begin to delete the char_id "
+                        f"in UserPermissions and RolePermissions")
+            resource_type = 'chart'
+            ChartPermissions.delete_permissions_by_resource_ids(pk, resource_type)
             return self.response(200, message="OK")
         except ChartNotFoundError:
             return self.response_404()

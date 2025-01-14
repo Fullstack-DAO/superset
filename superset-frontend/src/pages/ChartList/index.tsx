@@ -867,6 +867,76 @@ function ChartList(props: ChartListProps) {
     }
   }
 
+  const fetchChartData = useCallback(async (chartId: number) => {
+    if (!chartId) {
+      console.error('Chart ID is required');
+      return;
+    }
+
+    const formData = {
+      slice_id: chartId,
+      datasource: '4__table',
+      viz_type: 'big_number',
+      // ... 其他参数
+    };
+
+    try {
+      const response = await SupersetClient.post({
+        endpoint: `/api/v1/chart/data`,
+        jsonPayload: {
+          form_data: formData,
+          force: false,
+          result_format: 'json',
+          result_type: 'full'
+        },
+      });
+      return response.json;
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+      addDangerToast(t('Failed to fetch chart data'));
+      return null;
+    }
+  }, [addDangerToast]);
+
+  const handleFetchData = async (chart: Chart) => {
+    if (!chart.id) {
+      addDangerToast(t('Chart ID is required'));
+      return;
+    }
+    
+    const formData = {
+      slice_id: chart.id,
+      datasource: chart.datasource_id,
+      viz_type: chart.viz_type,
+      // ... 其他必要的参数
+    };
+
+    try {
+      const response = await SupersetClient.post({
+        endpoint: `/api/v1/chart/data`,
+        jsonPayload: {
+          form_data: formData,
+          force: false,
+          result_format: 'json',
+          result_type: 'full'
+        },
+      });
+      // 处理响应数据
+      return response.json;
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+      addDangerToast(t('Failed to fetch chart data'));
+      return null;
+    }
+  };
+
+  const handleViewChart = useCallback(async (chart: Chart) => {
+    const data = await handleFetchData(chart);
+    if (data) {
+      // 处理数据...
+    }
+  }, [handleFetchData]);
+
   return (
     <>
       <SubMenu name={t('Charts')} buttons={subMenuButtons} />

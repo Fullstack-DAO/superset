@@ -74,15 +74,21 @@ class ChartDataCommand(BaseCommand):
         pass
 
     def check_permissions(self) -> None:
+        """
+        Validate permissions for the current user and resource.
+        """
         logger.debug("Starting permission check.")
 
+        # 从 query_context 中获取 form_data
         form_data = self._query_context.form_data
         logger.debug(f"Form data: {form_data}")
 
         if not form_data:
-            logger.warning("Permission check failed: form_data is missing in query_context.")
+            logger.warning("Permission check failed: "
+                           "form_data is missing in query_context.")
             raise DatasetAccessDeniedError("form_data is missing in query_context.")
 
+        # 从 form_data 中获取 slice_id
         slice_id = form_data.get("slice_id")
         if not slice_id:
             logger.warning("Permission check failed: slice_id is missing in form_data.")

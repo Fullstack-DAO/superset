@@ -1765,7 +1765,8 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 collaborator_type
             )
             for chart_id, datasource_id in chart_datasource_map.items():
-                exists = ChartDAO.is_collaborator_exist(chart_id, collaborator_id, collaborator_type)
+                exists = ChartDAO.is_collaborator_exist(chart_id, collaborator_id,
+                                                        collaborator_type)
                 if exists:
                     logger.info(f"协作者已存在于 Chart ID {chart_id}，跳过添加。")
                     continue
@@ -1859,28 +1860,50 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             # Interpret the frontend permissions
             perm_dict = DashboardPermissions.interpret_frontend_permissions(permissions)
             logger.info(f"推导出的权限集合: {perm_dict}")
-
+            # 去查询跟dashboard_id关联的chart列表
+            chart_ids = DashboardDAO.get_slice_ids_by_dashboard_id(
+                dashboard_id=pk
+            )
+            logger.info(f"跟dashboard关联的chart_ids: {chart_ids}")
             if action == "add":
                 add_perms = [k for k, v in perm_dict.items() if v]
                 DashboardDAO.modify_permissions(
-                    chart_id=pk,
+                    dashboard_id=pk,
                     entity_type=entity_type,
                     entity_id=entity_id,
                     permissions=add_perms,
                     action="add",
                 )
+
+                for chart_id in chart_ids:
+                    logger.info(f"开始更新chart_id: {chart_id} 的权限")
+                    ChartDAO.modify_permissions(
+                        chart_id=chart_id,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        permissions=add_perms,
+                        action="add",
+                    )
             elif action == "remove":
                 remove_perms = [k for k, v in perm_dict.items() if v]
                 if "admin" in permissions:
                     # 移除管理员权限时，需要移除所有相关权限
                     remove_perms = ["can_read", "can_edit", "can_add", "can_delete"]
                 DashboardDAO.modify_permissions(
-                    chart_id=pk,
+                    dashboard_id=pk,
                     entity_type=entity_type,
                     entity_id=entity_id,
                     permissions=remove_perms,
                     action="remove",
                 )
+                for chart_id in chart_ids:
+                    ChartDAO.modify_permissions(
+                        chart_id=chart_id,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        permissions=remove_perms,
+                        action="remove",
+                    )
 
             return self.response(200, message="权限更新成功。")
 

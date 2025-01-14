@@ -694,7 +694,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
 
     @staticmethod
     def modify_permissions(
-        chart_id: int,
+        dashboard_id: int,
         entity_type: str,
         entity_id: int,
         permissions: list[str],
@@ -703,7 +703,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
         """
         修改图表的权限。
 
-        :param chart_id: 图表 ID
+        :param dashboard_id: 仪表盘 ID
         :param entity_type: 实体类型 ('user' 或 'role')
         :param entity_id: 用户或角色 ID
         :param permissions: 权限列表 ['can_read', 'can_edit', 'can_add', 'can_delete']
@@ -723,7 +723,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
             if entity_type == "user":
                 permission_model = db.session.query(UserPermission).filter_by(
                     resource_type="dashboard",
-                    resource_id=chart_id,
+                    resource_id=dashboard_id,
                     user_id=entity_id
                 ).first()
                 if action == "add":
@@ -731,7 +731,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
                         # 创建新的 UserPermission 记录
                         permission_model = UserPermission(
                             resource_type="dashboard",
-                            resource_id=chart_id,
+                            resource_id=dashboard_id,
                             user_id=entity_id,
                             can_read=False,
                             can_edit=False,
@@ -759,7 +759,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
             elif entity_type == "role":
                 permission_model = db.session.query(RolePermission).filter_by(
                     resource_type="dashboard",
-                    resource_id=chart_id,
+                    resource_id=dashboard_id,
                     role_id=entity_id
                 ).first()
                 if action == "add":
@@ -767,7 +767,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
                         # 创建新的 RolePermission 记录
                         permission_model = RolePermission(
                             resource_type="dashboard",
-                            resource_id=chart_id,
+                            resource_id=dashboard_id,
                             role_id=entity_id,
                             can_read=False,
                             can_edit=False,
@@ -795,7 +795,7 @@ class DashboardDAO(BaseDAO[Dashboard]):
             db.session.commit()
             logger.info(
                 f"Successfully {'added' if action == 'add' else 'removed'}"
-                f" permissions for {entity_type} ID {entity_id} on chart ID {chart_id}.")
+                f" permissions for {entity_type} ID {entity_id} on chart ID {dashboard_id}.")
 
         except Exception as ex:
             db.session.rollback()

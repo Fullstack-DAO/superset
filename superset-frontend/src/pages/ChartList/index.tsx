@@ -269,7 +269,35 @@ function ChartList(props: ChartListProps) {
     addSuccessToast(t('Chart imported'));
   };
 
-  const canCreate = hasPerm('can_write');
+  // 添加全局权限状态
+  const [globalPermissions, setGlobalPermissions] = useState<{
+    can_write: boolean;
+  }>({
+    can_write: false,
+  });
+
+  // 修改 hasPerm 函数的使用
+  const canCreate = globalPermissions.can_write;  // 使用全局权限
+
+  // 在组件加载时获取权限信息
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const response = await SupersetClient.get({
+          endpoint: `/api/v1/chart/_info`,
+        });
+        if (response?.json?.info?.global_permissions) {
+          setGlobalPermissions(response.json.info.global_permissions);
+        }
+      } catch (err) {
+        console.error('Failed to fetch permissions:', err);
+        addDangerToast(t('Failed to fetch permissions'));
+      }
+    };
+
+    fetchPermissions();
+  }, [addDangerToast]);
+
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
   const canExport =

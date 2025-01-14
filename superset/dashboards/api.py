@@ -84,7 +84,7 @@ from superset.dashboards.schemas import (
     openapi_spec_methods_override,
     thumbnail_query_schema,
 )
-from superset.extensions import event_logger
+from superset.extensions import event_logger, security_manager
 from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
 from superset.tasks.thumbnails import cache_dashboard_thumbnail
@@ -525,7 +525,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             return self.response_422(message=str(ex))
 
     @expose("/<pk>", methods=("PUT",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -609,13 +609,13 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 logger.info(f"charts: {charts}")
                 for chart in charts:
                     chart_id = chart.get("chartId")
-                    slice_name = chart.get("sliceName")
+                    slice_name = ChartDAO.get_slice_name_by_id(chart_id)
 
                     # 调用 DashboardDAO 的方法检查权限
                     is_admin = DashboardPermissions.check_chart_admin_permissions(
                         user_id=user_id, role_ids=role_ids, chart_id=chart_id
                     )
-
+                    logger.info(f"DashboardRestApi's is_admin: {is_admin}")
                     if not is_admin:
                         logger.warning(
                             f"User does not have admin permissions for chartId={chart_id}, "
@@ -1964,9 +1964,14 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                     "can_export": perm["can_export"],  # 基于 can_read 推导
                     "role": perm["role"]
                 }
+        # 获取全局权限
+        global_permissions = {
+            "can_write": security_manager.can_access('can_write', 'Chart')
+        }
 
         logger.debug(f"获取到的权限信息: {filtered_permissions}")
 
         # 返回 JSON 响应
-        return self.response(200, info={"permissions": filtered_permissions})
+        return self.response(200, info={"permissions": filtered_permissions,
+                                        "global_permissions": global_permissions})
 

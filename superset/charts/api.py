@@ -68,7 +68,7 @@ from superset.commands.importers.exceptions import (
 from superset.commands.importers.v1.utils import get_contents_from_bundle
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.daos.chart import ChartDAO
-from superset.extensions import event_logger
+from superset.extensions import event_logger, security_manager
 from superset.models.slice import Slice
 from superset.tasks.thumbnails import cache_chart_thumbnail
 from superset.tasks.utils import get_current_user
@@ -1590,10 +1590,16 @@ class ChartRestApi(BaseSupersetModelRestApi):
                     "role": perm["role"]
                 }
 
+        # 获取全局权限
+        global_permissions = {
+            "can_write": security_manager.can_access('can_write', 'Chart')
+        }
+
         logger.debug(f"获取到的权限信息: {filtered_permissions}")
 
         # 返回 JSON 响应
-        return self.response(200, info={"permissions": filtered_permissions})
+        return self.response(200, info={"permissions": filtered_permissions,
+                                        "global_permissions": global_permissions})
 
     ModelKeyType = Union[str, int]
 

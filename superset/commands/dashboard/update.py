@@ -85,10 +85,10 @@ class UpdateDashboardCommand(UpdateMixin, BaseCommand):
             raise DashboardNotFoundError()
 
         # Check ownership
-        try:
-            security_manager.raise_for_ownership(self._model)
-        except SupersetSecurityException as ex:
-            raise DashboardForbiddenError() from ex
+        # try:
+        #     security_manager.raise_for_ownership(self._model)
+        # except SupersetSecurityException as ex:
+        #     raise DashboardForbiddenError() from ex
 
         # Validate slug uniqueness
         if not DashboardDAO.validate_update_slug_uniqueness(self._model_id, slug):

@@ -556,35 +556,37 @@ class DashboardDAO(BaseDAO[Dashboard]):
     @staticmethod
     def extract_chart_info(json_data: str):
         """
-        从JSON中提取chartId和sliceName的对应关系。
+        从JSON中提取chartsInScope中的chartId。
 
         :param json_data: 包含dashboard的JSON字符串
-        :return: 一个包含chartId和sliceName的字典列表
+        :return: 一个包含chartId的列表
         """
         try:
+            # 记录开始处理的日志
+            logger.info("开始解析JSON数据")
+
             # 将JSON字符串解析为Python字典
             data = json.loads(json_data)
+            logger.debug("成功解析JSON数据")
 
-            # 初始化结果列表
-            chart_info = []
+            # 获取 global_chart_configuration 中的 chartsInScope 数组
+            charts_in_scope = data.get("global_chart_configuration", {}).get("chartsInScope", [])
+            logger.debug(f"提取到chartsInScope: {charts_in_scope}")
 
-            # 获取JSON中的 positions 节点
-            positions = data.get("positions", {})
+            # 返回 chartsInScope 中的 chartId 列表
+            result = [{"chartId": chart_id} for chart_id in charts_in_scope]
+            logger.info(f"成功提取到 {len(result)} 个 chartId")
 
-            # 遍历 positions 提取CHART类型的数据
-            for key, value in positions.items():
-                if isinstance(value, dict) and value.get("type") == "CHART":
-                    meta = value.get("meta", {})
-                    chart_id = meta.get("chartId")
-                    slice_name = meta.get("sliceName")
-                    if chart_id and slice_name:
-                        chart_info.append(
-                            {"chartId": chart_id, "sliceName": slice_name})
+            return result
 
-            return chart_info
-        except (json.JSONDecodeError, KeyError) as e:
-            # 错误处理
-            print(f"解析JSON时出错: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析失败: {e}")
+            return []
+        except KeyError as e:
+            logger.error(f"键错误，缺少字段: {e}")
+            return []
+        except Exception as e:
+            logger.exception(f"发生了未知错误: {e}")
             return []
 
     @staticmethod

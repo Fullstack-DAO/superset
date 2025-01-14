@@ -24,7 +24,7 @@ import {
   t,
 } from '@superset-ui/core';
 import { useSelector } from 'react-redux';
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import rison from 'rison';
 import {
@@ -164,28 +164,36 @@ function DashboardList(props: DashboardListProps) {
     setSSHTunnelPrivateKeyPasswordFields,
   ] = useState<string[]>([]);
 
-  const openDashboardImportModal = () => {
-    showImportModal(true);
-  };
+  const [globalPermissions, setGlobalPermissions] = useState<{
+    can_write: boolean;
+  }>({
+    can_write: false,
+  });
 
-  const closeDashboardImportModal = () => {
-    showImportModal(false);
-  };
+  const userKey = user?.userId ? dangerouslyGetItemDoNotUse(user.userId.toString()) : null;
 
-  const handleDashboardImport = () => {
-    showImportModal(false);
-    refreshData();
-    addSuccessToast(t('Dashboard imported'));
-  };
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const response = await SupersetClient.get({
+          endpoint: `/api/v1/dashboard/_info`,
+        });
+        if (response?.json?.info?.global_permissions) {
+          setGlobalPermissions(response.json.info.global_permissions);
+        }
+      } catch (err) {
+        console.error('Failed to fetch permissions:', err);
+        addDangerToast(t('Failed to fetch permissions'));
+      }
+    };
 
-  // TODO: Fix usage of localStorage keying on the user id
-  const userKey = dangerouslyGetItemDoNotUse(user?.userId?.toString(), null);
+    fetchPermissions();
+  }, [addDangerToast]);
 
-  const canCreate = hasPerm('can_write');
+  const canCreate = globalPermissions.can_write;
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
-  const canExport =
-    hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
+  const canExport = hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
 
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
 
@@ -241,12 +249,32 @@ function DashboardList(props: DashboardListProps) {
     );
   }
 
-  const handleBulkDashboardExport = (dashboardsToExport: Dashboard[]) => {
-    const ids = dashboardsToExport.map(({ id }) => id);
-    handleResourceExport('dashboard', ids, () => {
-      setPreparingExport(false);
-    });
+  const openDashboardImportModal = () => {
+    showImportModal(true);
+  };
+
+  const closeDashboardImportModal = () => {
+    showImportModal(false);
+  };
+
+  const handleDashboardImport = () => {
+    showImportModal(false);
+    refreshData();
+    addSuccessToast(t('Dashboard imported'));
+  };
+
+  const handleBulkDashboardExport = async (dashboardsToExport: Dashboard[]) => {
     setPreparingExport(true);
+    try {
+      const ids = dashboardsToExport.map(({ id }) => id);
+      const result = await handleResourceExport('dashboard', ids);
+      setPreparingExport(false);
+      return result;
+    } catch (err) {
+      setPreparingExport(false);
+      addDangerToast(t('There was an issue with exporting the dashboards'));
+      return null;
+    }
   };
 
   function handleBulkDashboardDelete(dashboardsToDelete: Dashboard[]) {

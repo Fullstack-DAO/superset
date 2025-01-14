@@ -760,3 +760,31 @@ class ChartDAO(BaseDAO[Slice]):
             db.session.rollback()  # 确保事务回滚
             logger.error(f"Error adding collaborator: {ex}")
             raise
+
+    @staticmethod
+    def get_slice_name_by_id(slice_id: int) -> str | None:
+        """
+        根据给定的 id 查询对应的 slice_name。
+
+        :param slice_id: 要查询的 Slice 的 id
+        :return: 对应的 slice_name，若找不到则返回 None
+        """
+        try:
+            # 记录查询开始的日志
+            app.logger.info(f"开始查询 slice_id={slice_id} 对应的 slice_name")
+
+            # 使用 db.session 查询
+            slice_record = db.session.query(Slice).filter_by(id=slice_id).first()
+
+            # 如果查询到记录，则返回 slice_name
+            if slice_record:
+                app.logger.info(f"成功查询到 slice_id={slice_id} 对应的 slice_name: {slice_record.slice_name}")
+                return slice_record.slice_name
+            else:
+                app.logger.warning(f"未找到 slice_id={slice_id} 对应的记录")
+                return None  # 如果没有找到对应的记录，返回 None
+
+        except Exception as e:
+            # 记录异常信息
+            app.logger.exception(f"查询 slice_id={slice_id} 时发生了异常: {e}")
+            return None

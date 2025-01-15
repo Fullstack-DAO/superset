@@ -121,18 +121,15 @@ export function useListViewResource<D extends object = any>(
 
   // 检查具体资源的权限
   const getResourcePermissions = useCallback(
-    (resourceId: number): ResourcePermissions => {
-      return (
-        state.resourcePermissions[resourceId.toString()] || {
-          can_add: false,
-          can_delete: false,
-          can_export: false,
-          can_read: false,
-          can_write: false,
-          role: 'viewer',
-        }
-      );
-    },
+    (resourceId: number): ResourcePermissions =>
+      state.resourcePermissions[resourceId.toString()] || {
+        can_add: false,
+        can_delete: false,
+        can_export: false,
+        can_read: false,
+        can_write: false,
+        role: 'viewer',
+      },
     [state.resourcePermissions],
   );
 

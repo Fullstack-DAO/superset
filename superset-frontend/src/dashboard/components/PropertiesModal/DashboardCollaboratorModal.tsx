@@ -408,6 +408,7 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
           <Menu.Item key="移除">
             <span
               role="button"
+              tabIndex={0}
               style={{ color: 'red', cursor: 'pointer' }}
               onClick={e => {
                 e.stopPropagation();
@@ -418,6 +419,19 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
                   cancelText: t('取消'),
                   okButtonProps: { danger: true },
                 });
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  Modal.confirm({
+                    title: t('确定要移除这个协作者吗？'),
+                    onOk: () => handleRemoveCollaborator(collaborator),
+                    okText: t('确定'),
+                    cancelText: t('取消'),
+                    okButtonProps: { danger: true },
+                  });
+                }
               }}
             >
               {t('移除')}

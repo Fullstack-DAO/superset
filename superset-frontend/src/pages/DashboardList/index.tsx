@@ -171,7 +171,9 @@ function DashboardList(props: DashboardListProps) {
   });
 
   const userKey = user?.userId
-    ? dangerouslyGetItemDoNotUse(user.userId.toString())
+    ? dangerouslyGetItemDoNotUse(user.userId.toString(), {
+        thumbnails: isFeatureEnabled(FeatureFlag.THUMBNAILS),
+      })
     : null;
 
   useEffect(() => {
@@ -270,8 +272,14 @@ function DashboardList(props: DashboardListProps) {
     setPreparingExport(true);
     try {
       const ids = dashboardsToExport.map(({ id }) => id);
-      const result = await handleResourceExport('dashboard', ids);
-      setPreparingExport(false);
+      const result = await handleResourceExport(
+        'dashboard',
+        ids,
+        () => {
+          setPreparingExport(false);
+        },
+        200,
+      );
       return result;
     } catch (err) {
       setPreparingExport(false);

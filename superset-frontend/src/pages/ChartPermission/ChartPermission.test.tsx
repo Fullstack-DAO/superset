@@ -56,9 +56,7 @@ describe('ChartPermission Component', () => {
 
   test('allows changing roles', async () => {
     const mockData = {
-      collaborators: [
-        { id: '1', name: '张三', role: '可管理' },
-      ],
+      collaborators: [{ id: '1', name: '张三', role: '可管理' }],
     };
 
     global.fetch = jest.fn(() =>
@@ -74,10 +72,11 @@ describe('ChartPermission Component', () => {
       </BrowserRouter>,
     );
 
-    const select = (await screen.findByDisplayValue(/可管理/i)) as HTMLSelectElement; // 断言为 HTMLSelectElement
+    const select = (await screen.findByDisplayValue(
+      /可管理/i,
+    )) as HTMLSelectElement; // 断言为 HTMLSelectElement
     fireEvent.change(select, { target: { value: '可编辑' } });
 
     expect(select.value).toBe('可编辑'); // 现在可以正确访问 value 属性
   });
-
 });

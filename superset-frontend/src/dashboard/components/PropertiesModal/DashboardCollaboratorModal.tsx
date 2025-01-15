@@ -80,10 +80,10 @@ const DropdownMenuStyled = styled(Dropdown)`
 `;
 
 const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
-                                                                                 visible,
-                                                                                 onClose,
-                                                                                 dashboardId,
-                                                                               }) => {
+  visible,
+  onClose,
+  dashboardId,
+}) => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchModalVisible, setSearchModalVisible] = useState(false);
@@ -114,20 +114,22 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
 
       // 映射协作者数据
       setCollaborators(
-        access_info.map((item: { 
-          id: number; 
-          name: string; 
-          type: string; 
-          permission: string;
-          is_creator: boolean; 
-        }) => ({
-          id: item.id,
-          name: item.name,
-          type: item.type as 'user' | 'role',
-          permissions: getPermissionsFromLabel(item.permission),
-          key: `${item.id}-${item.type}`,
-          isCreator: item.is_creator,
-        })),
+        access_info.map(
+          (item: {
+            id: number;
+            name: string;
+            type: string;
+            permission: string;
+            is_creator: boolean;
+          }) => ({
+            id: item.id,
+            name: item.name,
+            type: item.type as 'user' | 'role',
+            permissions: getPermissionsFromLabel(item.permission),
+            key: `${item.id}-${item.type}`,
+            isCreator: item.is_creator,
+          }),
+        ),
       );
     } catch (error: any) {
       console.error('Error fetching collaborators:', error);
@@ -142,7 +144,12 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
   const getPermissionsFromLabel = (label: string): Permission[] => {
     switch (label) {
       case '可管理':
-        return [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
+        return [
+          Permission.CanRead,
+          Permission.CanEdit,
+          Permission.CanAdd,
+          Permission.CanDelete,
+        ];
       case '可编辑':
         return [Permission.CanRead, Permission.CanEdit];
       case '可阅读':
@@ -175,7 +182,11 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
   };
 
   // 添加协作者
-  const handleAddCollaborator = async (newCollaborator: { id: number; name: string; type: 'user' | 'role' }) => {
+  const handleAddCollaborator = async (newCollaborator: {
+    id: number;
+    name: string;
+    type: 'user' | 'role';
+  }) => {
     try {
       // 默认权限为 '可阅读'
       const permissionsToAdd = getPermissionsFromLabel('可阅读'); // ['can_read']
@@ -187,7 +198,8 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
         action: 'add', // 使用原始字段名
       };
 
-      await SupersetClient.post({ // 使用 POST 方法
+      await SupersetClient.post({
+        // 使用 POST 方法
         endpoint: `/api/v1/dashboard/${dashboardId}/permissions/modify`,
         body: JSON.stringify(data),
         headers: {
@@ -196,7 +208,7 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
       });
 
       // 更新本地状态
-      setCollaborators((prev) => [
+      setCollaborators(prev => [
         ...prev,
         {
           id: newCollaborator.id,
@@ -221,12 +233,15 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
   };
 
   // 更新协作者权限
-  const handlePermissionChange = async (collaborator: Collaborator, newPermissions: Permission[]) => {
+  const handlePermissionChange = async (
+    collaborator: Collaborator,
+    newPermissions: Permission[],
+  ) => {
     const { type: entityType, id: entityId } = collaborator;
     const collaboratorKey = `${entityId}-${entityType}`;
 
     // 添加到正在更新的集合中
-    setUpdatingIds((prev) => new Set(prev).add(collaboratorKey));
+    setUpdatingIds(prev => new Set(prev).add(collaboratorKey));
 
     // 根据新权限确定 action
     const hasAllPermissions =
@@ -243,7 +258,12 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
     let permissionsToModify: Permission[] = [];
 
     if (hasAllPermissions) {
-      permissionsToModify = [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
+      permissionsToModify = [
+        Permission.CanRead,
+        Permission.CanEdit,
+        Permission.CanAdd,
+        Permission.CanDelete,
+      ];
     } else if (hasEditPermissions) {
       permissionsToModify = [Permission.CanRead, Permission.CanEdit];
     } else if (newPermissions.includes(Permission.CanRead)) {
@@ -271,8 +291,8 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
       });
 
       // 更新本地状态
-      setCollaborators((prevCollaborators) =>
-        prevCollaborators.map((c) =>
+      setCollaborators(prevCollaborators =>
+        prevCollaborators.map(c =>
           c.id === entityId && c.type === entityType
             ? { ...c, permissions: newPermissions }
             : c,
@@ -289,12 +309,18 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
         message.error(t(errorData.error || '您没有足够的权限执行此操作'));
       } else if (error.response?.json) {
         const errorMsg = await error.response.json();
-        message.error(t(`更新权限失败: ${errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'}`));
+        message.error(
+          t(
+            `更新权限失败: ${
+              errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'
+            }`,
+          ),
+        );
       } else {
         message.error(t('更新权限失败'));
       }
     } finally {
-      setUpdatingIds((prev) => {
+      setUpdatingIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(collaboratorKey);
         return newSet;
@@ -324,7 +350,9 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
       });
 
       // 更新本地状态
-      setCollaborators((prev) => prev.filter((c) => !(c.id === entityId && c.type === entityType)));
+      setCollaborators(prev =>
+        prev.filter(c => !(c.id === entityId && c.type === entityType)),
+      );
 
       message.success(t('协作者移除成功'));
     } catch (error: any) {
@@ -344,7 +372,12 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
       <Menu.Item
         key="可管理"
         onClick={() => {
-          const newPermissions = [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
+          const newPermissions = [
+            Permission.CanRead,
+            Permission.CanEdit,
+            Permission.CanAdd,
+            Permission.CanDelete,
+          ];
           handlePermissionChange(collaborator, newPermissions);
         }}
       >
@@ -376,7 +409,7 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
             <span
               role="button"
               style={{ color: 'red', cursor: 'pointer' }}
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 Modal.confirm({
                   title: t('确定要移除这个协作者吗？'),
@@ -410,7 +443,7 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
             {collaborators.length === 0 ? (
               <div>{t('暂无协作者')}</div>
             ) : (
-              collaborators.map((collaborator) => {
+              collaborators.map(collaborator => {
                 const isUpdating = updatingIds.has(collaborator.key);
                 return (
                   <CollaboratorItem key={collaborator.key}>
@@ -442,11 +475,14 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
                         trigger={['click']}
                       >
                         <Button disabled={isUpdating}>
-                          {getPermissionLabel(collaborator.permissions)} <DownOutlined />
+                          {getPermissionLabel(collaborator.permissions)}{' '}
+                          <DownOutlined />
                         </Button>
                       </DropdownMenuStyled>
                     )}
-                    {isUpdating && <Spin size="small" style={{ marginLeft: 8 }} />}
+                    {isUpdating && (
+                      <Spin size="small" style={{ marginLeft: 8 }} />
+                    )}
                   </CollaboratorItem>
                 );
               })

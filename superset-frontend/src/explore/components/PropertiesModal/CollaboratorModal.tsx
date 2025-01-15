@@ -1,6 +1,6 @@
 // CollaboratorModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Spin, message, Select} from 'antd';
+import { Modal, Button, Spin, message, Select } from 'antd';
 import { UserOutlined, PlusOutlined } from '@ant-design/icons';
 import styled from '@emotion/styled';
 import { SupersetClient, t } from '@superset-ui/core';
@@ -77,10 +77,10 @@ const CollaboratorInfo = styled.div`
 `;
 
 const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
-                                                               visible,
-                                                               onClose,
-                                                               chartId,
-                                                             }) => {
+  visible,
+  onClose,
+  chartId,
+}) => {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchModalVisible, setSearchModalVisible] = useState(false);
@@ -110,14 +110,22 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
 
       // 映射协作者数据
       setCollaborators(
-        access_info.map((item: { id: number; name: string; is_creator: boolean; permission: string; type: string }) => ({
-          id: item.id,
-          name: item.name,
-          isCreator: item.is_creator,
-          permissions: getPermissionsFromLabel(item.permission),
-          type: item.type as 'user' | 'role',
-          key: `${item.id}-${item.type}`,
-        })),
+        access_info.map(
+          (item: {
+            id: number;
+            name: string;
+            is_creator: boolean;
+            permission: string;
+            type: string;
+          }) => ({
+            id: item.id,
+            name: item.name,
+            isCreator: item.is_creator,
+            permissions: getPermissionsFromLabel(item.permission),
+            type: item.type as 'user' | 'role',
+            key: `${item.id}-${item.type}`,
+          }),
+        ),
       );
     } catch (error: any) {
       console.error('Error fetching collaborators:', error);
@@ -132,7 +140,12 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   const getPermissionsFromLabel = (label: string): Permission[] => {
     switch (label) {
       case '可管理':
-        return [Permission.CanRead, Permission.CanEdit, Permission.CanAdd, Permission.CanDelete];
+        return [
+          Permission.CanRead,
+          Permission.CanEdit,
+          Permission.CanAdd,
+          Permission.CanDelete,
+        ];
       case '可编辑':
         return [Permission.CanRead, Permission.CanEdit];
       case '可阅读':
@@ -165,7 +178,11 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   };
 
   // 添加协作者
-  const handleAddCollaborator = async (newCollaborator: { id: number; name: string; type: 'user' | 'role' }) => {
+  const handleAddCollaborator = async (newCollaborator: {
+    id: number;
+    name: string;
+    type: 'user' | 'role';
+  }) => {
     try {
       // 默认权限为 '可阅读'
       const permissionsToAdd = getPermissionsFromLabel('可阅读'); // ['can_read']
@@ -177,7 +194,8 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         action: 'add', // 使用原始字段名
       };
 
-      await SupersetClient.post({ // 使用 POST 方法
+      await SupersetClient.post({
+        // 使用 POST 方法
         endpoint: `/api/v1/chart/${chartId}/permissions/modify`,
         body: JSON.stringify(data),
         headers: {
@@ -186,7 +204,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       });
 
       // 更新本地状态
-      setCollaborators((prev) => [
+      setCollaborators(prev => [
         ...prev,
         {
           id: newCollaborator.id,
@@ -210,8 +228,11 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
   };
 
   // 更新协作者权限
-  const handlePermissionChange = async (collaborator: Collaborator, newPermissions: Permission[]) => {
-    const { key, type, id } = collaborator;  // 使用对象解构
+  const handlePermissionChange = async (
+    collaborator: Collaborator,
+    newPermissions: Permission[],
+  ) => {
+    const { key, type, id } = collaborator; // 使用对象解构
     setUpdatingIds(prev => new Set(prev).add(key));
 
     try {
@@ -219,7 +240,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         entity_type: type,
         entity_id: id,
         permissions: newPermissions,
-        action: 'add'
+        action: 'add',
       };
 
       await SupersetClient.post({
@@ -231,8 +252,8 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       // 更新本地状态
       setCollaborators(prev =>
         prev.map(c =>
-          c.key === key ? { ...c, permissions: newPermissions } : c
-        )
+          c.key === key ? { ...c, permissions: newPermissions } : c,
+        ),
       );
 
       message.success(t('权限更新成功'));
@@ -259,7 +280,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
       entity_type: collaborator.type,
       entity_id: collaborator.id,
       permissions: [],
-      action: 'remove'
+      action: 'remove',
     };
 
     try {
@@ -269,9 +290,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
         body: JSON.stringify(data),
       });
 
-      setCollaborators(prev => 
-        prev.filter(c => c.key !== collaborator.key)
-      );
+      setCollaborators(prev => prev.filter(c => c.key !== collaborator.key));
       message.success(t('协作者移除成功'));
     } catch (error: any) {
       console.error('Error removing collaborator:', error);
@@ -299,7 +318,7 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
             {collaborators.length === 0 ? (
               <div>{t('暂无协作者')}</div>
             ) : (
-              collaborators.map((collaborator) => {
+              collaborators.map(collaborator => {
                 const isUpdating = updatingIds.has(collaborator.key);
 
                 return (
@@ -309,15 +328,21 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                         <UserOutlined />
                       </div>
                       <div className="name">{collaborator.name}</div>
-                      {collaborator.isCreator && <span style={{ color: 'blue', marginLeft: '8px' }}>创建者</span>}
+                      {collaborator.isCreator && (
+                        <span style={{ color: 'blue', marginLeft: '8px' }}>
+                          创建者
+                        </span>
+                      )}
                       <div style={{ marginLeft: '8px', color: '#888' }}>
                         {collaborator.type === 'user' ? t('用户') : t('角色')}
                       </div>
                     </CollaboratorInfo>
                     <Select
                       disabled={collaborator.isCreator}
-                      defaultValue={getPermissionLabel(collaborator.permissions)}
-                      onChange={(value) => {
+                      defaultValue={getPermissionLabel(
+                        collaborator.permissions,
+                      )}
+                      onChange={value => {
                         if (value === '移除') {
                           Modal.confirm({
                             title: t('确定要移除这个协作者吗？'),
@@ -327,16 +352,29 @@ const CollaboratorModal: React.FC<CollaboratorModalProps> = ({
                             okButtonProps: { danger: true },
                           });
                         } else {
-                          handlePermissionChange(collaborator, getPermissionsFromLabel(value));
+                          handlePermissionChange(
+                            collaborator,
+                            getPermissionsFromLabel(value),
+                          );
                         }
                       }}
                     >
-                      <Select.Option value="可管理">{t('可管理')}</Select.Option>
-                      <Select.Option value="可编辑">{t('可编辑')}</Select.Option>
-                      <Select.Option value="可阅读">{t('可阅读')}</Select.Option>
-                      <Select.Option value="移除" style={{ color: 'red' }}>{t('移除')}</Select.Option>
+                      <Select.Option value="可管理">
+                        {t('可管理')}
+                      </Select.Option>
+                      <Select.Option value="可编辑">
+                        {t('可编辑')}
+                      </Select.Option>
+                      <Select.Option value="可阅读">
+                        {t('可阅读')}
+                      </Select.Option>
+                      <Select.Option value="移除" style={{ color: 'red' }}>
+                        {t('移除')}
+                      </Select.Option>
                     </Select>
-                    {isUpdating && <Spin size="small" style={{ marginLeft: 8 }} />}
+                    {isUpdating && (
+                      <Spin size="small" style={{ marginLeft: 8 }} />
+                    )}
                   </CollaboratorItem>
                 );
               })

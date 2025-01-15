@@ -45,7 +45,7 @@ interface ListViewResourceState<D extends object = any> {
   lastFetchDataConfig: FetchDataConfig | null;
   bulkSelectEnabled: boolean;
   lastFetched?: string;
-  resourcePermissions: Record<string, ResourcePermissions>;  // 修改为string key
+  resourcePermissions: Record<string, ResourcePermissions>; // 修改为string key
 }
 
 const parsedErrorMessage = (
@@ -90,7 +90,7 @@ export function useListViewResource<D extends object = any>(
     permissions: [],
     lastFetchDataConfig: null,
     bulkSelectEnabled: false,
-    resourcePermissions: {},  // 存储每个资源的具体权限
+    resourcePermissions: {}, // 存储每个资源的具体权限
   });
 
   function updateState(update: Partial<ListViewResourceState<D>>) {
@@ -120,16 +120,21 @@ export function useListViewResource<D extends object = any>(
   }, [resource, resourceLabel, handleErrorMsg]);
 
   // 检查具体资源的权限
-  const getResourcePermissions = useCallback((resourceId: number): ResourcePermissions => {
-    return state.resourcePermissions[resourceId.toString()] || {
-      can_add: false,
-      can_delete: false,
-      can_export: false,
-      can_read: false,
-      can_write: false,
-      role: 'viewer'
-    };
-  }, [state.resourcePermissions]);
+  const getResourcePermissions = useCallback(
+    (resourceId: number): ResourcePermissions => {
+      return (
+        state.resourcePermissions[resourceId.toString()] || {
+          can_add: false,
+          can_delete: false,
+          can_export: false,
+          can_read: false,
+          can_write: false,
+          role: 'viewer',
+        }
+      );
+    },
+    [state.resourcePermissions],
+  );
 
   // 在初始化时获取权限
   useEffect(() => {
@@ -236,7 +241,7 @@ export function useListViewResource<D extends object = any>(
       }
       return null;
     },
-    getResourcePermissions,  // 暴露权限检查函数
+    getResourcePermissions, // 暴露权限检查函数
   };
 }
 

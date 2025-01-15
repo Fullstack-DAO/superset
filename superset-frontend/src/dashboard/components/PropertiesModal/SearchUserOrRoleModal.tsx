@@ -1,13 +1,17 @@
 // SearchUserOrRoleModal.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import { Modal, Button, Input, List, Spin, message } from 'antd';
 import { SupersetClient, t } from '@superset-ui/core';
-import { InboxOutlined } from "@ant-design/icons";
+import { InboxOutlined } from '@ant-design/icons';
 
 interface SearchUserOrRoleModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (collaborator: { id: number; name: string; type: 'user' | 'role' }) => void;
+  onAdd: (collaborator: {
+    id: number;
+    name: string;
+    type: 'user' | 'role';
+  }) => void;
   dashboardId: number;
 }
 
@@ -25,13 +29,12 @@ interface Collaborator {
   key: string;
 }
 
-
 const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
-                                                                       visible,
-                                                                       onClose,
-                                                                       onAdd,
-                                                                       dashboardId,
-                                                                     }) => {
+  visible,
+  onClose,
+  onAdd,
+  dashboardId,
+}) => {
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -50,7 +53,9 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
     setLoading(true);
     try {
       const res = await SupersetClient.get({
-        endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(searchValue)}`,
+        endpoint: `/api/v1/user_or_role/?search=${encodeURIComponent(
+          searchValue,
+        )}`,
       });
 
       // 假设 SupersetClient 在非 2xx 响应时会抛出错误
@@ -61,11 +66,13 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         return;
       }
       const results: SearchResultItem[] = [
-        ...(result.users || []).map((user: { id: number; username: string }) => ({
-          id: user.id,
-          name: user.username,
-          type: 'user',
-        })),
+        ...(result.users || []).map(
+          (user: { id: number; username: string }) => ({
+            id: user.id,
+            name: user.username,
+            type: 'user',
+          }),
+        ),
         ...(result.roles || []).map((role: { id: number; name: string }) => ({
           id: role.id,
           name: role.name,
@@ -122,7 +129,13 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         message.error(t(errorData.error || '添加失败'));
       } else if (error.response?.json) {
         const errorMsg = await error.response.json();
-        message.error(t(`添加失败: ${errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'}`));
+        message.error(
+          t(
+            `添加失败: ${
+              errorMsg.errors?.[0]?.message || errorMsg.message || '未知错误'
+            }`,
+          ),
+        );
       } else {
         message.error(t('添加失败，请稍后重试'));
       }
@@ -140,7 +153,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
         placeholder={t('请输入用户名或角色名')}
         enterButton={t('搜索')}
         value={searchValue}
-        onChange={(e) => setSearchValue(e.target.value)}
+        onChange={e => setSearchValue(e.target.value)}
         onSearch={handleSearch}
       />
       {loading ? (
@@ -153,7 +166,7 @@ const SearchUserOrRoleModal: React.FC<SearchUserOrRoleModalProps> = ({
       ) : (
         <List
           dataSource={searchResults}
-          renderItem={(item) => (
+          renderItem={item => (
             <List.Item>
               <span>
                 {item.name} ({item.type === 'user' ? '用户' : '角色'})

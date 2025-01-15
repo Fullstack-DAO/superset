@@ -45,7 +45,6 @@ import TagType from 'src/types/TagType';
 import 'antd/dist/antd.css';
 import CollaboratorModal from './CollaboratorModal'; // 新增的管理协作者弹窗组件
 
-
 export type PropertiesModalProps = {
   slice: Slice;
   show: boolean;
@@ -94,7 +93,6 @@ function PropertiesModal({
   const handleOpenCollaboratorModal = () => setShowCollaboratorModal(true);
   const handleCloseCollaboratorModal = () => setShowCollaboratorModal(false);
 
-
   // // 新增状态：用户和角色权限
   // const [userPermissions, setUserPermissions] = useState<
   //   { userId: number; userName: string; permissions: ('read' | 'edit')[] }[]
@@ -103,7 +101,6 @@ function PropertiesModal({
   // const [rolePermissions, setRolePermissions] = useState<
   //   { roleId: number; roleName: string; permissions: ('read' | 'edit')[] }[]
   // >([]);
-
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map(tag => ({
@@ -177,7 +174,6 @@ function PropertiesModal({
   //   },
   //   [],
   // );
-
 
   // const loadOptions = useMemo(
   //   () =>
@@ -340,7 +336,6 @@ function PropertiesModal({
 
     setSubmitting(false);
   };
-
 
   // const ownersLabel = t('Owners');
 

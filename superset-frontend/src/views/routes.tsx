@@ -65,7 +65,6 @@ const ChartList = lazy(
 //       ),
 // );
 
-
 const CssTemplateList = lazy(
   () =>
     import(

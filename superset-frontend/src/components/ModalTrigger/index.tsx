@@ -17,8 +17,8 @@
  * under the License.
  */
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
-import Modal from "src/components/Modal";
-import Button from "src/components/Button";
+import Modal from 'src/components/Modal';
+import Button from 'src/components/Button';
 
 interface ModalTriggerProps {
   dialogClassName?: string;
@@ -103,7 +103,7 @@ const ModalTrigger = forwardRef<ModalTriggerRef, ModalTriggerProps>(
         </Modal>
       </>
     );
-  }
+  },
 );
 
 export default ModalTrigger;

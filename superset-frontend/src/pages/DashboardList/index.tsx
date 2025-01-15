@@ -170,7 +170,9 @@ function DashboardList(props: DashboardListProps) {
     can_write: false,
   });
 
-  const userKey = user?.userId ? dangerouslyGetItemDoNotUse(user.userId.toString()) : null;
+  const userKey = user?.userId
+    ? dangerouslyGetItemDoNotUse(user.userId.toString())
+    : null;
 
   useEffect(() => {
     const fetchPermissions = async () => {
@@ -193,7 +195,8 @@ function DashboardList(props: DashboardListProps) {
   const canCreate = globalPermissions.can_write;
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
-  const canExport = hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
+  const canExport =
+    hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
 
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
 

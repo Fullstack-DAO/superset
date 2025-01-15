@@ -46,11 +46,11 @@ export type DndSelectLabelProps = {
 };
 
 export default function DndSelectLabel({
-                                         displayGhostButton = true,
-                                         accept,
-                                         valuesRenderer,
-                                         ...props
-                                       }: DndSelectLabelProps) {
+  displayGhostButton = true,
+  accept,
+  valuesRenderer,
+  ...props
+}: DndSelectLabelProps) {
   const theme = useTheme();
 
   const [{ isOver, canDrop }, datasourcePanelDrop] = useDrop({
@@ -104,4 +104,3 @@ export default function DndSelectLabel({
     </div>
   );
 }
-

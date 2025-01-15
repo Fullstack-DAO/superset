@@ -226,7 +226,9 @@ function ChartList(props: ChartListProps) {
     thumbnails: boolean;
   };
 
-  const [chartPermissions, setChartPermissions] = useState<Record<number, ChartPermissions>>({});
+  const [chartPermissions, setChartPermissions] = useState<
+    Record<number, ChartPermissions>
+  >({});
 
   const fetchChartPermissions = useCallback(async () => {
     try {
@@ -247,12 +249,14 @@ function ChartList(props: ChartListProps) {
   }, [fetchChartPermissions]);
 
   const getChartPermissions = (chartId: number): ChartPermissions => {
-    return chartPermissions[chartId] || {
-      can_write: false,
-      can_export: false,
-      can_delete: false,
-      role: 'viewer'
-    };
+    return (
+      chartPermissions[chartId] || {
+        can_write: false,
+        can_export: false,
+        can_delete: false,
+        role: 'viewer',
+      }
+    );
   };
 
   const openChartImportModal = () => {
@@ -277,7 +281,7 @@ function ChartList(props: ChartListProps) {
   });
 
   // 修改 hasPerm 函数的使用
-  const canCreate = globalPermissions.can_write;  // 使用全局权限
+  const canCreate = globalPermissions.can_write; // 使用全局权限
 
   // 在组件加载时获取权限信息
   useEffect(() => {
@@ -532,7 +536,7 @@ function ChartList(props: ChartListProps) {
 
           // 使用 hook 提供的权限检查函数
           const permissions = getResourcePermissions(original.id);
-          
+
           // 如果没有读权限，不显示任何操作按钮
           if (!permissions.can_read) {
             return null;
@@ -867,43 +871,46 @@ function ChartList(props: ChartListProps) {
     }
   }
 
-  const fetchChartData = useCallback(async (chartId: number) => {
-    if (!chartId) {
-      console.error('Chart ID is required');
-      return;
-    }
+  const fetchChartData = useCallback(
+    async (chartId: number) => {
+      if (!chartId) {
+        console.error('Chart ID is required');
+        return;
+      }
 
-    const formData = {
-      slice_id: chartId,
-      datasource: '4__table',
-      viz_type: 'big_number',
-      // ... 其他参数
-    };
+      const formData = {
+        slice_id: chartId,
+        datasource: '4__table',
+        viz_type: 'big_number',
+        // ... 其他参数
+      };
 
-    try {
-      const response = await SupersetClient.post({
-        endpoint: `/api/v1/chart/data`,
-        jsonPayload: {
-          form_data: formData,
-          force: false,
-          result_format: 'json',
-          result_type: 'full'
-        },
-      });
-      return response.json;
-    } catch (error) {
-      console.error('Failed to fetch chart data:', error);
-      addDangerToast(t('Failed to fetch chart data'));
-      return null;
-    }
-  }, [addDangerToast]);
+      try {
+        const response = await SupersetClient.post({
+          endpoint: `/api/v1/chart/data`,
+          jsonPayload: {
+            form_data: formData,
+            force: false,
+            result_format: 'json',
+            result_type: 'full',
+          },
+        });
+        return response.json;
+      } catch (error) {
+        console.error('Failed to fetch chart data:', error);
+        addDangerToast(t('Failed to fetch chart data'));
+        return null;
+      }
+    },
+    [addDangerToast],
+  );
 
   const handleFetchData = async (chart: Chart) => {
     if (!chart.id) {
       addDangerToast(t('Chart ID is required'));
       return;
     }
-    
+
     const formData = {
       slice_id: chart.id,
       datasource: chart.datasource_id,
@@ -918,7 +925,7 @@ function ChartList(props: ChartListProps) {
           form_data: formData,
           force: false,
           result_format: 'json',
-          result_type: 'full'
+          result_type: 'full',
         },
       });
       // 处理响应数据
@@ -930,12 +937,15 @@ function ChartList(props: ChartListProps) {
     }
   };
 
-  const handleViewChart = useCallback(async (chart: Chart) => {
-    const data = await handleFetchData(chart);
-    if (data) {
-      // 处理数据...
-    }
-  }, [handleFetchData]);
+  const handleViewChart = useCallback(
+    async (chart: Chart) => {
+      const data = await handleFetchData(chart);
+      if (data) {
+        // 处理数据...
+      }
+    },
+    [handleFetchData],
+  );
 
   return (
     <>

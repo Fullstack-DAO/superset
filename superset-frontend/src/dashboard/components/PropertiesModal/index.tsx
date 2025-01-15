@@ -55,8 +55,6 @@ const StyledFormItem = styled(FormItem)`
   margin-bottom: 0;
 `;
 
-
-
 const StyledJsonEditor = styled(JsonEditor)`
   border-radius: ${({ theme }) => theme.borderRadius}px;
   border: 1px solid ${({ theme }) => theme.colors.secondary.light2};
@@ -99,17 +97,17 @@ type DashboardInfo = {
 };
 
 const PropertiesModal = ({
-                           addSuccessToast,
-                           addDangerToast,
-                           colorScheme: currentColorScheme,
-                           dashboardId,
-                           dashboardInfo: currentDashboardInfo,
-                           dashboardTitle,
-                           onHide = () => {},
-                           onlyApply = false,
-                           onSubmit = () => {},
-                           show = false,
-                         }: PropertiesModalProps) => {
+  addSuccessToast,
+  addDangerToast,
+  colorScheme: currentColorScheme,
+  dashboardId,
+  dashboardInfo: currentDashboardInfo,
+  dashboardTitle,
+  onHide = () => {},
+  onlyApply = false,
+  onSubmit = () => {},
+  show = false,
+}: PropertiesModalProps) => {
   const [form] = AntdForm.useForm();
   const [isLoading, setIsLoading] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -122,7 +120,8 @@ const PropertiesModal = ({
   const [tags, setTags] = useState<TagType[]>([]);
   const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
 
-  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] = useState(false);
+  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] =
+    useState(false);
 
   const showCollaboratorsModal = () => {
     setCollaboratorsModalVisible(true);
@@ -184,7 +183,6 @@ const PropertiesModal = ({
     },
     [],
   );
-
 
   const handleDashboardData = useCallback(
     dashboardData => {
@@ -684,8 +682,8 @@ const PropertiesModal = ({
             tooltip={
               dashboardInfo?.isManagedExternally
                 ? t(
-                  "This dashboard is managed externally, and can't be edited in Superset",
-                )
+                    "This dashboard is managed externally, and can't be edited in Superset",
+                  )
                 : ''
             }
           >

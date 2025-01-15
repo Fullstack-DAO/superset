@@ -270,7 +270,7 @@ const RightMenu = ({
         .then(({ json }: Record<string, any>) => {
           // 在前端过滤掉 examples 数据库
           const nonExamplesDbs = json.result.filter(
-            (db: any) => db.database_name !== 'examples'
+            (db: any) => db.database_name !== 'examples',
           );
           setNonExamplesDBConnected(nonExamplesDbs.length >= 1);
         })

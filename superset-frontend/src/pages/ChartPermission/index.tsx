@@ -39,9 +39,7 @@ const ChartPermission: React.FC = () => {
 
   const handleRoleChange = (collaboratorId: string, newRole: string) => {
     setCollaborators(prev =>
-      prev.map(c =>
-        c.id === collaboratorId ? { ...c, role: newRole } : c,
-      ),
+      prev.map(c => (c.id === collaboratorId ? { ...c, role: newRole } : c)),
     );
 
     // 调用后端 API 更新权限
@@ -86,9 +84,7 @@ const ChartPermission: React.FC = () => {
             <span className="collaborator-name">{collaborator.name}</span>
             <select
               value={collaborator.role}
-              onChange={e =>
-                handleRoleChange(collaborator.id, e.target.value)
-              }
+              onChange={e => handleRoleChange(collaborator.id, e.target.value)}
             >
               {roles.map(role => (
                 <option key={role} value={role}>

@@ -81,9 +81,9 @@ const ModalTrigger = forwardRef(
           </Button>
         )}
         {!props.isButton && (
-          <span 
-            data-test="span-modal-trigger" 
-            onClick={open} 
+          <span
+            data-test="span-modal-trigger"
+            onClick={open}
             role="button"
             tabIndex={0}
             onKeyPress={(e: React.KeyboardEvent) => {

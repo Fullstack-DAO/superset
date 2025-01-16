@@ -272,7 +272,7 @@ function DashboardList(props: DashboardListProps) {
     setPreparingExport(true);
     try {
       const ids = dashboardsToExport.map(({ id }) => id);
-      const result = handleResourceExport(
+      handleResourceExport(
         'dashboard',
         ids,
         () => {
@@ -280,7 +280,6 @@ function DashboardList(props: DashboardListProps) {
         },
         200,
       );
-      return result;
     } catch (err) {
       setPreparingExport(false);
       addDangerToast(t('There was an issue with exporting the dashboards'));

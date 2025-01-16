@@ -410,7 +410,6 @@ const DashboardCollaboratorModal: React.FC<DashboardCollaboratorModalProps> = ({
               role="button"
               tabIndex={0}
               style={{ color: 'red', cursor: 'pointer' }}
-              tabIndex={0}
               onClick={e => {
                 e.stopPropagation();
                 Modal.confirm({

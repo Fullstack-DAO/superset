@@ -2004,7 +2004,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         }
 
         logger.debug(f"获取到的权限信息: {filtered_permissions}")
-
+        res = {"permissions": filtered_permissions,
+                                        "global_permissions": global_permissions}
         # 返回 JSON 响应
-        return self.response(200, info={"permissions": filtered_permissions,
-                                        "global_permissions": global_permissions})
+        return self.response(200, **res)

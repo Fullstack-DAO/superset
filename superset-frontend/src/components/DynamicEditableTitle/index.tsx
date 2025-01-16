@@ -18,7 +18,6 @@
  */
 
 import React, {
-  ChangeEvent,
   KeyboardEvent,
   useCallback,
   useEffect,
@@ -135,18 +134,6 @@ export const DynamicEditableTitle = ({
     setIsEditing(true);
   }, [canEdit, isEditing]);
 
-  const handleBlur = useCallback(() => {
-    if (!canEdit) {
-      return;
-    }
-    const formattedTitle = currentTitle.trim();
-    setCurrentTitle(formattedTitle);
-    if (title !== formattedTitle) {
-      onSave(formattedTitle);
-    }
-    setIsEditing(false);
-  }, [canEdit, currentTitle, onSave, title]);
-
   const handleChange = useCallback((value: string) => {
     setCurrentTitle(value || '');
   }, []);
@@ -207,6 +194,7 @@ export const DynamicEditableTitle = ({
             ref={contentRef}
             data-test="editable-title"
             role="button"
+            tabIndex={0}
             onClick={() => setIsEditing(true)}
           >
             {currentTitle || placeholder}

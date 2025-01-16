@@ -95,7 +95,9 @@ const ChartPermission: React.FC = () => {
           </li>
         ))}
       </ul>
-      <button onClick={handleAddCollaborator}>添加协作者</button>
+      <button type="button" onClick={handleAddCollaborator}>
+        添加协作者
+      </button>
     </div>
   );
 };

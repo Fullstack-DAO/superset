@@ -254,9 +254,6 @@ const RightMenu = ({
   };
 
   const existsNonExamplesDatabases = () => {
-    const payload = {
-      filters: [{ col: 'database_name', opr: 'neq', value: 'examples' }],
-    };
     try {
       // 使用更安全的查询方式
       SupersetClient.get({

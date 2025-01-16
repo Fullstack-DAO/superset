@@ -42,12 +42,14 @@ interface ModalTriggerProps {
 }
 
 export interface ModalTriggerRef {
-  close: () => void;
-  open: (e: React.MouseEvent) => void;
+  current: {
+    close: () => void;
+    open: (e: React.MouseEvent) => void;
+  };
 }
 
-const ModalTrigger = forwardRef<ModalTriggerRef, ModalTriggerProps>(
-  (props, ref) => {
+const ModalTrigger = forwardRef(
+  (props: ModalTriggerProps, ref: ModalTriggerRef) => {
     const [showModal, setShowModal] = useState(false);
 
     const close = () => {
@@ -79,7 +81,12 @@ const ModalTrigger = forwardRef<ModalTriggerRef, ModalTriggerProps>(
           </Button>
         )}
         {!props.isButton && (
-          <span data-test="span-modal-trigger" onClick={open} role="button">
+          <span
+            data-test="span-modal-trigger"
+            onClick={open}
+            role="button"
+            tabIndex={0}
+          >
             {props.triggerNode}
           </span>
         )}

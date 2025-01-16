@@ -171,7 +171,7 @@ function DashboardList(props: DashboardListProps) {
   });
 
   const userKey = user?.userId
-    ? dangerouslyGetItemDoNotUse(user.userId.toString())
+    ? dangerouslyGetItemDoNotUse(user.userId.toString(), '')
     : null;
 
   useEffect(() => {
@@ -180,8 +180,8 @@ function DashboardList(props: DashboardListProps) {
         const response = await SupersetClient.get({
           endpoint: `/api/v1/dashboard/_info`,
         });
-        if (response?.json?.info?.global_permissions) {
-          setGlobalPermissions(response.json.info.global_permissions);
+        if (response?.json?.global_permissions) {
+          setGlobalPermissions(response.json.global_permissions);
         }
       } catch (err) {
         console.error('Failed to fetch permissions:', err);
@@ -266,17 +266,16 @@ function DashboardList(props: DashboardListProps) {
     addSuccessToast(t('Dashboard imported'));
   };
 
-  const handleBulkDashboardExport = async (dashboardsToExport: Dashboard[]) => {
+  const handleBulkDashboardExport = (dashboardsToExport: Dashboard[]) => {
     setPreparingExport(true);
     try {
       const ids = dashboardsToExport.map(({ id }) => id);
-      const result = await handleResourceExport('dashboard', ids);
-      setPreparingExport(false);
-      return result;
+      handleResourceExport('dashboard', ids, () => {
+        setPreparingExport(false);
+      });
     } catch (err) {
       setPreparingExport(false);
       addDangerToast(t('There was an issue with exporting the dashboards'));
-      return null;
     }
   };
 

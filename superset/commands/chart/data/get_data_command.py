@@ -90,9 +90,9 @@ class ChartDataCommand(BaseCommand):
 
         # 从 form_data 中获取 slice_id
         slice_id = form_data.get("slice_id")
-        if not slice_id:
-            logger.warning("Permission check failed: slice_id is missing in form_data.")
-            raise DatasetAccessDeniedError("slice_id is missing in form_data.")
+        # if not slice_id:
+        #     logger.warning("Permission check failed: slice_id is missing in form_data.")
+        #     raise DatasetAccessDeniedError("slice_id is missing in form_data.")
 
         datasource_info = form_data.get("datasource")
         if not datasource_info:

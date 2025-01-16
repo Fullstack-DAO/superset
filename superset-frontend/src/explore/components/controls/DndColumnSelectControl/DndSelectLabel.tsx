@@ -71,10 +71,12 @@ export default function DndSelectLabel({
     }),
   });
 
-  const values = useMemo(() => {
-    // Ensure valuesRenderer provides unique keys
-    return React.Children.toArray(valuesRenderer());
-  }, [valuesRenderer]);
+  const values = useMemo(
+    () =>
+      // Ensure valuesRenderer provides unique keys
+      React.Children.toArray(valuesRenderer()),
+    [valuesRenderer],
+  );
 
   function renderGhostButton() {
     return (

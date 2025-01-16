@@ -107,10 +107,11 @@ export function useListViewResource<D extends object = any>(
       const response = await SupersetClient.get({
         endpoint: `/api/v1/${resource}/_info?q=(keys:!(permissions))`,
       });
-      if (response?.json?.info?.permissions) {
+      if (response?.json?.permissions) {
         setState(currentState => ({
           ...currentState,
-          resourcePermissions: response.json.info.permissions,
+          permissions: response.json.permissions,
+          resourcePermissions: response.json.permissions,
         }));
       }
     } catch (err) {
@@ -121,18 +122,15 @@ export function useListViewResource<D extends object = any>(
 
   // 检查具体资源的权限
   const getResourcePermissions = useCallback(
-    (resourceId: number): ResourcePermissions => {
-      return (
-        state.resourcePermissions[resourceId.toString()] || {
-          can_add: false,
-          can_delete: false,
-          can_export: false,
-          can_read: false,
-          can_write: false,
-          role: 'viewer',
-        }
-      );
-    },
+    (resourceId: number): ResourcePermissions =>
+      state.resourcePermissions[resourceId.toString()] || {
+        can_add: false,
+        can_delete: false,
+        can_export: false,
+        can_read: false,
+        can_write: false,
+        role: 'viewer',
+      },
     [state.resourcePermissions],
   );
 

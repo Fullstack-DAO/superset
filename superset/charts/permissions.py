@@ -218,7 +218,7 @@ class ChartPermissions:
         return role_has_permission is not None
 
     @staticmethod
-    def get_chart_and_check_permission(pk: int, permission_type: str) -> Slice | None:
+    def get_chart_and_check_permission(pk: int, permission_type: str) -> Optional[Slice]:
         """
         获取图表并检查用户权限。
 

@@ -81,11 +81,17 @@ const ModalTrigger = forwardRef(
           </Button>
         )}
         {!props.isButton && (
-          <span
-            data-test="span-modal-trigger"
-            onClick={open}
+          <span 
+            data-test="span-modal-trigger" 
+            onClick={open} 
             role="button"
             tabIndex={0}
+            onKeyPress={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter') {
+                open(e as unknown as React.MouseEvent);
+              }
+            }}
+            style={{ cursor: 'pointer' }}
           >
             {props.triggerNode}
           </span>

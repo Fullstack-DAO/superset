@@ -985,10 +985,10 @@ class ChartPermissions:
             logger.info("role_permission is None")
 
         # 判断 UserPermission 和 RolePermission 中是否同时满足 can_read 和 can_edit
-        if user_permission and user_permission.can_read and user_permission.can_edit:
+        if user_permission and user_permission.can_read:
             return True  # 用户权限同时具备阅读和编辑权限
 
-        if role_permission and role_permission.can_read and role_permission.can_edit:
+        if role_permission and role_permission.can_read:
             return True  # 角色权限同时具备阅读和编辑权限
 
         raise DatasetAccessDeniedError()  # 没有权限

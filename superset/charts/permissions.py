@@ -1190,7 +1190,7 @@ class ChartPermissions:
             resource_type='chart',
             resource_id=chart_id
         ).first()
-
+        logger.debug(f"用户 ID {user_id} 查询到的结果 {user_perm} 查询到的权限{user_perm.can_edit}。")
         if user_perm and user_perm.can_edit:
             logger.debug(f"用户 ID {user_id} 对图表 ID {chart_id} 拥有 can_edit 权限。")
             return True

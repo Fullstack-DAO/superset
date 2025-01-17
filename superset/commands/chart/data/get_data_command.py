@@ -153,7 +153,7 @@ class ChartDataCommand(BaseCommand):
                     f"UserPermission found: can_read={user_permission.can_read}, "
                     f"can_edit={user_permission.can_edit}"
                 )
-                if user_permission.can_read and user_permission.can_edit:
+                if user_permission.can_read:
                     has_permission = True
                     logger.info(
                         f"User {user_id} has read and "

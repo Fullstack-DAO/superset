@@ -96,8 +96,10 @@ class ChartDataCommand(BaseCommand):
 
         datasource_info = form_data.get("datasource")
         if not datasource_info:
-            logger.warning("Permission check failed: datasource information is missing in form_data.")
-            raise DatasetAccessDeniedError("datasource information is missing in form_data.")
+            logger.warning(
+                "Permission check failed: datasource information is missing in form_data.")
+            raise DatasetAccessDeniedError(
+                "datasource information is missing in form_data.")
 
         if isinstance(datasource_info, dict):
             datasource_id = datasource_info.get("id")
@@ -107,17 +109,23 @@ class ChartDataCommand(BaseCommand):
                 datasource_id_str, datasource_type = datasource_info.split("__")
                 datasource_id = int(datasource_id_str)
             except ValueError:
-                logger.error("Permission check failed: datasource_info string format is invalid.")
+                logger.error(
+                    "Permission check failed: datasource_info string format is invalid.")
                 raise DatasetAccessDeniedError("Invalid datasource information format.")
         else:
-            logger.error("Permission check failed: datasource_info is neither dict nor str.")
+            logger.error(
+                "Permission check failed: datasource_info is neither dict nor str.")
             raise DatasetAccessDeniedError("Invalid datasource information format.")
 
         if not datasource_id or not datasource_type:
             logger.warning("Permission check failed: datasource id or type is missing.")
             raise DatasetAccessDeniedError("datasource id or type is missing.")
 
-        logger.debug(f"Extracted slice_id: {slice_id}, datasource_id: {datasource_id}, datasource_type: {datasource_type}")
+        logger.debug(
+            f"Extracted slice_id: {slice_id}, "
+            f"datasource_id: {datasource_id}, "
+            f"datasource_type: {datasource_type}"
+        )
 
         user = g.user
         if not user:
@@ -126,7 +134,11 @@ class ChartDataCommand(BaseCommand):
 
         user_id = user.id
         role_ids = [role.id for role in user.roles] if user.roles else []
-        logger.debug(f"Checking permissions for user_id={user_id}, role_ids={role_ids}, datasource_id={datasource_id}")
+        logger.debug(
+            f"Checking permissions for user_id={user_id}, "
+            f"role_ids={role_ids}, "
+            f"datasource_id={datasource_id}"
+        )
 
         # 初始化权限标志
         has_permission = False
@@ -134,15 +146,24 @@ class ChartDataCommand(BaseCommand):
         # 查询 UserPermission
         try:
             user_permission = db.session.query(UserPermission).filter_by(
-                user_id=user_id, resource_id = slice_id
+                user_id=user_id, resource_id=slice_id, resource_type="chart"
             ).one_or_none()
             if user_permission:
-                logger.debug(f"UserPermission found: can_read={user_permission.can_read}, can_edit={user_permission.can_edit}")
+                logger.info(
+                    f"UserPermission found: can_read={user_permission.can_read}, "
+                    f"can_edit={user_permission.can_edit}"
+                )
                 if user_permission.can_read and user_permission.can_edit:
                     has_permission = True
-                    logger.info(f"User {user_id} has read and edit permissions for datasource {datasource_id}.")
+                    logger.info(
+                        f"User {user_id} has read and "
+                        f"edit permissions for datasource {datasource_id}."
+                    )
             else:
-                logger.debug(f"No UserPermission found for user_id={user_id} and datasource_id={datasource_id}.")
+                logger.error(
+                    f"No UserPermission found for user_id={user_id} "
+                    f"and datasource_id={datasource_id}."
+                )
         except Exception as e:
             logger.error(f"Error querying UserPermission: {e}")
             raise DatasetAccessDeniedError("Error accessing user permissions.")
@@ -158,15 +179,23 @@ class ChartDataCommand(BaseCommand):
                 ).all()
                 if role_permissions:
                     has_permission = True
-                    logger.info(f"User {user_id} has role-based permissions for datasource {datasource_id}.")
+                    logger.info(
+                        f"User {user_id} has role-based permissions "
+                        f"for datasource {datasource_id}."
+                    )
                 else:
-                    logger.debug(f"No RolePermission found for role_ids={role_ids} and datasource_id={datasource_id}.")
+                    logger.error(
+                        f"No RolePermission found for role_ids={role_ids} "
+                        f"and datasource_id={datasource_id}."
+                    )
             except Exception as e:
                 logger.error(f"Error querying RolePermission: {e}")
                 raise DatasetAccessDeniedError("Error accessing role permissions.")
 
         if not has_permission:
-            logger.error(f"Permission denied for user_id={user_id} on datasource_id={datasource_id}.")
+            logger.error(
+                f"Permission denied for user_id={user_id} on datasource_id={datasource_id}.")
             raise DatasetAccessDeniedError("Permission denied.")
         else:
-            logger.debug(f"Permission check passed for user_id={user_id} on datasource_id={datasource_id}.")
+            logger.error(
+                f"Permission check passed for user_id={user_id} on datasource_id={datasource_id}.")

@@ -986,10 +986,10 @@ class ChartPermissions:
 
         # 判断 UserPermission 和 RolePermission 中是否同时满足 can_read 和 can_edit
         if user_permission and user_permission.can_read:
-            return True  # 用户权限同时具备阅读和编辑权限
+            return True  # 用户权限可阅读即可
 
         if role_permission and role_permission.can_read:
-            return True  # 角色权限同时具备阅读和编辑权限
+            return True  # 角色权限可阅读即可
 
         raise DatasetAccessDeniedError()  # 没有权限
 

@@ -191,7 +191,7 @@ class Datasource(BaseSupersetView):
         return self.json_response(external_metadata)
 
     @expose("/samples", methods=("POST",))
-    @has_access_api
+    # @has_access_api
     @api
     @handle_api_exception
     def samples(self) -> FlaskResponse:

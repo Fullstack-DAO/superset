@@ -25,7 +25,9 @@ from superset import db, security_manager
 from superset.connectors.sqla import models
 from superset.connectors.sqla.models import SqlaTable
 from superset.models.core import FavStar
+from superset.models.role_permission import RolePermission
 from superset.models.slice import Slice
+from superset.models.user_permission import UserPermission
 from superset.utils.core import get_user_id
 from superset.utils.filters import get_dataset_access_filters
 from superset.views.base import BaseFilter
@@ -96,7 +98,36 @@ class ChartFilter(BaseFilter):  # pylint: disable=too-few-public-methods
         query = query.join(
             models.Database, table_alias.database_id == models.Database.id
         )
-        return query.filter(get_dataset_access_filters(self.model))
+
+        user_id = get_user_id()
+        user_roles = [role.id for role in security_manager.get_user_roles()]
+
+        user_permission_query = (
+            db.session.query(UserPermission.resource_id)
+            .filter(
+                UserPermission.resource_type == "chart",
+                UserPermission.can_read == True,
+                UserPermission.user_id == user_id,
+            )
+        )
+
+        # 获取通过 RolePermission 访问的仪表盘
+        role_permission_query = (
+            db.session.query(RolePermission.resource_id)
+            .filter(
+                RolePermission.resource_type == "chart",
+                RolePermission.can_read == True,
+                RolePermission.role_id.in_(user_roles),
+            )
+        )
+        
+        return query.filter(and_(
+            get_dataset_access_filters(self.model),
+            or_(
+                self.model.id.in_(user_permission_query),
+                self.model.id.in_(role_permission_query)
+            )
+        ))
 
 
 class ChartHasCreatedByFilter(BaseFilter):  # pylint: disable=too-few-public-methods

@@ -1271,49 +1271,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
             logger.error(f"Error modifying permissions: {ex}", exc_info=True)
             return self.response_500(message="权限更新失败。")
 
-    @expose("/", methods=["GET"])
-    @protect()
-    @safe
-    @rison(get_list_schema)
-    def get_list(self, rison: dict) -> Response:
-        """
-        自定义的 get_list 方法，用于处理图表数据的检索。
-        该方法手动检查用户权限，解析查询参数，并根据用户/角色的访问权限应用自定义过滤。
-        """
-
-        # 第一步：检查用户是否有权限访问图表
-        current_user = get_current_user_object()
-        logger.info(f"current login user is: {current_user}")
-        logger.info(f"current login user's role is: {current_user.roles}")
-        # 第二步：获取图表列表，根据解析后的 rison 参数
-        response = self._get_charts_list(rison)
-        result = response.json.get("result", [])
-        logger.info(f"response‘s result: {result}")
-        ids = response.json.get("ids", [])
-        logger.info(f"response‘s ids: {ids}")
-        if response.status_code != 200:
-            return response  # 如果原始列表获取失败，直接返回响应
-
-        # 第三步：根据用户/角色权限进行自定义过滤 filtered_result, allowed_ids =
-        filtered_result, allowed_ids = self._filter_charts_based_on_permissions(
-            response.json.get("result", []),
-            response.json.get("ids", []), current_user)
-
-        # 第四步：更新响应数据，返回过滤后的图表
-        response_data = response.json
-        response_data["result"] = filtered_result
-        response_data["ids"] = allowed_ids
-        response_data["count"] = len(filtered_result)
-
-        return self.response(200, **response_data)
-
-    def _get_charts_list(self, rison: dict) -> Response:
-        """
-        调用原始的 get_list_headless 方法，获取图表列表。
-        通过 rison 参数传递分页、排序和过滤信息。
-        """
-        return self.get_list_headless(rison=rison)
-
     def _filter_charts_based_on_permissions(
         self, original_result: list, original_ids: list, current_user
     ) -> tuple:
@@ -1467,61 +1424,6 @@ class ChartRestApi(BaseSupersetModelRestApi):
         except Exception as ex:
             logger.error(f"Error adding collaborator: {ex}")
             return self.response_500(message="Failed to add collaborator.")
-
-    def get_list_headless(self, **kwargs: Any) -> Response:
-        """
-        获取图表列表，管理员可以绕过权限过滤，查看所有图表。
-        """
-        response = dict()
-        args = kwargs.get("rison", {})
-
-        joined_filters = {}
-
-        # 处理列选择
-        select_cols = args.get("columns", [])
-        pruned_select_cols = [col for col in select_cols if col in self.list_columns]
-
-        self.set_response_key_mappings(
-            response,
-            self.get_list,
-            args,
-            **{"columns": pruned_select_cols},
-        )
-
-        # 确定返回的模式
-        if pruned_select_cols:
-            list_model_schema = self.model2schemaconverter.convert(pruned_select_cols)
-        else:
-            list_model_schema = self.list_model_schema
-
-        # 处理排序
-        try:
-            order_column, order_direction = self._handle_order_args(args)
-        except InvalidOrderByColumnFABException as e:
-            return self.response_400(message=str(e))
-
-        # 处理分页
-        page_index, page_size = self._handle_page_args(args)
-
-        # 执行数据库查询
-        count, lst = self.datamodel.query(
-            joined_filters,
-            order_column,
-            order_direction,
-            page=page_index,
-            page_size=page_size,
-            select_columns=self.list_select_columns,
-            outer_default_load=self.list_outer_default_load,
-        )
-
-        # 获取主键列表
-        pks = self.datamodel.get_keys(lst)
-        response["result"] = list_model_schema.dump(lst, many=True)
-        response["ids"] = pks
-        response["count"] = count
-
-        self.pre_get_list(response)
-        return self.response(200, **response)
 
     @expose("/_info", methods=["GET"])
     @protect()  # 确保用户已认证

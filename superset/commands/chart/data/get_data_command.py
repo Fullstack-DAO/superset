@@ -148,11 +148,11 @@ class ChartDataCommand(BaseCommand):
             if slice_id:
                 user_permission = db.session.query(UserPermission).filter_by(
                     user_id=user_id, resource_id=slice_id, resource_type="chart"
-                ).one_or_none()
+                ).first()
             elif datasource_id:
                 user_permission = db.session.query(UserPermission).filter_by(
                     user_id=user_id, datasource_id=datasource_id, resource_type="chart"
-                ).one_or_none()
+                ).first()
             if user_permission:
                 logger.info(
                     f"UserPermission found: can_read={user_permission.can_read}, "
@@ -176,12 +176,19 @@ class ChartDataCommand(BaseCommand):
         # 查询 RolePermission
         if not has_permission and role_ids:
             try:
-                role_permissions = db.session.query(RolePermission).filter(
-                    RolePermission.role_id.in_(role_ids),
-                    RolePermission.resource_id == slice_id,
-                    RolePermission.can_read == True,
-                    RolePermission.can_edit == True
-                ).all()
+                if slice_id:
+                    role_permissions = db.session.query(RolePermission).filter(
+                        RolePermission.role_id.in_(role_ids),
+                        RolePermission.resource_id == slice_id,
+                        RolePermission.can_read == True
+                    ).first()
+                elif datasource_id:
+                    role_permissions = db.session.query(RolePermission).filter(
+                        RolePermission.role_id.in_(role_ids),
+                        RolePermission.datasource_id == datasource_id,
+                        RolePermission.can_read == True
+                    ).first()
+
                 if role_permissions:
                     has_permission = True
                     logger.info(

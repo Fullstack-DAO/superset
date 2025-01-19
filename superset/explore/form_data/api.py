@@ -226,6 +226,7 @@ class ExploreFormDataRestApi(BaseSupersetApi):
               $ref: '#/components/responses/500'
         """
         try:
+            logger.info("request comes to ExploreFormDataRestApi")
             args = CommandParameters(key=key)
             form_data = GetFormDataCommand(args).run()
             if not form_data:

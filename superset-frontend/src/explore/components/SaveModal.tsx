@@ -41,7 +41,6 @@ import { Radio } from 'src/components/Radio';
 import Button from 'src/components/Button';
 import { AsyncSelect } from 'src/components';
 import Loading from 'src/components/Loading';
-import { canUserEditDashboard } from 'src/dashboard/util/permissionUtils';
 import { setSaveChartModalVisibility } from 'src/explore/actions/saveModalActions';
 import { SaveActionType } from 'src/explore/types';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
@@ -62,6 +61,19 @@ interface SaveModalProps extends RouteComponentProps {
   dashboardId: '' | number | null;
   isVisible: boolean;
   dispatch: Dispatch;
+  chartPermissions?: {
+    user_permissions?: string[];
+    role_permissions?: string[];
+  };
+  persistedPermissions?: {
+    canOverwrite: boolean;
+    permissions: any;
+  };
+}
+interface DashboardGetResponse {
+  id: number;
+  url: string;
+  dashboard_title: string;
 }
 
 type SaveModalState = {
@@ -91,10 +103,10 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.state = {
       newSliceName: props.sliceName,
       datasetName: props.datasource?.name,
-      action: this.canOverwriteSlice() ? 'overwrite' : 'saveas',
+      action: 'overwrite',
       isLoading: false,
       vizType: props.form_data?.viz_type,
-      dashboard: undefined,
+      dashboard: undefined
     };
     this.onDashboardChange = this.onDashboardChange.bind(this);
     this.onSliceNameChange = this.onSliceNameChange.bind(this);
@@ -104,43 +116,25 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.onHide = this.onHide.bind(this);
   }
 
+  componentDidMount() {
+    // 不在这里检查权限
+  }
+
+  componentDidUpdate(prevProps: SaveModalProps) {
+    if (prevProps.chartPermissions !== this.props.chartPermissions) {
+      console.log('Chart permissions prop updated:', {
+        from: prevProps.chartPermissions,
+        to: this.props.chartPermissions
+      });
+    }
+  }
+
+  // 权限检查：是否具有 can_edit 权限
+  canOverwriteSlice = () => Boolean(this.props.persistedPermissions?.canOverwrite);
+
   isNewDashboard(): boolean {
     const { dashboard } = this.state;
     return typeof dashboard?.value === 'string';
-  }
-
-  canOverwriteSlice(): boolean {
-    return (
-      this.props.slice?.owners?.includes(this.props.user.userId) &&
-      !this.props.slice?.is_managed_externally
-    );
-  }
-
-  async componentDidMount() {
-    let { dashboardId } = this.props;
-    if (!dashboardId) {
-      let lastDashboard = null;
-      try {
-        lastDashboard = sessionStorage.getItem(SK_DASHBOARD_ID);
-      } catch (error) {
-        // continue regardless of error
-      }
-      dashboardId = lastDashboard && parseInt(lastDashboard, 10);
-    }
-    if (dashboardId) {
-      try {
-        const result = (await this.loadDashboard(dashboardId)) as Dashboard;
-        if (canUserEditDashboard(result, this.props.user)) {
-          this.setState({
-            dashboard: { label: result.dashboard_title, value: result.id },
-          });
-        }
-      } catch (error) {
-        this.props.actions.addDangerToast(
-          t('An error occurred while loading dashboard information.'),
-        );
-      }
-    }
   }
 
   handleDatasetNameChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -156,9 +150,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.setState({ dashboard });
   }
 
-  changeAction(action: SaveActionType) {
+  changeAction = (action: SaveActionType) => {
     this.setState({ action });
-  }
+  };
 
   onHide() {
     this.props.dispatch(setSaveChartModalVisibility(false));
@@ -175,16 +169,8 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     return searchParams;
   };
 
-  async saveOrOverwrite(gotodash: boolean) {
+  saveOrOverwrite = async (gotodash: boolean) => {
     this.setState({ isLoading: true });
-
-    //  Create or retrieve dashboard
-    type DashboardGetResponse = {
-      id: number;
-      url: string;
-      dashboard_title: string;
-    };
-
     try {
       if (this.props.datasource?.type === DatasourceType.Query) {
         const { schema, sql, database } = this.props.datasource;
@@ -199,7 +185,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
         });
       }
 
-      //  Get chart dashboards
+      // 获取图表对应的 dashboards
       let sliceDashboards: number[] = [];
       if (this.props.slice && this.state.action === 'overwrite') {
         sliceDashboards = await this.props.actions.getSliceDashboards(
@@ -235,10 +221,10 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
         }
       }
 
-      // Sets the form data
+      // 更新表单数据
       this.props.actions.setFormData({ ...formData });
 
-      //  Update or create slice
+      // 更新或创建切片
       let value: { id: number };
       if (this.state.action === 'overwrite') {
         value = await this.props.actions.updateSlice(
@@ -247,9 +233,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           sliceDashboards,
           dashboard
             ? {
-                title: dashboard.dashboard_title,
-                new: this.isNewDashboard(),
-              }
+              title: dashboard.dashboard_title,
+              new: this.isNewDashboard(),
+            }
             : null,
         );
       } else {
@@ -258,13 +244,14 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           sliceDashboards,
           dashboard
             ? {
-                title: dashboard.dashboard_title,
-                new: this.isNewDashboard(),
-              }
+              title: dashboard.dashboard_title,
+              new: this.isNewDashboard(),
+            }
             : null,
         );
       }
 
+      // 保存或跳转至新创建的 dashboard 页面
       try {
         if (dashboard) {
           sessionStorage.setItem(SK_DASHBOARD_ID, `${dashboard.id}`);
@@ -275,7 +262,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
         // continue regardless of error
       }
 
-      // Go to new dashboard url
+      // Go to new dashboard URL
       if (gotodash && dashboard) {
         this.props.history.push(dashboard.url);
         return;
@@ -284,14 +271,23 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
       const searchParams = this.handleRedirect(window.location.search, value);
       this.props.history.replace(`/explore/?${searchParams.toString()}`);
 
-      this.setState({ isLoading: false });
-      this.onHide();
+    } catch (error) {
+      // 打印完整的错误对象以查看具体结构
+      console.log('Save chart error:', error);
+
+      if (error?.response?.status === 403) {
+        // 显示权限错误提示
+        this.props.addDangerToast(t('You do not have permission to edit this chart'));
+        // 切换到 Save as 模式
+        this.setState({ action: 'saveas' });
+      }
+      this.props.addDangerToast(t('你没有编辑该图表的权限！'));
     } finally {
       this.setState({ isLoading: false });
     }
-  }
+  };
 
-  loadDashboard = async (id: number) => {
+  loadDashboard = async (id: number): Promise<Dashboard> => {
     const response = await SupersetClient.get({
       endpoint: `/api/v1/dashboard/${id}`,
     });
@@ -334,27 +330,28 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
   };
 
   renderSaveChartModal = () => {
-    const info = this.info();
+    console.log('renderSaveChartModal called with state:', this.state);
+
     return (
       <Form data-test="save-modal-body" layout="vertical">
         <FormItem data-test="radio-group">
-          <Radio
-            id="overwrite-radio"
-            disabled={!this.canOverwriteSlice()}
-            checked={this.state.action === 'overwrite'}
-            onChange={() => this.changeAction('overwrite')}
-            data-test="save-overwrite-radio"
+          <Radio.Group
+            value={this.state.action}
+            onChange={e => this.changeAction(e.target.value)}
           >
-            {t('Save (Overwrite)')}
-          </Radio>
-          <Radio
-            id="saveas-radio"
-            data-test="saveas-radio"
-            checked={this.state.action === 'saveas'}
-            onChange={() => this.changeAction('saveas')}
-          >
-            {t('Save as...')}
-          </Radio>
+            <Radio
+              value="overwrite"
+              data-test="save-overwrite-radio"
+            >
+              {t('Save (Overwrite)')}
+            </Radio>
+            <Radio
+              value="saveas"
+              data-test="saveas-radio"
+            >
+              {t('Save as...')}
+            </Radio>
+          </Radio.Group>
         </FormItem>
         <hr />
         <FormItem label={t('Chart name')} required>
@@ -409,10 +406,10 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
             />
           </FormItem>
         )}
-        {info && <Alert type="info" message={info} closable={false} />}
+        {this.info() && <Alert type="info" message={this.info()} closable={false} />}
         {this.props.alert && (
           <Alert
-            css={{ marginTop: info ? 16 : undefined }}
+            css={{ marginTop: this.info() ? 16 : undefined }}
             type="warning"
             message={this.props.alert}
             closable={false}
@@ -482,6 +479,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
   );
 
   render() {
+    const { isLoading } = this.state;
     return (
       <StyledModal
         show={this.props.isVisible}
@@ -489,7 +487,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
         title={t('Save chart')}
         footer={this.renderFooter()}
       >
-        {this.state.isLoading ? (
+        {isLoading ? (
           <div
             css={css`
               display: flex;
@@ -513,6 +511,7 @@ interface StateProps {
   dashboards: any;
   alert: any;
   isVisible: boolean;
+  persistedPermissions: any;
 }
 
 function mapStateToProps({
@@ -527,6 +526,7 @@ function mapStateToProps({
     dashboards: saveModal.dashboards,
     alert: saveModal.saveModalAlert,
     isVisible: saveModal.isVisible,
+    persistedPermissions: saveModal.chartPermissions,
   };
 }
 

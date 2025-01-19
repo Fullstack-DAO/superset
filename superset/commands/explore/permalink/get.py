@@ -42,6 +42,7 @@ class GetExplorePermalinkCommand(BaseExplorePermalinkCommand):
 
     def run(self) -> Optional[ExplorePermalinkValue]:
         self.validate()
+        logger.info(f"GetExplorePermalinkCommand's the request comes here...")
         try:
             key = decode_permalink_id(self.key, salt=self.salt)
             value: Optional[ExplorePermalinkValue] = GetKeyValueCommand(

@@ -43,7 +43,7 @@ from superset.charts.schemas import (
     screenshot_query_schema,
     thumbnail_query_schema,
 )
-from superset.charts.permissions import ChartPermissions
+from superset.charts.permissions import ChartPermissions, get_current_user_role_id
 from superset.commands.chart.create import CreateChartCommand
 from superset.commands.chart.delete import DeleteChartCommand
 from superset.commands.chart.exceptions import (
@@ -116,6 +116,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "get_access_info",
         "add_collaborator",
         "modify_permissions",
+        "get_permissions",
     }
     class_permission_name = "Chart"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
@@ -1602,7 +1603,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         logger.debug(f"获取到的权限信息: {filtered_permissions}")
 
         res = {"permissions": filtered_permissions,
-                                        "global_permissions": global_permissions}
+               "global_permissions": global_permissions}
         # 返回 JSON 响应
         return self.response(200, **res)
 
@@ -1686,6 +1687,19 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         return self.get_headless(pk, **kwargs)
 
+    @expose('/<int:chart_id>/permissions', methods=['GET'])
+    @safe
+    def get_permissions(self, chart_id):
+        user_id = get_current_user_object().id  # 假设你有用户认证机制，可以获取当前登录用户的 ID
+        # 获取当前登录用户的角色 ID
+        role_id = get_current_user_role_id()  # 假设你有角色相关的字段
+
+        return ChartPermissions.get_chart_permissions(
+            chart_id,
+            user_id=user_id,
+            role_id=role_id
+        )
+
     def get_headless(self, pk: int, **kwargs: Any) -> Response:
         """
         获取图表的详细信息，并进行权限检查。
@@ -1696,9 +1710,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         """
         try:
             # 获取图表对象
-            chart = self.datamodel.get(
-                pk,
-            )
+            chart = self.datamodel.get(pk)
             if not chart:
                 logger.warning(f"图表 ID {pk} 未找到。")
                 return self.response_404()
@@ -1713,26 +1725,31 @@ class ChartRestApi(BaseSupersetModelRestApi):
             role_ids = [role.id for role in user.roles] if user.roles else []
 
             # 使用 ChartPermissions 类进行权限检查
-            has_permission = ChartPermissions.has_can_edit_permission(user_id, role_ids, pk)
+            has_permission = ChartPermissions.has_can_edit_permission(user_id, role_ids,
+                                                                      pk)
 
             # 权限检查：如果没有 can_edit 权限，则返回 403
             if not has_permission:
-                logger.warning(f"用户 ID {user_id} 对图表 ID {pk} 不拥有 can_edit 权限，拒绝访问。")
-                return self.response_403(message="权限拒绝。")
+                logger.warning(
+                    f"用户 ID {user_id} 对图表 ID {pk} 不拥有 can_edit 权限，拒绝访问。")
+                # 使用 make_response 返回 403 错误
+                response = jsonify({"message": "你没有该图表的编辑权限。"})
+                return make_response(response, 403)
 
             # 构建响应数据
             response = {}
             args = kwargs.get("q", {})
             select_cols = args.get("show_columns", [])
-            pruned_select_cols = [col for col in select_cols if col in self.show_columns]
+            pruned_select_cols = [col for col in select_cols if
+                                  col in self.show_columns]
 
             # 设置响应的键映射
-            self.set_response_key_mappings(
-                response, self.get, args, **{"show_columns": pruned_select_cols}
-            )
+            self.set_response_key_mappings(response, self.get, args,
+                                           **{"show_columns": pruned_select_cols})
 
             if pruned_select_cols:
-                show_model_schema = self.model2schemaconverter.convert(pruned_select_cols)
+                show_model_schema = self.model2schemaconverter.convert(
+                    pruned_select_cols)
             else:
                 show_model_schema = self.show_model_schema
 
@@ -1741,10 +1758,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
             self.pre_get(response)
 
             return self.response(200, **response)
+
         except SupersetException as e:
             logger.error(f"获取图表时出错: {e}")
             return self.response_500(message="服务器内部错误。")
         except Exception as e:
             logger.exception(f"未知错误: {e}")
             return self.response_500(message="服务器内部错误。")
-

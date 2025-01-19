@@ -18,7 +18,6 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import PropTypes from 'prop-types';
 import { Tooltip } from 'src/components/Tooltip';
 import {
@@ -38,7 +37,9 @@ import { sliceUpdated } from 'src/explore/actions/exploreActions';
 import { PageHeaderWithActions } from 'src/components/PageHeaderWithActions';
 import MetadataBar, { MetadataType } from 'src/components/MetadataBar';
 import { setSaveChartModalVisibility } from 'src/explore/actions/saveModalActions';
-import { useExploreAdditionalActionsMenu } from '../useExploreAdditionalActionsMenu';
+import { useExploreAdditionalActionsMenu } from 'src/explore/components/useExploreAdditionalActionsMenu';
+import { useDispatch, useSelector } from 'react-redux'; // 添加 useSelector
+import SaveModal from 'src/explore/components/SaveModal';
 
 const propTypes = {
   actions: PropTypes.object.isRequired,
@@ -54,6 +55,22 @@ const propTypes = {
   timeout: PropTypes.number,
   chart: chartPropShape,
   saveDisabled: PropTypes.bool,
+  // 添加新的属性
+  datasource: PropTypes.object,
+  addDangerToast: PropTypes.func.isRequired,
+  isPropertiesModalOpen: PropTypes.bool.isRequired,
+  closePropertiesModal: PropTypes.func.isRequired,
+  updateSlice: PropTypes.func.isRequired,
+};
+
+// 默认属性
+const defaultProps = {
+  dashboardId: null,
+  slice: null,
+  sliceName: null,
+  table_name: null,
+  datasource: null,
+  saveDisabled: false,
 };
 
 const saveButtonStyles = theme => css`
@@ -84,13 +101,19 @@ export const ExploreChartHeader = ({
   canDownload,
   isStarred,
   sliceName,
+  datasource,
   saveDisabled,
   metadata,
+  addDangerToast,
 }) => {
   const dispatch = useDispatch();
   const { latestQueryFormData, sliceFormData } = chart;
   const [isPropertiesModalOpen, setIsPropertiesModalOpen] = useState(false);
-
+  const [chartPermissions, setChartPermissions] = useState(null);
+  // 从 Redux store 获取 saveChartModalVisible 状态
+  const saveChartModalVisible = useSelector(
+    state => state.explore.saveModalVisible,
+  );
   const updateCategoricalNamespace = async () => {
     const { dashboards } = metadata || {};
     const dashboard =
@@ -141,9 +164,77 @@ export const ExploreChartHeader = ({
     setIsPropertiesModalOpen(false);
   };
 
-  const showModal = useCallback(() => {
-    dispatch(setSaveChartModalVisibility(true));
-  }, [dispatch]);
+  useEffect(() => {
+    // 在权限更新后检查 canOverwriteSlice
+    console.log(
+      'Checking canOverwriteSlice after permissions update:',
+      chartPermissions,
+    );
+  }, [chartPermissions]); // 当 chartPermissions 更新时触发
+
+  const fetchChartPermissions = async chartId => {
+    try {
+      console.log('Fetching chart permissions for chart:', chartId);
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/chart/${chartId}/permissions`,
+      });
+      console.log('Raw API response:', response);
+
+      // 确保状态被正确更新
+      const permissions = response.json.result;
+      setChartPermissions(permissions); // 更新状态
+
+      // 返回完整的 response.json
+      return response.json;
+    } catch (error) {
+      console.error('Failed to fetch chart permissions:', error);
+      addDangerToast(t('Failed to fetch chart permissions'));
+      return null;
+    }
+  };
+
+  const handleSaveClick = useCallback(async () => {
+    try {
+      const chartId = slice?.slice_id;
+      let permissions = null;
+
+      if (chartId) {
+        const response = await fetchChartPermissions(chartId);
+        if (response?.result) {
+          permissions = response.result;
+        }
+      }
+
+      // 判断权限中是否包含 'can_edit'
+      const hasEditPermission =
+        permissions?.user_permissions.includes('can_edit') ||
+        permissions?.role_permissions.some(role =>
+          role.permissions.includes('can_edit'),
+        );
+
+      // 更新 chartPermissions 状态
+      setChartPermissions(
+        permissions || { user_permissions: [], role_permissions: [] },
+      );
+
+      // 显示保存模态框
+      dispatch(setSaveChartModalVisibility(true));
+
+      // 通过 dispatch 更新 Redux 中的 saveDisabled 状态
+      dispatch({
+        type: 'SET_SAVE_DISABLED',
+        saveDisabled: !hasEditPermission, // 如果没有 can_edit 权限，则禁用保存按钮
+      });
+    } catch (error) {
+      console.error('Error in handleSaveClick:', error);
+      addDangerToast(t('An error occurred while setting up the save dialog'));
+    }
+  }, [slice, dispatch, fetchChartPermissions, addDangerToast]);
+
+  // 监听权限变化
+  useEffect(() => {
+    console.log('Chart permissions state updated:', chartPermissions);
+  }, [chartPermissions]);
 
   const updateSlice = useCallback(
     slice => {
@@ -266,17 +357,16 @@ export const ExploreChartHeader = ({
                 : null
             }
           >
-            {/* needed to wrap button in a div - antd tooltip doesn't work with disabled button */}
             <div>
               <Button
                 buttonStyle="secondary"
-                onClick={showModal}
+                onClick={handleSaveClick}
                 disabled={saveDisabled}
                 data-test="query-save-button"
                 css={saveButtonStyles}
               >
                 <Icons.SaveOutlined iconSize="l" />
-                {t('Save')}
+                {t('SAVE')}
               </Button>
             </div>
           </Tooltip>
@@ -295,10 +385,24 @@ export const ExploreChartHeader = ({
           slice={slice}
         />
       )}
+      <SaveModal
+        isVisible={saveChartModalVisible}
+        onHide={() => {
+          dispatch(setSaveChartModalVisibility(false));
+          // 重置权限状态
+          setChartPermissions(null);
+        }}
+        addDangerToast={addDangerToast}
+        sliceName={sliceName}
+        datasource={datasource}
+        slice={slice}
+        chartPermissions={chartPermissions}
+      />
     </>
   );
 };
 
 ExploreChartHeader.propTypes = propTypes;
+ExploreChartHeader.defaultProps = defaultProps;
 
 export default ExploreChartHeader;

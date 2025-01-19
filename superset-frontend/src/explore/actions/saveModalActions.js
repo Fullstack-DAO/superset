@@ -37,6 +37,7 @@ export function fetchDashboardsFailed(userId) {
 
 export const SET_SAVE_CHART_MODAL_VISIBILITY =
   'SET_SAVE_CHART_MODAL_VISIBILITY';
+
 export function setSaveChartModalVisibility(isVisible) {
   return { type: SET_SAVE_CHART_MODAL_VISIBILITY, isVisible };
 }
@@ -139,11 +140,9 @@ export const getSlicePayload = (
 const addToasts = (isNewSlice, sliceName, addedToDashboard) => {
   const toasts = [];
   if (isNewSlice) {
-    toasts.push(addSuccessToast(t('Chart [%s] has been saved', sliceName)));
+    toasts.push(addSuccessToast(t('Chart [%s] 已保存', sliceName)));
   } else {
-    toasts.push(
-      addSuccessToast(t('Chart [%s] has been overwritten', sliceName)),
-    );
+    toasts.push(addSuccessToast(t('Chart [%s] 已覆盖', sliceName)));
   }
 
   if (addedToDashboard) {

@@ -105,7 +105,7 @@ class ExploreRestApi(BaseSupersetApi):
               $ref: '#/components/responses/500'
         """
         try:
-            logger.info(f"the request is coming...")
+            logger.debug(f"the request is coming...")
             params = CommandParameters(
                 actor=g.user,
                 permalink_key=request.args.get("permalink_key", type=str),

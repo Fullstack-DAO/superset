@@ -1,6 +1,7 @@
 import logging
 from typing import Optional, Any
 
+from flask import jsonify
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 from superset.connectors.sqla.models import SqlaTable
@@ -1311,3 +1312,61 @@ class ChartPermissions:
             db.session.rollback()
             logger.error(f"批量删除权限时发生异常: {e}", exc_info=True)
             return 0, 0
+
+    @staticmethod
+    def get_chart_permissions(chart_id, user_id=None, role_id=None):
+        # 查询用户权限
+        user_permissions_query = (
+            db.session.query(UserPermission)
+            .filter(UserPermission.resource_type == 'chart',
+                    UserPermission.resource_id == chart_id)
+        )
+
+        if user_id:
+            user_permissions_query = user_permissions_query.filter(UserPermission.user_id == user_id)
+
+        user_permissions = user_permissions_query.first()
+
+        # 查询角色权限
+        role_permissions_query = (
+            db.session.query(RolePermission)
+            .filter(RolePermission.resource_type == 'chart',
+                    RolePermission.resource_id == chart_id)
+        )
+
+        if role_id:
+            role_permissions_query = role_permissions_query.filter(RolePermission.role_id == role_id)
+
+        role_permissions = role_permissions_query.first()
+
+        # 构建结果
+        result = {
+            "result": {
+                "user_permissions": [],
+                "role_permissions": []
+            }
+        }
+
+        # 如果存在用户权限，检查并添加相应的权限
+        if user_permissions:
+            if user_permissions.can_read:
+                result["result"]["user_permissions"].append("can_read")
+            if user_permissions.can_edit:
+                result["result"]["user_permissions"].append("can_edit")
+            if user_permissions.can_add:
+                result["result"]["user_permissions"].append("can_add")
+            if user_permissions.can_delete:
+                result["result"]["user_permissions"].append("can_delete")
+
+        # 如果存在角色权限，检查并添加相应的权限
+        if role_permissions:
+            if role_permissions.can_read:
+                result["result"]["role_permissions"].append("can_read")
+            if role_permissions.can_edit:
+                result["result"]["role_permissions"].append("can_edit")
+            if role_permissions.can_add:
+                result["result"]["role_permissions"].append("can_add")
+            if role_permissions.can_delete:
+                result["result"]["role_permissions"].append("can_delete")
+
+        return jsonify(result)

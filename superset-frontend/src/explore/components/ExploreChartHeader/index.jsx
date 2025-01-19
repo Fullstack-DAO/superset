@@ -164,30 +164,15 @@ export const ExploreChartHeader = ({
     setIsPropertiesModalOpen(false);
   };
 
-  useEffect(() => {
-    // 在权限更新后检查 canOverwriteSlice
-    console.log(
-      'Checking canOverwriteSlice after permissions update:',
-      chartPermissions,
-    );
-  }, [chartPermissions]); // 当 chartPermissions 更新时触发
-
   const fetchChartPermissions = async chartId => {
     try {
-      console.log('Fetching chart permissions for chart:', chartId);
       const response = await SupersetClient.get({
         endpoint: `/api/v1/chart/${chartId}/permissions`,
       });
-      console.log('Raw API response:', response);
-
-      // 确保状态被正确更新
       const permissions = response.json.result;
-      setChartPermissions(permissions); // 更新状态
-
-      // 返回完整的 response.json
+      setChartPermissions(permissions);
       return response.json;
     } catch (error) {
-      console.error('Failed to fetch chart permissions:', error);
       addDangerToast(t('Failed to fetch chart permissions'));
       return null;
     }
@@ -205,36 +190,29 @@ export const ExploreChartHeader = ({
         }
       }
 
-      // 判断权限中是否包含 'can_edit'
       const hasEditPermission =
         permissions?.user_permissions.includes('can_edit') ||
         permissions?.role_permissions.some(role =>
           role.permissions.includes('can_edit'),
         );
 
-      // 更新 chartPermissions 状态
       setChartPermissions(
         permissions || { user_permissions: [], role_permissions: [] },
       );
 
-      // 显示保存模态框
       dispatch(setSaveChartModalVisibility(true));
 
-      // 通过 dispatch 更新 Redux 中的 saveDisabled 状态
       dispatch({
         type: 'SET_SAVE_DISABLED',
-        saveDisabled: !hasEditPermission, // 如果没有 can_edit 权限，则禁用保存按钮
+        saveDisabled: !hasEditPermission,
       });
     } catch (error) {
-      console.error('Error in handleSaveClick:', error);
       addDangerToast(t('An error occurred while setting up the save dialog'));
     }
   }, [slice, dispatch, fetchChartPermissions, addDangerToast]);
 
-  // 监听权限变化
-  useEffect(() => {
-    console.log('Chart permissions state updated:', chartPermissions);
-  }, [chartPermissions]);
+  // 移除权限变化监听
+  useEffect(() => {}, [chartPermissions]);
 
   const updateSlice = useCallback(
     slice => {

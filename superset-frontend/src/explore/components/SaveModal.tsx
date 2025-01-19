@@ -116,19 +116,6 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     this.onHide = this.onHide.bind(this);
   }
 
-  componentDidMount() {
-    // 不在这里检查权限
-  }
-
-  componentDidUpdate(prevProps: SaveModalProps) {
-    if (prevProps.chartPermissions !== this.props.chartPermissions) {
-      console.log('Chart permissions prop updated:', {
-        from: prevProps.chartPermissions,
-        to: this.props.chartPermissions
-      });
-    }
-  }
-
   // 权限检查：是否具有 can_edit 权限
   canOverwriteSlice = () => Boolean(this.props.persistedPermissions?.canOverwrite);
 
@@ -272,16 +259,10 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
       this.props.history.replace(`/explore/?${searchParams.toString()}`);
 
     } catch (error) {
-      // 打印完整的错误对象以查看具体结构
-      console.log('Save chart error:', error);
-
       if (error?.response?.status === 403) {
-        // 显示权限错误提示
-        this.props.addDangerToast(t('You do not have permission to edit this chart'));
-        // 切换到 Save as 模式
+        this.props.addDangerToast(t('你没有编辑该图表的权限！'));
         this.setState({ action: 'saveas' });
       }
-      this.props.addDangerToast(t('你没有编辑该图表的权限！'));
     } finally {
       this.setState({ isLoading: false });
     }
@@ -329,95 +310,91 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
     };
   };
 
-  renderSaveChartModal = () => {
-    console.log('renderSaveChartModal called with state:', this.state);
-
-    return (
-      <Form data-test="save-modal-body" layout="vertical">
-        <FormItem data-test="radio-group">
-          <Radio.Group
-            value={this.state.action}
-            onChange={e => this.changeAction(e.target.value)}
+  renderSaveChartModal = () => (
+    <Form data-test="save-modal-body" layout="vertical">
+      <FormItem data-test="radio-group">
+        <Radio.Group
+          value={this.state.action}
+          onChange={e => this.changeAction(e.target.value)}
+        >
+          <Radio
+            value="overwrite"
+            data-test="save-overwrite-radio"
           >
-            <Radio
-              value="overwrite"
-              data-test="save-overwrite-radio"
-            >
-              {t('Save (Overwrite)')}
-            </Radio>
-            <Radio
-              value="saveas"
-              data-test="saveas-radio"
-            >
-              {t('Save as...')}
-            </Radio>
-          </Radio.Group>
-        </FormItem>
-        <hr />
-        <FormItem label={t('Chart name')} required>
+            {t('Save (Overwrite)')}
+          </Radio>
+          <Radio
+            value="saveas"
+            data-test="saveas-radio"
+          >
+            {t('Save as...')}
+          </Radio>
+        </Radio.Group>
+      </FormItem>
+      <hr />
+      <FormItem label={t('Chart name')} required>
+        <Input
+          name="new_slice_name"
+          type="text"
+          placeholder="Name"
+          value={this.state.newSliceName}
+          onChange={this.onSliceNameChange}
+          data-test="new-chart-name"
+        />
+      </FormItem>
+      {this.props.datasource?.type === 'query' && (
+        <FormItem label={t('Dataset Name')} required>
+          <InfoTooltipWithTrigger
+            tooltip={t('A reusable dataset will be saved with your chart.')}
+            placement="right"
+          />
           <Input
-            name="new_slice_name"
+            name="dataset_name"
             type="text"
-            placeholder="Name"
-            value={this.state.newSliceName}
-            onChange={this.onSliceNameChange}
-            data-test="new-chart-name"
+            placeholder="Dataset Name"
+            value={this.state.datasetName}
+            onChange={this.handleDatasetNameChange}
+            data-test="new-dataset-name"
           />
         </FormItem>
-        {this.props.datasource?.type === 'query' && (
-          <FormItem label={t('Dataset Name')} required>
-            <InfoTooltipWithTrigger
-              tooltip={t('A reusable dataset will be saved with your chart.')}
-              placement="right"
-            />
-            <Input
-              name="dataset_name"
-              type="text"
-              placeholder="Dataset Name"
-              value={this.state.datasetName}
-              onChange={this.handleDatasetNameChange}
-              data-test="new-dataset-name"
-            />
-          </FormItem>
-        )}
-        {!(
-          isFeatureEnabled(FeatureFlag.DASHBOARD_NATIVE_FILTERS) &&
-          this.state.vizType === 'filter_box'
-        ) && (
-          <FormItem
-            label={t('Add to dashboard')}
-            data-test="save-chart-modal-select-dashboard-form"
-          >
-            <AsyncSelect
-              allowClear
-              allowNewOptions
-              ariaLabel={t('Select a dashboard')}
-              options={this.loadDashboards}
-              onChange={this.onDashboardChange}
-              value={this.state.dashboard}
-              placeholder={
-                <div>
-                  <b>{t('Select')}</b>
-                  {t(' a dashboard OR ')}
-                  <b>{t('create')}</b>
-                  {t(' a new one')}
-                </div>
-              }
-            />
-          </FormItem>
-        )}
-        {this.info() && <Alert type="info" message={this.info()} closable={false} />}
-        {this.props.alert && (
-          <Alert
-            css={{ marginTop: this.info() ? 16 : undefined }}
-            type="warning"
-            message={this.props.alert}
-            closable={false}
+      )}
+      {!(
+        isFeatureEnabled(FeatureFlag.DASHBOARD_NATIVE_FILTERS) &&
+        this.state.vizType === 'filter_box'
+      ) && (
+        <FormItem
+          label={t('Add to dashboard')}
+          data-test="save-chart-modal-select-dashboard-form"
+        >
+          <AsyncSelect
+            allowClear
+            allowNewOptions
+            ariaLabel={t('Select a dashboard')}
+            options={this.loadDashboards}
+            onChange={this.onDashboardChange}
+            value={this.state.dashboard}
+            placeholder={
+              <div>
+                <b>{t('Select')}</b>
+                {t(' a dashboard OR ')}
+                <b>{t('create')}</b>
+                {t(' a new one')}
+              </div>
+            }
           />
-        )}
-      </Form>
-    );
-  };
+        </FormItem>
+      )}
+      {this.info() && <Alert type="info" message={this.info()} closable={false} />}
+      {this.props.alert && (
+        <Alert
+          css={{ marginTop: this.info() ? 16 : undefined }}
+          type="warning"
+          message={this.props.alert}
+          closable={false}
+        />
+      )}
+    </Form>
+  );
 
   info = () => {
     const isNewDashboard = this.isNewDashboard();

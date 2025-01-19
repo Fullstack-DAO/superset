@@ -145,9 +145,14 @@ class ChartDataCommand(BaseCommand):
 
         # 查询 UserPermission
         try:
-            user_permission = db.session.query(UserPermission).filter_by(
-                user_id=user_id, resource_id=slice_id, resource_type="chart"
-            ).one_or_none()
+            if slice_id:
+                user_permission = db.session.query(UserPermission).filter_by(
+                    user_id=user_id, resource_id=slice_id, resource_type="chart"
+                ).one_or_none()
+            elif datasource_id:
+                user_permission = db.session.query(UserPermission).filter_by(
+                    user_id=user_id, datasource_id=datasource_id, resource_type="chart"
+                ).one_or_none()
             if user_permission:
                 logger.info(
                     f"UserPermission found: can_read={user_permission.can_read}, "

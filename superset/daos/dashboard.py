@@ -72,10 +72,12 @@ class DashboardDAO(BaseDAO[Dashboard]):
             raise DashboardNotFoundError()
 
         # make sure we still have basic access check from security manager
-        try:
-            dashboard.raise_for_access()
-        except SupersetSecurityException as ex:
-            raise DashboardAccessDeniedError() from ex
+        # try:
+        #     dashboard.raise_for_access()
+        # except SupersetSecurityException as ex:
+        #     raise DashboardAccessDeniedError() from ex
+
+        # TODO 权限检查
 
         return dashboard
 

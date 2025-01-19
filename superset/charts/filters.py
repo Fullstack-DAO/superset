@@ -90,8 +90,8 @@ class ChartCertifiedFilter(BaseFilter):  # pylint: disable=too-few-public-method
 
 class ChartFilter(BaseFilter):  # pylint: disable=too-few-public-methods
     def apply(self, query: Query, value: Any) -> Query:
-        if security_manager.can_access_all_datasources():
-            return query
+        # if security_manager.can_access_all_datasources():
+        #     return query
 
         table_alias = aliased(SqlaTable)
         query = query.join(table_alias, self.model.datasource_id == table_alias.id)
@@ -121,13 +121,12 @@ class ChartFilter(BaseFilter):  # pylint: disable=too-few-public-methods
             )
         )
         
-        return query.filter(and_(
-            get_dataset_access_filters(self.model),
+        return query.filter(
             or_(
                 self.model.id.in_(user_permission_query),
                 self.model.id.in_(role_permission_query)
             )
-        ))
+        )
 
 
 class ChartHasCreatedByFilter(BaseFilter):  # pylint: disable=too-few-public-methods

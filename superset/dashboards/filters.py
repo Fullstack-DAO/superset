@@ -103,8 +103,8 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
     """
 
     def apply(self, query: Query, value: Any) -> Query:
-        if security_manager.is_admin():
-            return query
+        # if security_manager.is_admin():
+        #     return query
 
         is_rbac_disabled_filter = []
         dashboard_has_roles = Dashboard.roles.any()
@@ -195,11 +195,11 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
 
         query = query.filter(
             or_(
-                Dashboard.id.in_(owner_ids_query),
-                Dashboard.id.in_(datasource_perm_query),
+                # Dashboard.id.in_(owner_ids_query),
+                # Dashboard.id.in_(datasource_perm_query),
                 Dashboard.id.in_(user_permission_query),
                 Dashboard.id.in_(role_permission_query),
-                *feature_flagged_filters,
+                # *feature_flagged_filters,
             )
         )
 

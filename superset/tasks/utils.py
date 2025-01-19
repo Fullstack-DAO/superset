@@ -92,3 +92,12 @@ def get_current_user() -> str | None:
         return user.username
 
     return None
+
+
+def get_current_user_object():
+    user = g.user if hasattr(g, "user") and g.user else None
+    if user and not user.is_anonymous:
+        
+        return user  # 返回用户对象
+
+    return None  # 如果用户是匿名的或不存在，返回 None

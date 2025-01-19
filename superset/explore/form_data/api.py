@@ -20,7 +20,8 @@ from flask import request, Response
 from flask_appbuilder.api import expose, protect, safe
 from marshmallow import ValidationError
 
-from superset.commands.explore.form_data.create import CreateFormDataCommand
+from superset.commands.explore.form_data.create import CreateFormDataCommand, \
+    CreateSpecialFormDataCommand
 from superset.commands.explore.form_data.delete import DeleteFormDataCommand
 from superset.commands.explore.form_data.get import GetFormDataCommand
 from superset.commands.explore.form_data.parameters import CommandParameters
@@ -48,7 +49,7 @@ class ExploreFormDataRestApi(BaseSupersetApi):
     openapi_spec_component_schemas = (FormDataPostSchema, FormDataPutSchema)
 
     @expose("/form_data", methods=("POST",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -102,7 +103,7 @@ class ExploreFormDataRestApi(BaseSupersetApi):
                 tab_id=tab_id,
                 form_data=item["form_data"],
             )
-            key = CreateFormDataCommand(args).run()
+            key = CreateSpecialFormDataCommand(args).run()
             return self.response(201, key=key)
         except ValidationError as ex:
             return self.response(400, message=ex.messages)
@@ -112,7 +113,7 @@ class ExploreFormDataRestApi(BaseSupersetApi):
             return self.response(404, message=str(ex))
 
     @expose("/form_data/<string:key>", methods=("PUT",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -225,6 +226,7 @@ class ExploreFormDataRestApi(BaseSupersetApi):
               $ref: '#/components/responses/500'
         """
         try:
+            logger.info("request comes to ExploreFormDataRestApi")
             args = CommandParameters(key=key)
             form_data = GetFormDataCommand(args).run()
             if not form_data:

@@ -92,6 +92,11 @@ export function saveFaveStar(sliceId: string, isStarred: boolean) {
   };
 }
 
+export const setSaveDisabled = (saveDisabled: any) => ({
+  type: 'SET_SAVE_DISABLED',
+  saveDisabled,
+});
+
 export const SET_FIELD_VALUE = 'SET_FIELD_VALUE';
 export function setControlValue(
   controlName: string,
@@ -165,6 +170,7 @@ export const exploreActions = {
   createNewSlice,
   sliceUpdated,
   setForceQuery,
+  setSaveDisabled,
 };
 
 export type ExploreActions = typeof exploreActions;

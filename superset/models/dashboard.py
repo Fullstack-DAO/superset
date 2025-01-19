@@ -47,15 +47,22 @@ from sqlalchemy.sql.elements import BinaryExpression
 from superset import app, db, is_feature_enabled, security_manager
 from superset.connectors.sqla.models import BaseDatasource, SqlaTable
 from superset.daos.datasource import DatasourceDAO
+from superset.exceptions import SupersetSecurityException
 from superset.extensions import cache_manager
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin
+from superset.models.role_permission import RolePermission
 from superset.models.slice import Slice
 from superset.models.user_attributes import UserAttribute
+from superset.models.user_permission import UserPermission
 from superset.tasks.thumbnails import cache_dashboard_thumbnail
 from superset.tasks.utils import get_current_user
 from superset.thumbnails.digest import get_dashboard_digest
 from superset.utils import core as utils
+from superset.utils.core import get_user_id
 from superset.utils.decorators import debounce
+
+# 确保导入 EmbeddedDashboard
+from superset.models.embedded_dashboard import EmbeddedDashboard  # 添加这一行
 
 metadata = Model.metadata  # pylint: disable=no-member
 config = app.config
@@ -98,7 +105,6 @@ def copy_dashboard(_mapper: Mapper, connection: Connection, target: Dashboard) -
 
 sqla.event.listen(User, "after_insert", copy_dashboard)
 
-
 dashboard_slices = Table(
     "dashboard_slices",
     metadata,
@@ -108,15 +114,14 @@ dashboard_slices = Table(
     UniqueConstraint("dashboard_id", "slice_id"),
 )
 
-
 dashboard_user = Table(
     "dashboard_user",
     metadata,
     Column("id", Integer, primary_key=True),
     Column("user_id", Integer, ForeignKey("ab_user.id", ondelete="CASCADE")),
     Column("dashboard_id", Integer, ForeignKey("dashboards.id", ondelete="CASCADE")),
+    UniqueConstraint("dashboard_id", "user_id"),
 )
-
 
 DashboardRoles = Table(
     "dashboard_roles",
@@ -134,6 +139,7 @@ DashboardRoles = Table(
         ForeignKey("ab_role.id", ondelete="CASCADE"),
         nullable=False,
     ),
+    UniqueConstraint("dashboard_id", "role_id"),
 )
 
 
@@ -159,13 +165,33 @@ class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
         secondary=dashboard_user,
         passive_deletes=True,
     )
+
+    # users = relationship(
+    #     "User",
+    #     secondary=dashboard_user,
+    #     backref="accessible_dashboards",
+    #     cascade="all, delete",
+    # )
+    # # 复杂权限模型关系
+    # user_permissions = relationship(
+    #     "UserPermission",
+    #     primaryjoin="and_(UserPermission.resource_type=='dashboard', "
+    #                 "Dashboard.id==UserPermission.resource_id)",
+    #     cascade="all, delete-orphan",
+    # )
+    # role_permissions = relationship(
+    #     "RolePermission",
+    #     primaryjoin="and_(RolePermission.resource_type=='dashboard', "
+    #                 "Dashboard.id==RolePermission.resource_id)",
+    #     cascade="all, delete-orphan",
+    # )
     tags = relationship(
         "Tag",
         overlaps="objects,tag,tags,tags",
         secondary="tagged_object",
         primaryjoin="and_(Dashboard.id == TaggedObject.object_id)",
         secondaryjoin="and_(TaggedObject.tag_id == Tag.id, "
-        "TaggedObject.object_type == 'dashboard')",
+                      "TaggedObject.object_type == 'dashboard')",
     )
     published = Column(Boolean, default=False)
     is_managed_externally = Column(Boolean, nullable=False, default=False)
@@ -324,7 +350,11 @@ class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
 
     @debounce(0.1)
     def clear_cache(self) -> None:
-        cache_manager.cache.delete_memoized(Dashboard.datasets_trimmed_for_slices, self)
+        # cache_manager.cache.delete_memoized(Dashboard.datasets_trimmed_for_slices,
+        # self) 手动生成缓存键，避免依赖 make_cache_key
+        cache_key = f"dashboard_cache_{self.id}"
+        # 直接删除缓存
+        cache_manager.cache.delete(cache_key)
 
     @classmethod
     @debounce(0.1)
@@ -435,6 +465,41 @@ class Dashboard(AuditMixinNullable, ImportExportMixin, Model):
         """
 
         security_manager.raise_for_access(dashboard=self)
+
+
+def has_permission(self, user, permission_type: str) -> bool:
+    """
+    检查用户是否对仪表盘有指定类型的权限。
+    - permission_type: read, edit, delete
+    """
+    # 1. 检查用户直接关联的权限
+    if permission_type == "read" and user in self.users:
+        return True
+    if permission_type == "edit" and user in self.users:
+        return True
+
+    # 2. 检查用户角色的中间表权限
+    user_roles = {role.id for role in user.roles}
+    if permission_type == "read" and any(
+        role.id in user_roles for role in self.read_roles):
+        return True
+    if permission_type == "edit" and any(
+        role.id in user_roles for role in self.edit_roles):
+        return True
+
+    # 3. 检查 UserPermission 表
+    for perm in self.user_permissions:
+        if perm.user_id == user.id and getattr(perm, f"can_{permission_type}", False):
+            return True
+
+    # 4. 检查 RolePermission 表
+    for role in user.roles:
+        for perm in self.role_permissions:
+            if perm.role_id == role.id and getattr(perm, f"can_{permission_type}",
+                                                   False):
+                return True
+
+    return False
 
 
 def is_uuid(value: str | int) -> bool:

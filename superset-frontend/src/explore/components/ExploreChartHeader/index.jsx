@@ -18,7 +18,6 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import PropTypes from 'prop-types';
 import { Tooltip } from 'src/components/Tooltip';
 import {
@@ -29,7 +28,7 @@ import {
   t,
   tn,
 } from '@superset-ui/core';
-import { chartPropShape } from 'src/dashboard/util/propShapes';
+// import { chartPropShape } from 'src/dashboard/util/propShapes';
 import AlteredSliceTag from 'src/components/AlteredSliceTag';
 import Button from 'src/components/Button';
 import Icons from 'src/components/Icons';
@@ -38,22 +37,40 @@ import { sliceUpdated } from 'src/explore/actions/exploreActions';
 import { PageHeaderWithActions } from 'src/components/PageHeaderWithActions';
 import MetadataBar, { MetadataType } from 'src/components/MetadataBar';
 import { setSaveChartModalVisibility } from 'src/explore/actions/saveModalActions';
-import { useExploreAdditionalActionsMenu } from '../useExploreAdditionalActionsMenu';
+import { useExploreAdditionalActionsMenu } from 'src/explore/components/useExploreAdditionalActionsMenu';
+import { useDispatch, useSelector } from 'react-redux'; // 添加 useSelector
+import SaveModal from 'src/explore/components/SaveModal';
 
 const propTypes = {
-  actions: PropTypes.object.isRequired,
-  canOverwrite: PropTypes.bool.isRequired,
-  canDownload: PropTypes.bool.isRequired,
   dashboardId: PropTypes.number,
-  isStarred: PropTypes.bool.isRequired,
   slice: PropTypes.object,
-  sliceName: PropTypes.string,
-  table_name: PropTypes.string,
+  actions: PropTypes.object.isRequired,
   formData: PropTypes.object,
   ownState: PropTypes.object,
-  timeout: PropTypes.number,
-  chart: chartPropShape,
+  chart: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    latestQueryFormData: PropTypes.object.isRequired,
+    chartStatus: PropTypes.string,
+  }).isRequired,
+  user: PropTypes.object.isRequired,
+  canOverwrite: PropTypes.bool.isRequired,
+  canDownload: PropTypes.bool.isRequired,
+  isStarred: PropTypes.bool.isRequired,
+  sliceName: PropTypes.string,
+  datasource: PropTypes.object,
   saveDisabled: PropTypes.bool,
+  metadata: PropTypes.object,
+  addDangerToast: PropTypes.func,
+};
+
+const defaultProps = {
+  dashboardId: null,
+  formData: {},
+  ownState: {},
+  sliceName: '',
+  datasource: null,
+  saveDisabled: false,
+  addDangerToast: () => {},
 };
 
 const saveButtonStyles = theme => css`
@@ -84,13 +101,19 @@ export const ExploreChartHeader = ({
   canDownload,
   isStarred,
   sliceName,
+  datasource,
   saveDisabled,
   metadata,
+  addDangerToast,
 }) => {
   const dispatch = useDispatch();
   const { latestQueryFormData, sliceFormData } = chart;
   const [isPropertiesModalOpen, setIsPropertiesModalOpen] = useState(false);
-
+  const [chartPermissions, setChartPermissions] = useState(null);
+  // 从 Redux store 获取 saveChartModalVisible 状态
+  const saveChartModalVisible = useSelector(
+    state => state.explore.saveModalVisible,
+  );
   const updateCategoricalNamespace = async () => {
     const { dashboards } = metadata || {};
     const dashboard =
@@ -141,9 +164,55 @@ export const ExploreChartHeader = ({
     setIsPropertiesModalOpen(false);
   };
 
-  const showModal = useCallback(() => {
-    dispatch(setSaveChartModalVisibility(true));
-  }, [dispatch]);
+  const fetchChartPermissions = async chartId => {
+    try {
+      const response = await SupersetClient.get({
+        endpoint: `/api/v1/chart/${chartId}/permissions`,
+      });
+      const permissions = response.json.result;
+      setChartPermissions(permissions);
+      return response.json;
+    } catch (error) {
+      addDangerToast(t('Failed to fetch chart permissions'));
+      return null;
+    }
+  };
+
+  const handleSaveClick = useCallback(async () => {
+    try {
+      const chartId = slice?.slice_id;
+      let permissions = null;
+
+      if (chartId) {
+        const response = await fetchChartPermissions(chartId);
+        if (response?.result) {
+          permissions = response.result;
+        }
+      }
+
+      const hasEditPermission =
+        permissions?.user_permissions.includes('can_edit') ||
+        permissions?.role_permissions.some(role =>
+          role.permissions.includes('can_edit'),
+        );
+
+      setChartPermissions(
+        permissions || { user_permissions: [], role_permissions: [] },
+      );
+
+      dispatch(setSaveChartModalVisibility(true));
+
+      dispatch({
+        type: 'SET_SAVE_DISABLED',
+        saveDisabled: !hasEditPermission,
+      });
+    } catch (error) {
+      addDangerToast(t('An error occurred while setting up the save dialog'));
+    }
+  }, [slice, dispatch, fetchChartPermissions, addDangerToast]);
+
+  // 移除权限变化监听
+  useEffect(() => {}, [chartPermissions]);
 
   const updateSlice = useCallback(
     slice => {
@@ -266,17 +335,16 @@ export const ExploreChartHeader = ({
                 : null
             }
           >
-            {/* needed to wrap button in a div - antd tooltip doesn't work with disabled button */}
             <div>
               <Button
                 buttonStyle="secondary"
-                onClick={showModal}
+                onClick={handleSaveClick}
                 disabled={saveDisabled}
                 data-test="query-save-button"
                 css={saveButtonStyles}
               >
                 <Icons.SaveOutlined iconSize="l" />
-                {t('Save')}
+                {t('SAVE')}
               </Button>
             </div>
           </Tooltip>
@@ -295,10 +363,24 @@ export const ExploreChartHeader = ({
           slice={slice}
         />
       )}
+      <SaveModal
+        isVisible={saveChartModalVisible}
+        onHide={() => {
+          dispatch(setSaveChartModalVisibility(false));
+          // 重置权限状态
+          setChartPermissions(null);
+        }}
+        addDangerToast={addDangerToast}
+        sliceName={sliceName}
+        datasource={datasource}
+        slice={slice}
+        chartPermissions={chartPermissions}
+      />
     </>
   );
 };
 
 ExploreChartHeader.propTypes = propTypes;
+ExploreChartHeader.defaultProps = defaultProps;
 
 export default ExploreChartHeader;

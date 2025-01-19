@@ -40,6 +40,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.mapper import Mapper
 
 from superset import db, is_feature_enabled, security_manager
+# from superset.charts.permissions import ChartPermissions
 from superset.legacy import update_time_range
 from superset.models.helpers import AuditMixinNullable, ImportExportMixin
 from superset.tasks.thumbnails import cache_chart_thumbnail
@@ -61,6 +62,7 @@ slice_user = Table(
     Column("user_id", Integer, ForeignKey("ab_user.id", ondelete="CASCADE")),
     Column("slice_id", Integer, ForeignKey("slices.id", ondelete="CASCADE")),
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +94,14 @@ class Slice(  # pylint: disable=too-many-public-methods
     certification_details = Column(Text)
     is_managed_externally = Column(Boolean, nullable=False, default=False)
     external_url = Column(Text, nullable=True)
+    visibility_scope = Column(String(50), default='owner')  # 可见范围：owner, role, public
+    # 所有者字段
+    created_by_fk = Column(Integer, ForeignKey("ab_user.id"), nullable=True)
+    created_by = relationship("User", foreign_keys=[created_by_fk],
+                              backref="owned_slices")
+    # 在 Slice 模型中
+    changed_by_fk = Column(Integer, ForeignKey('ab_user.id'), nullable=True)
+    changed_by = relationship('User', foreign_keys=[changed_by_fk])
     last_saved_by = relationship(
         security_manager.user_model, foreign_keys=[last_saved_by_fk]
     )
@@ -106,14 +116,14 @@ class Slice(  # pylint: disable=too-many-public-methods
         overlaps="objects,tag,tags",
         primaryjoin="and_(Slice.id == TaggedObject.object_id)",
         secondaryjoin="and_(TaggedObject.tag_id == Tag.id, "
-        "TaggedObject.object_type == 'chart')",
+                      "TaggedObject.object_type == 'chart')",
     )
     table = relationship(
         "SqlaTable",
         foreign_keys=[datasource_id],
         overlaps="table",
         primaryjoin="and_(Slice.datasource_id == SqlaTable.id, "
-        "Slice.datasource_type == 'table')",
+                    "Slice.datasource_type == 'table')",
         remote_side="SqlaTable.id",
         lazy="subquery",
     )
@@ -366,15 +376,6 @@ class Slice(  # pylint: disable=too-many-public-methods
         return qry.one_or_none()
 
 
-def set_related_perm(_mapper: Mapper, _connection: Connection, target: Slice) -> None:
-    src_class = target.cls_model
-    if id_ := target.datasource_id:
-        ds = db.session.query(src_class).filter_by(id=int(id_)).first()
-        if ds:
-            target.perm = ds.perm
-            target.schema_perm = ds.schema_perm
-
-
 def event_after_chart_changed(
     _mapper: Mapper, _connection: Connection, target: Slice
 ) -> None:
@@ -382,6 +383,56 @@ def event_after_chart_changed(
         current_user=get_current_user(),
         chart_id=target.id,
         force=True,
+    )
+
+
+# def has_permission(self, user, permission_type: str) -> bool:
+#     """
+#     检查用户是否对当前 Slice（图表）有指定权限。
+#
+#     :param user: 当前用户对象
+#     :param permission_type: 权限类型（read, edit, delete, add 等）
+#     :return: 是否有权限
+#     """
+#     # 直接调用 ChartPermissions 的 has_permission 方法
+#     return ChartPermissions.has_permission(chart_id=self.id, user=user,
+#                                            permission_type=permission_type)
+
+
+# 设置相关权限
+def set_related_perm(_mapper, _connection, target: Slice) -> None:
+    """
+    自动设置与 Slice（图表）相关的权限字段（perm 和 schema_perm）。
+    此方法会在插入或更新 Slice 时触发。
+
+    :param _mapper: SQLAlchemy 的 Mapper 对象
+    :param _connection: SQLAlchemy 的 Connection 对象
+    :param target: 当前处理的 Slice（图表）对象
+    """
+    # 获取数据源的类和 ID
+    src_class = target.cls_model  # 数据源的类，例如 SqlaTable
+    datasource_id = target.datasource_id
+
+    if not datasource_id:
+        logger.warning("Slice ID %s has no associated datasource.", target.id)
+        return
+
+    # 查询数据源对象
+    datasource = db.session.query(src_class).filter_by(id=datasource_id).one_or_none()
+    if not datasource:
+        logger.warning(
+            "Datasource with ID %s not found for Slice ID %s",
+            datasource_id, target.id
+        )
+        return
+
+    # 设置权限字段
+    target.perm = datasource.perm  # 数据源的权限
+    target.schema_perm = datasource.schema_perm  # 数据源的 Schema 权限
+
+    logger.info(
+        "Set permission fields for Slice ID %s: perm=%s, schema_perm=%s",
+        target.id, target.perm, target.schema_perm
     )
 
 

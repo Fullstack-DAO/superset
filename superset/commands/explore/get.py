@@ -62,21 +62,25 @@ class GetExploreCommand(BaseCommand, ABC):
     # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def run(self) -> Optional[dict[str, Any]]:
         initial_form_data = {}
-
+        logger.debug(f"GetExploreCommand comes here...")
         if self._permalink_key is not None:
             command = GetExplorePermalinkCommand(self._permalink_key)
             permalink_value = command.run()
             if not permalink_value:
                 raise ExplorePermalinkGetFailedError()
             state = permalink_value["state"]
+
             initial_form_data = state["formData"]
             url_params = state.get("urlParams")
             if url_params:
                 initial_form_data["url_params"] = dict(url_params)
+            logger.debug(f"GetExploreCommand's initial_form_data: {initial_form_data}")
         elif self._form_data_key:
+            logger.info(f"GetExploreCommand's self._form_data_key: {self._form_data_key}")
             parameters = FormDataCommandParameters(key=self._form_data_key)
             value = GetFormDataCommand(parameters).run()
             initial_form_data = json.loads(value) if value else {}
+            logger.info(f"GetExploreCommand's initial_form_data2: {initial_form_data}")
 
         message = None
 
@@ -124,7 +128,7 @@ class GetExploreCommand(BaseCommand, ABC):
         form_data["datasource"] = (
             str(self._datasource_id) + "__" + cast(str, self._datasource_type)
         )
-
+        logger.debug(f"GetExploreCommand's form_data: {form_data}")
         # On explore, merge legacy/extra filters and URL params into the form data
         utils.convert_legacy_filters_into_adhoc(form_data)
         utils.merge_extra_filters(form_data)
@@ -162,7 +166,7 @@ class GetExploreCommand(BaseCommand, ABC):
                 metadata["created_by"] = slc.created_by.get_full_name()
             if slc.changed_by:
                 metadata["changed_by"] = slc.changed_by.get_full_name()
-
+        logger.debug(f"GetExploreCommand's slc: {slc}")
         return {
             "dataset": sanitize_datasource_data(datasource_data),
             "form_data": form_data,

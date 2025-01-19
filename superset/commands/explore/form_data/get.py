@@ -24,7 +24,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from superset.commands.base import BaseCommand
 from superset.commands.explore.form_data.parameters import CommandParameters
 from superset.commands.explore.form_data.state import TemporaryExploreState
-from superset.commands.explore.form_data.utils import check_access
+from superset.commands.explore.form_data.utils import check_access, check_special_access
 from superset.commands.temporary_cache.exceptions import TemporaryCacheGetFailedError
 from superset.extensions import cache_manager
 from superset.utils.core import DatasourceType
@@ -39,16 +39,16 @@ class GetFormDataCommand(BaseCommand, ABC):
         self._refresh_timeout = config.get("REFRESH_TIMEOUT_ON_RETRIEVAL")
 
     def run(self) -> Optional[str]:
+        logger.debug(f"GetFormDataCommand's the request comes here")
         try:
             key = self._cmd_params.key
             state: TemporaryExploreState = cache_manager.explore_form_data_cache.get(
                 key
             )
             if state:
-                check_access(
+                check_special_access(
                     state["datasource_id"],
                     state["chart_id"],
-                    DatasourceType(state["datasource_type"]),
                 )
                 if self._refresh_timeout:
                     cache_manager.explore_form_data_cache.set(key, state)

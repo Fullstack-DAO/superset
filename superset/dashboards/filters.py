@@ -27,7 +27,9 @@ from superset.connectors.sqla.models import SqlaTable
 from superset.models.core import Database
 from superset.models.dashboard import Dashboard, is_uuid
 from superset.models.embedded_dashboard import EmbeddedDashboard
+from superset.models.role_permission import RolePermission
 from superset.models.slice import Slice
+from superset.models.user_permission import UserPermission
 from superset.security.guest_token import GuestTokenResourceType, GuestUser
 from superset.utils.core import get_user_id
 from superset.utils.filters import get_dataset_access_filters
@@ -106,6 +108,8 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
 
         is_rbac_disabled_filter = []
         dashboard_has_roles = Dashboard.roles.any()
+        user_id = get_user_id()
+        user_roles = [role.id for role in security_manager.get_user_roles()]
         if is_feature_enabled("DASHBOARD_RBAC"):
             is_rbac_disabled_filter.append(~dashboard_has_roles)
 
@@ -129,7 +133,7 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
         owner_ids_query = (
             db.session.query(Dashboard.id)
             .join(Dashboard.owners)
-            .filter(security_manager.user_model.id == get_user_id())
+            .filter(security_manager.user_model.id == user_id)
         )
 
         feature_flagged_filters = []
@@ -169,10 +173,32 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
 
             feature_flagged_filters.append(condition)
 
+        # 获取通过 UserPermission 访问的仪表盘
+        user_permission_query = (
+            db.session.query(UserPermission.resource_id)
+            .filter(
+                UserPermission.resource_type == "dashboard",
+                UserPermission.can_read == True,
+                UserPermission.user_id == user_id,
+            )
+        )
+
+        # 获取通过 RolePermission 访问的仪表盘
+        role_permission_query = (
+            db.session.query(RolePermission.resource_id)
+            .filter(
+                RolePermission.resource_type == "dashboard",
+                RolePermission.can_read == True,
+                RolePermission.role_id.in_(user_roles),
+            )
+        )
+
         query = query.filter(
             or_(
                 Dashboard.id.in_(owner_ids_query),
                 Dashboard.id.in_(datasource_perm_query),
+                Dashboard.id.in_(user_permission_query),
+                Dashboard.id.in_(role_permission_query),
                 *feature_flagged_filters,
             )
         )

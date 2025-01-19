@@ -20,6 +20,7 @@ from typing import Optional
 from flask_babel import lazy_gettext as _
 
 from superset import security_manager
+from superset.charts.permissions import ChartPermissions
 from superset.commands.base import BaseCommand
 from superset.commands.chart.exceptions import (
     ChartDeleteFailedError,
@@ -51,6 +52,13 @@ class DeleteChartCommand(BaseCommand):
 
         try:
             ChartDAO.delete(self._models)
+            resource_type = 'chart'
+            logger.info(f"begin to bulk delete the char_ids "
+                        f"in UserPermissions and RolePermissions")
+            ChartPermissions.delete_permissions_by_resource_ids(
+                self._model_ids,
+                resource_type=resource_type
+            )
         except DAODeleteFailedError as ex:
             logger.exception(ex.exception)
             raise ChartDeleteFailedError() from ex
@@ -58,6 +66,8 @@ class DeleteChartCommand(BaseCommand):
     def validate(self) -> None:
         # Validate/populate model exists
         self._models = ChartDAO.find_by_ids(self._model_ids)
+        logger.info(f"DeleteChartCommand's self._models: {self._models}")
+        logger.info(f"DeleteChartCommand's self._model_ids: {self._model_ids}")
         if not self._models or len(self._models) != len(self._model_ids):
             raise ChartNotFoundError()
         # Check there are no associated ReportSchedules
@@ -70,7 +80,9 @@ class DeleteChartCommand(BaseCommand):
                 ))
         # Check ownership
         for model in self._models:
+            logger.info(f"DeleteChartCommand's request comes")
             try:
                 security_manager.raise_for_ownership(model)
             except SupersetSecurityException as ex:
+
                 raise ChartForbiddenError() from ex

@@ -71,7 +71,12 @@ export default function DndSelectLabel({
     }),
   });
 
-  const values = useMemo(() => valuesRenderer(), [valuesRenderer]);
+  const values = useMemo(
+    () =>
+      // Ensure valuesRenderer provides unique keys
+      React.Children.toArray(valuesRenderer()),
+    [valuesRenderer],
+  );
 
   function renderGhostButton() {
     return (

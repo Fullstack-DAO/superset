@@ -29,6 +29,7 @@ from flask_login import AnonymousUserMixin, login_user
 
 from superset import db, event_logger, is_feature_enabled, security_manager
 from superset.constants import MODEL_VIEW_RW_METHOD_PERMISSION_MAP, RouteMethod
+from superset.dashboards.permissions import DashboardPermissions
 from superset.models.dashboard import Dashboard as DashboardModel
 from superset.superset_typing import FlaskResponse
 from superset.utils import core as utils
@@ -122,6 +123,15 @@ class Dashboard(BaseSupersetView):
         )
         db.session.add(new_dashboard)
         db.session.commit()
+        
+        # 设置默认权限，将当前用户设为创建者
+        DashboardPermissions.set_default_permissions(
+            dashboard=new_dashboard,
+            user=g.user,
+            permissions=["can_read", "can_edit", "can_add", "can_delete"],
+            is_creator=True
+        )
+        
         return redirect(f"/superset/dashboard/{new_dashboard.id}/?edit=true")
 
     @expose("/<dashboard_id_or_slug>/embedded")

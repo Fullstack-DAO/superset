@@ -20,7 +20,7 @@ from sqlalchemy.orm.query import Query
 
 from superset.connectors.sqla.models import SqlaTable
 from superset.views.base import BaseFilter
-
+from superset.charts.permissions import ChartPermissions  # 假设你有一个权限模块
 
 class DatasetIsNullOrEmptyFilter(BaseFilter):  # pylint: disable=too-few-public-methods
     name = _("Null or Empty")

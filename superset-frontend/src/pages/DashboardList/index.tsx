@@ -24,7 +24,7 @@ import {
   t,
 } from '@superset-ui/core';
 import { useSelector } from 'react-redux';
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import rison from 'rison';
 import {
@@ -131,6 +131,7 @@ function DashboardList(props: DashboardListProps) {
     fetchData,
     toggleBulkSelect,
     refreshData,
+    getResourcePermissions,
   } = useListViewResource<Dashboard>(
     'dashboard',
     t('dashboard'),
@@ -163,24 +164,37 @@ function DashboardList(props: DashboardListProps) {
     setSSHTunnelPrivateKeyPasswordFields,
   ] = useState<string[]>([]);
 
-  const openDashboardImportModal = () => {
-    showImportModal(true);
-  };
+  const [globalPermissions, setGlobalPermissions] = useState<{
+    can_write: boolean;
+  }>({
+    can_write: false,
+  });
 
-  const closeDashboardImportModal = () => {
-    showImportModal(false);
-  };
+  const userKey = user?.userId
+    ? dangerouslyGetItemDoNotUse(user.userId.toString(), {
+        thumbnails: isFeatureEnabled(FeatureFlag.THUMBNAILS),
+      })
+    : null;
 
-  const handleDashboardImport = () => {
-    showImportModal(false);
-    refreshData();
-    addSuccessToast(t('Dashboard imported'));
-  };
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const response = await SupersetClient.get({
+          endpoint: `/api/v1/dashboard/_info`,
+        });
+        if (response?.json?.global_permissions) {
+          setGlobalPermissions(response.json.global_permissions);
+        }
+      } catch (err) {
+        console.error('Failed to fetch permissions:', err);
+        addDangerToast(t('Failed to fetch permissions'));
+      }
+    };
 
-  // TODO: Fix usage of localStorage keying on the user id
-  const userKey = dangerouslyGetItemDoNotUse(user?.userId?.toString(), null);
+    fetchPermissions();
+  }, [addDangerToast]);
 
-  const canCreate = hasPerm('can_write');
+  const canCreate = globalPermissions.can_write;
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
   const canExport =
@@ -240,12 +254,36 @@ function DashboardList(props: DashboardListProps) {
     );
   }
 
+  const openDashboardImportModal = () => {
+    showImportModal(true);
+  };
+
+  const closeDashboardImportModal = () => {
+    showImportModal(false);
+  };
+
+  const handleDashboardImport = () => {
+    showImportModal(false);
+    refreshData();
+    addSuccessToast(t('Dashboard imported'));
+  };
+
   const handleBulkDashboardExport = (dashboardsToExport: Dashboard[]) => {
-    const ids = dashboardsToExport.map(({ id }) => id);
-    handleResourceExport('dashboard', ids, () => {
-      setPreparingExport(false);
-    });
     setPreparingExport(true);
+    try {
+      const ids = dashboardsToExport.map(({ id }) => id);
+      handleResourceExport(
+        'dashboard',
+        ids,
+        () => {
+          setPreparingExport(false);
+        },
+        200,
+      );
+    } catch (err) {
+      setPreparingExport(false);
+      addDangerToast(t('There was an issue with exporting the dashboards'));
+    }
   };
 
   function handleBulkDashboardDelete(dashboardsToDelete: Dashboard[]) {
@@ -385,9 +423,43 @@ function DashboardList(props: DashboardListProps) {
           const handleEdit = () => openDashboardEditModal(original);
           const handleExport = () => handleBulkDashboardExport([original]);
 
+          const permissions = getResourcePermissions(original.id);
+
           return (
             <Actions className="actions">
-              {canDelete && (
+              {permissions.can_write && (
+                <Tooltip
+                  id="edit-action-tooltip"
+                  title={t('Edit')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleEdit}
+                  >
+                    <Icons.EditAlt data-test="edit-alt" />
+                  </span>
+                </Tooltip>
+              )}
+              {permissions.can_export && (
+                <Tooltip
+                  id="export-action-tooltip"
+                  title={t('Export')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleExport}
+                  >
+                    <Icons.Share />
+                  </span>
+                </Tooltip>
+              )}
+              {permissions.can_delete && (
                 <ConfirmStatusChange
                   title={t('Please confirm')}
                   description={
@@ -410,50 +482,17 @@ function DashboardList(props: DashboardListProps) {
                         className="action-button"
                         onClick={confirmDelete}
                       >
-                        <Icons.Trash data-test="dashboard-list-trash-icon" />
+                        <Icons.Trash />
                       </span>
                     </Tooltip>
                   )}
                 </ConfirmStatusChange>
-              )}
-              {canExport && (
-                <Tooltip
-                  id="export-action-tooltip"
-                  title={t('Export')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleExport}
-                  >
-                    <Icons.Share />
-                  </span>
-                </Tooltip>
-              )}
-              {canEdit && (
-                <Tooltip
-                  id="edit-action-tooltip"
-                  title={t('Edit')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleEdit}
-                  >
-                    <Icons.EditAlt data-test="edit-alt" />
-                  </span>
-                </Tooltip>
               )}
             </Actions>
           );
         },
         Header: t('Actions'),
         id: 'actions',
-        hidden: !canEdit && !canDelete && !canExport,
         disableSortBy: true,
       },
       {
@@ -471,6 +510,7 @@ function DashboardList(props: DashboardListProps) {
       refreshData,
       addSuccessToast,
       addDangerToast,
+      getResourcePermissions,
     ],
   );
 

@@ -254,14 +254,32 @@ const RightMenu = ({
   };
 
   const existsNonExamplesDatabases = () => {
-    const payload = {
-      filters: [{ col: 'database_name', opr: 'neq', value: 'examples' }],
-    };
-    SupersetClient.get({
-      endpoint: `/api/v1/database/?q=${rison.encode(payload)}`,
-    }).then(({ json }: Record<string, any>) => {
-      setNonExamplesDBConnected(json.count >= 1);
-    });
+    try {
+      // 使用更安全的查询方式
+      SupersetClient.get({
+        endpoint: `/api/v1/database/?q=${rison.encode({
+          filters: [
+            { col: 'database_name', opr: 'ct', value: '' }, // 获取所有数据库
+          ],
+          columns: ['database_name'],
+        })}`,
+      })
+        .then(({ json }: Record<string, any>) => {
+          // 在前端过滤掉 examples 数据库
+          const nonExamplesDbs = json.result.filter(
+            (db: any) => db.database_name !== 'examples',
+          );
+          setNonExamplesDBConnected(nonExamplesDbs.length >= 1);
+        })
+        .catch((error: any) => {
+          // 如果发生错误，假设没有连接的数据库
+          console.error('Error checking databases:', error);
+          setNonExamplesDBConnected(false);
+        });
+    } catch (error) {
+      console.error('Error in existsNonExamplesDatabases:', error);
+      setNonExamplesDBConnected(false);
+    }
   };
 
   useEffect(() => {

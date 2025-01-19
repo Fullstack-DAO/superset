@@ -18,7 +18,6 @@
  */
 
 import React, {
-  ChangeEvent,
   KeyboardEvent,
   useCallback,
   useEffect,
@@ -76,8 +75,8 @@ const titleStyles = (theme: SupersetTheme) => css`
 `;
 
 export const DynamicEditableTitle = ({
-  title,
-  placeholder,
+  title = '',
+  placeholder = '',
   onSave,
   canEdit,
   label,
@@ -135,27 +134,21 @@ export const DynamicEditableTitle = ({
     setIsEditing(true);
   }, [canEdit, isEditing]);
 
-  const handleBlur = useCallback(() => {
-    if (!canEdit) {
-      return;
-    }
-    const formattedTitle = currentTitle.trim();
-    setCurrentTitle(formattedTitle);
-    if (title !== formattedTitle) {
-      onSave(formattedTitle);
-    }
-    setIsEditing(false);
-  }, [canEdit, currentTitle, onSave, title]);
+  // const handleBlur = useCallback(() => {
+  //   if (!canEdit) {
+  //     return;
+  //   }
+  //   const formattedTitle = currentTitle.trim();
+  //   setCurrentTitle(formattedTitle);
+  //   if (title !== formattedTitle) {
+  //     onSave(formattedTitle);
+  //   }
+  //   setIsEditing(false);
+  // }, [canEdit, currentTitle, onSave, title]);
 
-  const handleChange = useCallback(
-    (ev: ChangeEvent<HTMLInputElement>) => {
-      if (!canEdit || !isEditing) {
-        return;
-      }
-      setCurrentTitle(ev.target.value);
-    },
-    [canEdit, isEditing],
-  );
+  const handleChange = useCallback((value: string) => {
+    setCurrentTitle(value || '');
+  }, []);
 
   const handleKeyPress = useCallback(
     (ev: KeyboardEvent<HTMLInputElement>) => {
@@ -170,6 +163,14 @@ export const DynamicEditableTitle = ({
     [canEdit],
   );
 
+  const handleSave = useCallback(() => {
+    const trimmedTitle = (currentTitle || '').trim();
+    if (onSave) {
+      onSave(trimmedTitle);
+    }
+    setIsEditing(false);
+  }, [currentTitle, onSave]);
+
   return (
     <div css={titleStyles} ref={containerRef}>
       <Tooltip
@@ -182,8 +183,8 @@ export const DynamicEditableTitle = ({
             className="dynamic-title-input"
             aria-label={label ?? t('Title')}
             ref={contentRef}
-            onChange={handleChange}
-            onBlur={handleBlur}
+            onChange={e => handleChange(e.target.value)}
+            onBlur={handleSave}
             onClick={handleClick}
             onKeyPress={handleKeyPress}
             placeholder={placeholder}
@@ -204,8 +205,17 @@ export const DynamicEditableTitle = ({
             aria-label={label ?? t('Title')}
             ref={contentRef}
             data-test="editable-title"
+            role="button"
+            tabIndex={0}
+            onClick={() => setIsEditing(true)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsEditing(true);
+              }
+            }}
           >
-            {currentTitle}
+            {currentTitle || placeholder}
           </span>
         )}
       </Tooltip>

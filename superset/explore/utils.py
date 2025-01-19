@@ -14,9 +14,11 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+import logging
 from typing import Optional
 
 from superset import security_manager
+from superset.charts.permissions import ChartPermissions
 from superset.commands.chart.exceptions import (
     ChartAccessDeniedError,
     ChartNotFoundError,
@@ -33,6 +35,7 @@ from superset.commands.exceptions import (
 from superset.daos.chart import ChartDAO
 from superset.daos.dataset import DatasetDAO
 from superset.daos.query import QueryDAO
+from superset.tasks.utils import get_current_user_object
 from superset.utils.core import DatasourceType
 
 
@@ -75,12 +78,46 @@ def check_datasource_access(
     raise DatasourceNotFoundValidationError()
 
 
+def check_special_datasource_access(
+    datasource_id: int
+) -> Optional[bool]:
+    current_user = get_current_user_object()
+    user_id = current_user.id
+    role_id = current_user.roles[0].id
+    logging.info(f"current login user: {user_id}")
+    logging.info(f"current login user's role_id: {role_id}")
+    if datasource_id:
+        return ChartPermissions.check_datasource_permissions(
+            user_id,
+            role_id,
+            datasource_id)
+
+
 def check_access(
     datasource_id: int,
     chart_id: Optional[int],
     datasource_type: DatasourceType,
 ) -> Optional[bool]:
     check_datasource_access(datasource_id, datasource_type)
+    if not chart_id:
+        return True
+    # Access checks below, no need to validate them twice as they can be expensive.
+    chart = ChartDAO.find_by_id(chart_id, skip_base_filter=True)
+    if chart:
+        can_access_chart = security_manager.is_owner(
+            chart
+        ) or security_manager.can_access("can_read", "Chart")
+        if can_access_chart:
+            return True
+        raise ChartAccessDeniedError()
+    raise ChartNotFoundError()
+
+
+def explore_special_check_access(
+    datasource_id: int,
+    chart_id: Optional[int],
+) -> Optional[bool]:
+    check_special_datasource_access(datasource_id)
     if not chart_id:
         return True
     # Access checks below, no need to validate them twice as they can be expensive.

@@ -72,7 +72,8 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         self.config = app.config
         self.manifest: dict[Any, Any] = {}
 
-    @deprecated(details="use self.superset_app instead of self.flask_app")  # type: ignore
+    @deprecated(
+        details="use self.superset_app instead of self.flask_app")  # type: ignore
     @property
     def flask_app(self) -> SupersetApp:
         return self.superset_app
@@ -197,6 +198,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.views.sqllab import SqllabView
         from superset.views.tags import TagModelView, TagView
         from superset.views.users.api import CurrentUserRestApi
+        from superset.common.user_role import UserOrRoleApi
 
         #
         # Setup API views
@@ -231,6 +233,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(SavedQueryRestApi)
         appbuilder.add_api(TagRestApi)
         appbuilder.add_api(SqlLabRestApi)
+        appbuilder.add_api(UserOrRoleApi)
         #
         # Setup regular views
         #
@@ -240,8 +243,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             href="/superset/welcome/",
             cond=lambda: bool(appbuilder.app.config["LOGO_TARGET_PATH"]),
         )
-
-
 
         appbuilder.add_view(
             DatabaseView,
@@ -288,8 +289,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
                 "DYNAMIC_PLUGINS"
             ),
         )
-
-
 
         appbuilder.add_view(
             CssTemplateModelView,
@@ -423,7 +422,6 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         )
         appbuilder.add_api(SecurityRestApi)
 
-        
         #
         # Conditionally setup email views
         #
@@ -658,10 +656,10 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
             csp_warning
             and not self.superset_app.debug
             and (
-                not talisman_enabled
-                or not talisman_config
-                or not talisman_config.get("content_security_policy")
-            )
+            not talisman_enabled
+            or not talisman_config
+            or not talisman_config.get("content_security_policy")
+        )
         ):
             show_csp_warning = True
 

@@ -17,6 +17,7 @@
 import logging
 from typing import Any, Optional
 
+from flask import g
 from flask_appbuilder.models.sqla import Model
 from marshmallow import ValidationError
 
@@ -29,6 +30,7 @@ from superset.commands.dashboard.exceptions import (
 from superset.commands.utils import populate_roles
 from superset.daos.dashboard import DashboardDAO
 from superset.daos.exceptions import DAOCreateFailedError
+from superset.dashboards.permissions import DashboardPermissions
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,12 @@ class CreateDashboardCommand(CreateMixin, BaseCommand):
         self.validate()
         try:
             dashboard = DashboardDAO.create(attributes=self._properties, commit=True)
+            DashboardPermissions.set_default_permissions(
+                dashboard=dashboard,
+                user=g.user,
+                roles=self._properties["roles"],
+                permissions=["can_read", "can_edit", "can_add", "can_delete"]
+            )
         except DAOCreateFailedError as ex:
             logger.exception(ex.exception)
             raise DashboardCreateFailedError() from ex

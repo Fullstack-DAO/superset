@@ -33,6 +33,8 @@ from superset.charts.api import ChartRestApi
 from superset.charts.data.query_context_cache_loader import QueryContextCacheLoader
 from superset.charts.post_processing import apply_post_process
 from superset.charts.schemas import ChartDataQueryContextSchema
+from superset.charts.permissions import ChartPermissions
+from superset.tasks.utils import get_current_user
 from superset.commands.chart.data.create_async_job_command import (
     CreateAsyncChartDataJobCommand,
 )
@@ -118,6 +120,10 @@ class ChartDataRestApi(ChartRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+        permission = ChartPermissions.get_chart_and_check_permission(self.datamodel, pk)  # 权限检查
+        if not permission:
+            return self.response_403()  # 权限不足
+
         chart = self.datamodel.get(pk, self._base_filters)
         if not chart:
             return self.response_404()
@@ -228,11 +234,15 @@ class ChartDataRestApi(ChartRestApi):
                 json_body = json.loads(request.form["form_data"])
         if json_body is None:
             return self.response_400(message=_("Request is not JSON"))
+        
+        #
+        # if not ChartPermissions.check_user_permission():
+        #     return self.response_403()  # 权限不足
 
         try:
             query_context = self._create_query_context_from_form(json_body)
             command = ChartDataCommand(query_context)
-            command.validate()
+            # command.validate()
         except DatasourceNotFound:
             return self.response_404()
         except QueryObjectValidationError as error:

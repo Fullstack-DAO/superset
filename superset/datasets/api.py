@@ -77,6 +77,7 @@ from superset.views.base_api import (
     statsd_metrics,
 )
 from superset.views.filters import BaseFilterRelatedUsers, FilterRelatedOwners
+from superset.charts.permissions import ChartPermissions  # charts权限模块
 
 logger = logging.getLogger(__name__)
 
@@ -325,9 +326,9 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         """
         try:
             item = self.add_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
+
 
         try:
             new_model = CreateDatasetCommand(item).run()
@@ -404,7 +405,6 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         )
         try:
             item = self.edit_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
         try:
@@ -467,6 +467,7 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+
         try:
             DeleteDatasetCommand([pk]).run()
             return self.response(200, message="OK")
@@ -614,10 +615,8 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         """
         try:
             item = self.duplicate_model_schema.load(request.json)
-        # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
-
         try:
             new_model = DuplicateDatasetCommand(item).run()
             return self.response(201, id=new_model.id, result=item)
@@ -675,6 +674,7 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             500:
               $ref: '#/components/responses/500'
         """
+
         try:
             RefreshDatasetCommand(pk).run()
             return self.response(200, message="OK")
@@ -711,7 +711,6 @@ class DatasetRestApi(BaseSupersetModelRestApi):
             schema:
               type: integer
           responses:
-            200:
             200:
               description: Query result
               content:
@@ -797,6 +796,7 @@ class DatasetRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/500'
         """
         item_ids = kwargs["rison"]
+
         try:
             DeleteDatasetCommand(item_ids).run()
             return self.response(

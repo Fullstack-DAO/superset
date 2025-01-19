@@ -23,6 +23,7 @@ from flask_appbuilder.models.sqla import Model
 from marshmallow import ValidationError
 
 from superset import security_manager
+from superset.charts.permissions import ChartPermissions
 from superset.commands.base import BaseCommand, UpdateMixin
 from superset.commands.chart.exceptions import (
     ChartForbiddenError,
@@ -55,18 +56,27 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
         self._model: Optional[Slice] = None
 
     def run(self) -> Model:
+        """
+        执行图表更新逻辑。
+        """
         self.validate()
         assert self._model
 
         try:
-            if self._properties.get("query_context_generation") is None:
-                self._properties["last_saved_at"] = datetime.now()
-                self._properties["last_saved_by"] = g.user
+            # 分离 Slice 表字段和权限字段
+            slice_fields = {key: value for key, value in self._properties.items() if hasattr(Slice, key)}
+            additional_fields = {key: value for key, value in self._properties.items() if not hasattr(Slice, key)}
+            self._properties["last_saved_at"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self._properties["last_saved_by"] = g.user
+            logger.info(f"Updating slice fields: {slice_fields}")
+            logger.info(f"Additional fields: {additional_fields}")
+            # 调用 ChartDAO 更新图表
             chart = ChartDAO.update(self._model, self._properties)
+
+            return chart
         except DAOUpdateFailedError as ex:
             logger.exception(ex.exception)
             raise ChartUpdateFailedError() from ex
-        return chart
 
     def validate(self) -> None:
         exceptions: list[ValidationError] = []
@@ -79,9 +89,9 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
             datasource_type = self._properties.get("datasource_type", "")
             if not datasource_type:
                 exceptions.append(DatasourceTypeUpdateRequiredValidationError())
-
+        logger.info(f"the model_id is : {self._model_id}")
         # Validate/populate model exists
-        self._model = ChartDAO.find_by_id(self._model_id)
+        self._model = ChartDAO.find_by_id_with_no_permission(self._model_id)
         if not self._model:
             raise ChartNotFoundError()
 
@@ -89,7 +99,9 @@ class UpdateChartCommand(UpdateMixin, BaseCommand):
         # ownership so the update can be performed by report workers
         if not is_query_context_update(self._properties):
             try:
-                security_manager.raise_for_ownership(self._model)
+                # security_manager.raise_for_ownership(self._model)
+                user_id = g.user.id
+                ChartPermissions.check_can_edit(user_id, self._model_id)
                 owners = self.populate_owners(owner_ids)
                 self._properties["owners"] = owners
             except SupersetSecurityException as ex:

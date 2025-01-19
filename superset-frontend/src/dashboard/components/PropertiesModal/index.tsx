@@ -38,7 +38,6 @@ import {
 
 import Modal from 'src/components/Modal';
 import { JsonEditor } from 'src/components/AsyncAceEditor';
-
 import ColorSchemeControlWrapper from 'src/dashboard/components/ColorSchemeControlWrapper';
 import FilterScopeModal from 'src/dashboard/components/filterscope/FilterScopeModal';
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
@@ -51,6 +50,7 @@ import {
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
 import { loadTags } from 'src/components/Tags/utils';
+import DashboardCollaboratorModal from './DashboardCollaboratorModal';
 
 const StyledFormItem = styled(FormItem)`
   margin-bottom: 0;
@@ -59,6 +59,13 @@ const StyledFormItem = styled(FormItem)`
 const StyledJsonEditor = styled(JsonEditor)`
   border-radius: ${({ theme }) => theme.borderRadius}px;
   border: 1px solid ${({ theme }) => theme.colors.secondary.light2};
+`;
+
+const CollaboratorSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 40px; /* 向右移动 */
 `;
 
 type PropertiesModalProps = {
@@ -113,6 +120,17 @@ const PropertiesModal = ({
   const saveLabel = onlyApply ? t('Apply') : t('Save');
   const [tags, setTags] = useState<TagType[]>([]);
   const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
+
+  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] =
+    useState(false);
+
+  const showCollaboratorsModal = () => {
+    setCollaboratorsModalVisible(true);
+  };
+
+  const handleCollaboratorsModalClose = () => {
+    setCollaboratorsModalVisible(false);
+  };
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map(tag => ({
@@ -312,8 +330,7 @@ const PropertiesModal = ({
   const updateTags = (oldTags: TagType[], newTags: TagType[]) => {
     // update the tags for this object
     // add tags that are in new tags, but not in old tags
-    // eslint-disable-next-line array-callback-return
-    newTags.map((tag: TagType) => {
+    newTags.forEach((tag: TagType) => {
       if (!oldTags.some(t => t.name === tag.name)) {
         addTag(
           {
@@ -328,8 +345,7 @@ const PropertiesModal = ({
       }
     });
     // delete tags that are in old tags, but not in new tags
-    // eslint-disable-next-line array-callback-return
-    oldTags.map((tag: TagType) => {
+    oldTags.forEach((tag: TagType) => {
       if (!newTags.some(t => t.name === tag.name)) {
         deleteTaggedObjects(
           {
@@ -431,13 +447,32 @@ const PropertiesModal = ({
       title,
       slug,
       jsonMetadata: currentJsonMetadata,
-      owners,
       colorScheme: currentColorScheme,
       colorNamespace,
       certifiedBy,
       certificationDetails,
       ...moreOnSubmitProps,
     };
+
+    const payload: { [key: string]: any } = {
+      dashboard_id: dashboardId,
+      dashboard_title: title,
+      slug: slug || null,
+      json_metadata: currentJsonMetadata || null,
+      owners: (owners || []).map(o => o.id),
+      certified_by: certifiedBy || null,
+      certification_details:
+        certifiedBy && certificationDetails ? certificationDetails : null,
+      ...morePutProps,
+    };
+
+    // 移除空字段
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === null || payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
+
     if (onlyApply) {
       onSubmit(onSubmitProps);
       onHide();
@@ -446,22 +481,15 @@ const PropertiesModal = ({
       SupersetClient.put({
         endpoint: `/api/v1/dashboard/${dashboardId}`,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dashboard_title: title,
-          slug: slug || null,
-          json_metadata: currentJsonMetadata || null,
-          owners: (owners || []).map(o => o.id),
-          certified_by: certifiedBy || null,
-          certification_details:
-            certifiedBy && certificationDetails ? certificationDetails : null,
-          ...morePutProps,
-        }),
+        body: JSON.stringify(payload),
       }).then(() => {
         onSubmit(onSubmitProps);
         onHide();
         addSuccessToast(t('The dashboard has been saved'));
       }, handleErrorResponse);
     }
+
+    console.log('Payload:', payload);
   };
 
   const getRowsWithoutRoles = () => {
@@ -524,7 +552,6 @@ const PropertiesModal = ({
             <StyledFormItem label={t('Owners')}>
               <AsyncSelect
                 allowClear
-                allowNewOptions
                 ariaLabel={t('Owners')}
                 disabled={isLoading}
                 mode="multiple"
@@ -701,6 +728,7 @@ const PropertiesModal = ({
         {isFeatureEnabled(FeatureFlag.DASHBOARD_RBAC)
           ? getRowsWithRoles()
           : getRowsWithoutRoles()}
+
         <Row>
           <Col xs={24} md={24}>
             <h3>{t('Certification')}</h3>
@@ -748,7 +776,7 @@ const PropertiesModal = ({
                 />
               </StyledFormItem>
               <p className="help-block">
-                {t('A list of tags that have been applied to this chart.')}
+                {t('A list of tags that have been applied to this dashboard.')}
               </p>
             </Col>
           </Row>
@@ -807,7 +835,27 @@ const PropertiesModal = ({
             )}
           </Col>
         </Row>
+        {/* 替换 Manage Collaborators 部分 */}
+        <Row gutter={16} style={{ marginTop: '1em' }}>
+          <Col span={24}>
+            <CollaboratorSection>
+              <h3 style={{ marginBottom: '8px' }}>{t('管理协作者')}</h3>
+              <Button type="primary" onClick={showCollaboratorsModal}>
+                {t('管理协作者')}
+              </Button>
+            </CollaboratorSection>
+          </Col>
+        </Row>
       </AntdForm>
+
+      {/* 集成 DashboardCollaboratorModal 组件 */}
+      <DashboardCollaboratorModal
+        visible={isCollaboratorsModalVisible}
+        onClose={handleCollaboratorsModalClose}
+        dashboardId={dashboardId}
+        // addSuccessToast={addSuccessToast}
+        // addDangerToast={addDangerToast}
+      />
     </Modal>
   );
 };

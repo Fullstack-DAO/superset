@@ -86,7 +86,7 @@ class LogRestApi(LogMixin, BaseSupersetModelRestApi):
         return None
 
     @expose("/recent_activity/", methods=("GET",))
-    @protect()
+    # @protect()
     @safe
     @statsd_metrics
     @rison(get_recent_activity_schema)

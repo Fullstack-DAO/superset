@@ -28,7 +28,7 @@ import {
   t,
   tn,
 } from '@superset-ui/core';
-import { chartPropShape } from 'src/dashboard/util/propShapes';
+// import { chartPropShape } from 'src/dashboard/util/propShapes';
 import AlteredSliceTag from 'src/components/AlteredSliceTag';
 import Button from 'src/components/Button';
 import Icons from 'src/components/Icons';
@@ -42,35 +42,35 @@ import { useDispatch, useSelector } from 'react-redux'; // 添加 useSelector
 import SaveModal from 'src/explore/components/SaveModal';
 
 const propTypes = {
-  actions: PropTypes.object.isRequired,
-  canOverwrite: PropTypes.bool.isRequired,
-  canDownload: PropTypes.bool.isRequired,
   dashboardId: PropTypes.number,
-  isStarred: PropTypes.bool.isRequired,
   slice: PropTypes.object,
-  sliceName: PropTypes.string,
-  table_name: PropTypes.string,
+  actions: PropTypes.object.isRequired,
   formData: PropTypes.object,
   ownState: PropTypes.object,
-  timeout: PropTypes.number,
-  chart: chartPropShape,
-  saveDisabled: PropTypes.bool,
-  // 添加新的属性
+  chart: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    latestQueryFormData: PropTypes.object.isRequired,
+    chartStatus: PropTypes.string,
+  }).isRequired,
+  user: PropTypes.object.isRequired,
+  canOverwrite: PropTypes.bool.isRequired,
+  canDownload: PropTypes.bool.isRequired,
+  isStarred: PropTypes.bool.isRequired,
+  sliceName: PropTypes.string,
   datasource: PropTypes.object,
-  addDangerToast: PropTypes.func.isRequired,
-  isPropertiesModalOpen: PropTypes.bool.isRequired,
-  closePropertiesModal: PropTypes.func.isRequired,
-  updateSlice: PropTypes.func.isRequired,
+  saveDisabled: PropTypes.bool,
+  metadata: PropTypes.object,
+  addDangerToast: PropTypes.func,
 };
 
-// 默认属性
 const defaultProps = {
   dashboardId: null,
-  slice: null,
-  sliceName: null,
-  table_name: null,
+  formData: {},
+  ownState: {},
+  sliceName: '',
   datasource: null,
   saveDisabled: false,
+  addDangerToast: () => {},
 };
 
 const saveButtonStyles = theme => css`

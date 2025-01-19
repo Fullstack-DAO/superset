@@ -106,7 +106,7 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
       action: 'overwrite',
       isLoading: false,
       vizType: props.form_data?.viz_type,
-      dashboard: undefined
+      dashboard: undefined,
     };
     this.onDashboardChange = this.onDashboardChange.bind(this);
     this.onSliceNameChange = this.onSliceNameChange.bind(this);
@@ -117,7 +117,8 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
   }
 
   // 权限检查：是否具有 can_edit 权限
-  canOverwriteSlice = () => Boolean(this.props.persistedPermissions?.canOverwrite);
+  canOverwriteSlice = () =>
+    Boolean(this.props.persistedPermissions?.canOverwrite);
 
   isNewDashboard(): boolean {
     const { dashboard } = this.state;
@@ -220,9 +221,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           sliceDashboards,
           dashboard
             ? {
-              title: dashboard.dashboard_title,
-              new: this.isNewDashboard(),
-            }
+                title: dashboard.dashboard_title,
+                new: this.isNewDashboard(),
+              }
             : null,
         );
       } else {
@@ -231,9 +232,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           sliceDashboards,
           dashboard
             ? {
-              title: dashboard.dashboard_title,
-              new: this.isNewDashboard(),
-            }
+                title: dashboard.dashboard_title,
+                new: this.isNewDashboard(),
+              }
             : null,
         );
       }
@@ -257,7 +258,6 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
 
       const searchParams = this.handleRedirect(window.location.search, value);
       this.props.history.replace(`/explore/?${searchParams.toString()}`);
-
     } catch (error) {
       if (error?.response?.status === 403) {
         this.props.addDangerToast(t('你没有编辑该图表的权限！'));
@@ -317,16 +317,10 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           value={this.state.action}
           onChange={e => this.changeAction(e.target.value)}
         >
-          <Radio
-            value="overwrite"
-            data-test="save-overwrite-radio"
-          >
+          <Radio value="overwrite" data-test="save-overwrite-radio">
             {t('Save (Overwrite)')}
           </Radio>
-          <Radio
-            value="saveas"
-            data-test="saveas-radio"
-          >
+          <Radio value="saveas" data-test="saveas-radio">
             {t('Save as...')}
           </Radio>
         </Radio.Group>
@@ -384,7 +378,9 @@ class SaveModal extends React.Component<SaveModalProps, SaveModalState> {
           />
         </FormItem>
       )}
-      {this.info() && <Alert type="info" message={this.info()} closable={false} />}
+      {this.info() && (
+        <Alert type="info" message={this.info()} closable={false} />
+      )}
       {this.props.alert && (
         <Alert
           css={{ marginTop: this.info() ? 16 : undefined }}

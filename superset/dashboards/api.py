@@ -1557,7 +1557,6 @@ class DashboardRestApi(BaseSupersetModelRestApi):
         - 检查协作者是否已经存在。
         - 如果不存在，添加到协作者列表。
         """
-        global has_dashboard_datasource_permission
         data = request.json
         collaborator_id = data.get("id")
         collaborator_type = data.get("type")
@@ -1587,6 +1586,24 @@ class DashboardRestApi(BaseSupersetModelRestApi):
             if not dashboard:
                 return self.response_404(message=f"Dashboard ID {dashboard_id} 不存在。")
 
+            current_user = get_current_user_object()
+            user_id = current_user.id
+            logger.info(f"current_user id is: {user_id}")
+            # 检查当前用户对该图表是否具备 can_read, can_edit, can_delete, can_add 四种权限
+            user_permissions = DashboardPermissions.get_permissions_for_dashboard(
+                user_id,
+                dashboard_id)
+            if not all(user_permissions.get(permission, False) for permission in
+                       ["can_read", "can_edit", "can_delete", "can_add"]):
+                response = make_response(
+                    jsonify({
+                        "error": "您没有足够的权限来修改其他人的图表权限。",
+                        "code": 403,
+                        "message": "Forbidden"
+                    }), 403
+                )
+                return response
+            
             if DashboardDAO.is_collaborator_exist(dashboard_id, collaborator_id,
                                                   collaborator_type):
                 response = make_response(
@@ -1956,7 +1973,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
                 }
         # 获取全局权限
         global_permissions = {
-            "can_write": security_manager.can_access('can_write', 'Chart')
+            "can_write": security_manager.can_access('can_write', 'Dashboard')
         }
 
         logger.debug(f"获取到的权限信息: {filtered_permissions}")

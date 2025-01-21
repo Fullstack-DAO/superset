@@ -1366,6 +1366,22 @@ class ChartRestApi(BaseSupersetModelRestApi):
             "角色": "role",
         }
 
+        current_user = get_current_user_object()
+        user_id = current_user.id
+        logger.info(f"current_user id is: {user_id}")
+        # 检查当前用户对该图表是否具备 can_read, can_edit, can_delete, can_add 四种权限
+        user_permissions = ChartPermissions.get_permissions_for_chart(user_id, chart_id)
+        if not all(user_permissions.get(permission, False) for permission in
+                       ["can_read", "can_edit", "can_delete", "can_add"]):
+            response = make_response(
+                jsonify({
+                    "error": "您没有足够的权限来修改其他人的图表权限。",
+                    "code": 403,
+                    "message": "Forbidden"
+                }), 403
+            )
+            return response
+
         # 将 collaborator_type 转换为后端识别的值
         collaborator_type = type_mapping.get(collaborator_type, collaborator_type)
 

@@ -1,0 +1,43 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div class="container">
+    <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <div class="panel-title">{{ title }}</div>
+            </div>
+            <div style="padding-top:30px" class="panel-body">
+                <form class="form" action="" method="post" name="login">
+                    {{ form.hidden_tag() }}
+                    <div class="help-block">{{ _("Enter your login and password below:") }}</div>
+                    <div class="control-group">
+                        <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
+                        <div class="controls">
+                            <input class="form-control" id="username" name="username" type="text" />
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
+                        <div class="controls">
+                            <input class="form-control" id="password" name="password" type="password" />
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="controls">
+                            <div>
+                                <input class="btn btn-block" type="submit" value="{{ _('SIGN IN') }}" style="background-color: #00A699; color: white; border: none; padding: 8px; margin-top: 20px;"/>
+                            </div>
+                            <div style="margin-top: 20px; text-align: center;">
+                                <a href="/oauth/wecom/login" class="btn btn-success btn-block">
+                                    <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

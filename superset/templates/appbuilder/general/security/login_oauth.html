@@ -1,0 +1,33 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div class="container">
+    <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+        <div class="panel panel-primary" >
+            <div class="panel-heading">
+                <div class="panel-title">{{ title }}</div>
+            </div>
+            <div style="padding-top:30px" class="panel-body" >
+                <div class="help-block">{{ _("Choose your authentication provider:") }}</div>
+                {% for provider in providers %}
+                    {% if provider.name == 'wecom' %}
+                    <a href="{{provider.url}}" class="btn btn-success btn-block">
+                        <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
+                    </a>
+                    {% else %}
+                    <a href="{{provider.url}}" class="btn btn-primary btn-block">
+                        <i class="fa {{provider.icon}}"></i> {{provider.name}}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+                <hr>
+                <div style="text-align: center;">
+                    <a href="/login/" class="btn btn-link">
+                        {{ _('使用用户名密码登录') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

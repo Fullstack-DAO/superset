@@ -8,34 +8,50 @@
                 <div class="panel-title">{{ title }}</div>
             </div>
             <div style="padding-top:30px" class="panel-body">
-                <form class="form" action="" method="post" name="login">
-                    {{ form.hidden_tag() }}
-                    <div class="help-block">{{ _("Enter your login and password below:") }}</div>
-                    <div class="control-group">
-                        <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
-                        <div class="controls">
-                            <input class="form-control" id="username" name="username" type="text" />
+                {% if request.args.get('provider') == 'wecom' %}
+                    <div class="text-center">
+                        <h3>{{ _("Choose your authentication provider:") }}</h3>
+                        <div style="margin-top: 30px;">
+                            <a href="{{ url_for('SecurityApi.login', provider='wecom') }}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
+                                <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
+                            </a>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <a href="{{ url_for('AuthDBView.login') }}" class="text-primary">
+                                {{ _('使用用户名密码登录') }}
+                            </a>
                         </div>
                     </div>
-                    <div class="control-group">
-                        <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
-                        <div class="controls">
-                            <input class="form-control" id="password" name="password" type="password" />
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <div class="controls">
-                            <div>
-                                <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
-                            </div>
-                            <div style="margin-top: 20px; text-align: center;">
-                                <a href="{{ url_for('AuthDBView.login', provider='wecom') }}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
-                                    <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
-                                </a>
+                {% else %}
+                    <form class="form" action="" method="post" name="login">
+                        {{ form.hidden_tag() }}
+                        <div class="help-block">{{ _("Enter your login and password below:") }}</div>
+                        <div class="control-group">
+                            <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
+                            <div class="controls">
+                                <input class="form-control" id="username" name="username" type="text" />
                             </div>
                         </div>
-                    </div>
-                </form>
+                        <div class="control-group">
+                            <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
+                            <div class="controls">
+                                <input class="form-control" id="password" name="password" type="password" />
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <div class="controls">
+                                <div>
+                                    <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
+                                </div>
+                                <div style="margin-top: 20px; text-align: center;">
+                                    <a href="{{ url_for('AuthDBView.login', provider='wecom') }}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
+                                        <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                {% endif %}
             </div>
         </div>
     </div>

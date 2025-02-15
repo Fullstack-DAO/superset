@@ -12,7 +12,7 @@
                     <div class="text-center">
                         <h3>{{ _("Choose your authentication provider:") }}</h3>
                         <div style="margin-top: 30px;">
-                            <a href="{{ url_for('SecurityApi.login', provider='wecom') }}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
+                            <a href="https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={{ config.WECOM_CORP_ID }}&agentid={{ config.WECOM_AGENT_ID }}&redirect_uri={{ config.WECOM_REDIRECT_URI }}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
                                 <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
                             </a>
                         </div>

@@ -29,7 +29,7 @@
                                 <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
                             </div>
                             <div style="margin-top: 20px; text-align: center;">
-                                <a href="/oauth/wecom/login" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
+                                <a href="{{ url_for('SecurityApi.login', provider='wecom') }}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px;">
                                     <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
                                 </a>
                             </div>

@@ -22,7 +22,7 @@ import re
 import time
 from collections import defaultdict
 from typing import Any, Callable, cast, NamedTuple, Optional, TYPE_CHECKING, Union
-
+import requests
 from flask import current_app, Flask, g, Request
 from flask_appbuilder import Model
 from flask_appbuilder.security.sqla.manager import SecurityManager
@@ -274,6 +274,71 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
 
     guest_user_cls = GuestUser
     pyjwt_for_guest_token = _jwt_global_obj
+
+    def oauth_user_info(self, provider, response=None):
+        if provider == 'wecom':
+            if response is None:
+                return None
+
+            # 获取 code
+            code = response.get('code')
+            if not code:
+                return None
+
+            # 先获取 access_token
+            token_url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken'
+            token_params = {
+                'corpid': current_app.config['CORP_ID'],
+                'corpsecret': current_app.config['SECRET']
+            }
+            token_resp = requests.get(token_url, params=token_params)
+            token_data = token_resp.json()
+
+            if token_data.get('errcode') != 0:
+                logger.error(f"获取access_token失败: {token_data}")
+                return None
+
+            access_token = token_data.get('access_token')
+
+            # 获取用户身份信息
+            user_info_url = 'https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo'
+            user_params = {
+                'access_token': access_token,
+                'code': code
+            }
+            user_resp = requests.get(user_info_url, params=user_params)
+            user_data = user_resp.json()
+
+            if user_data.get('errcode') != 0:
+                logger.error(f"获取用户信息失败: {user_data}")
+                return None
+
+            userid = user_data.get('UserId')
+            if not userid:
+                return None
+
+            # 获取用户详细信息
+            detail_url = 'https://qyapi.weixin.qq.com/cgi-bin/user/get'
+            detail_params = {
+                'access_token': access_token,
+                'userid': userid
+            }
+            detail_resp = requests.get(detail_url, params=detail_params)
+            detail_data = detail_resp.json()
+
+            if detail_data.get('errcode') != 0:
+                logger.error(f"获取用户详细信息失败: {detail_data}")
+                return None
+
+            return {
+                'username': detail_data.get('userid'),
+                'first_name': detail_data.get('name', ''),
+                'last_name': '',
+                'email': detail_data.get('email', f"{userid}@fullstack-dao.com"),
+                'role_keys': ['Public']
+            }
+
+        return super().oauth_user_info(provider, response)
 
     def create_login_manager(self, app: Flask) -> LoginManager:
         lm = super().create_login_manager(app)

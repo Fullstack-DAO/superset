@@ -11,7 +11,7 @@
                 <div class="help-block">{{ _("Choose your authentication provider:") }}</div>
                 {% for provider in providers %}
                     {% if provider.name == 'wecom' %}
-                    <a href="{{provider.url}}" class="btn btn-success btn-block">
+                    <a href="{{provider.url}}" class="btn btn-block" style="background-color: #1890ff; color: white; border: none; padding: 8px; margin-bottom: 10px;">
                         <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
                     </a>
                     {% else %}

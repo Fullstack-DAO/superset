@@ -111,6 +111,13 @@ const GridColumnGuide = styled.div`
   `};
 `;
 
+// 添加移动端网格配置
+const MOBILE_GRID_SETTINGS = {
+  columnCount: 2,
+  gutterSize: 8,
+  rowHeight: 40,
+};
+
 class DashboardGrid extends React.PureComponent {
   constructor(props) {
     super(props);
@@ -184,10 +191,16 @@ class DashboardGrid extends React.PureComponent {
       setEditMode,
       dashboardId,
     } = this.props;
-    const columnPlusGutterWidth =
-      (width + GRID_GUTTER_SIZE) / GRID_COLUMN_COUNT;
+    
+    // 添加移动端判断
+    const isMobile = width <= 768;
+    const columnCount = isMobile ? MOBILE_GRID_SETTINGS.columnCount : GRID_COLUMN_COUNT;
+    const gutterSize = isMobile ? MOBILE_GRID_SETTINGS.gutterSize : GRID_GUTTER_SIZE;
+    const rowHeight = isMobile ? MOBILE_GRID_SETTINGS.rowHeight : GRID_ROW_HEIGHT;
+    
+    const columnPlusGutterWidth = (width + gutterSize) / columnCount;
+    const columnWidth = columnPlusGutterWidth - gutterSize;
 
-    const columnWidth = columnPlusGutterWidth - GRID_GUTTER_SIZE;
     const { isResizing } = this.state;
 
     const shouldDisplayEmptyState = gridComponent?.children?.length === 0;

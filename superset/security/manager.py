@@ -288,10 +288,10 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
             # 先获取 access_token
             token_url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken'
             token_params = {
-                'corpid': current_app.config['CORP_ID'],
-                'corpsecret': current_app.config['SECRET']
+                'corpid': current_app.config['WECOM_CORP_ID'],
+                'corpsecret': current_app.config['WECOM_SECRET']
             }
-            token_resp = requests.get(token_url, params=token_params)
+            token_resp = requests.get(token_url, params=token_params, verify=False)
             token_data = token_resp.json()
 
             if token_data.get('errcode') != 0:
@@ -306,7 +306,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
                 'access_token': access_token,
                 'code': code
             }
-            user_resp = requests.get(user_info_url, params=user_params)
+            user_resp = requests.get(user_info_url, params=user_params, verify=False)
             user_data = user_resp.json()
 
             if user_data.get('errcode') != 0:
@@ -323,7 +323,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
                 'access_token': access_token,
                 'userid': userid
             }
-            detail_resp = requests.get(detail_url, params=detail_params)
+            detail_resp = requests.get(detail_url, params=detail_params, verify=False)
             detail_data = detail_resp.json()
 
             if detail_data.get('errcode') != 0:

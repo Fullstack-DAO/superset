@@ -78,6 +78,36 @@ const fullSizeStyle = css`
   }
 `;
 
+const ChartContainer = styled.div`
+  @media (max-width: 768px) {
+    .dashboard-component-chart-holder {
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    .chart-header {
+      flex-direction: column;
+      padding: 8px;
+    }
+
+    .header-title {
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .chart-controls {
+      width: 100%;
+      justify-content: flex-start;
+      margin-top: 8px;
+    }
+
+    .dashboard-chart {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+`;
+
 const ChartHolder: React.FC<ChartHolderProps> = ({
   id,
   parentId,

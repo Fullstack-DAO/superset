@@ -1,6 +1,47 @@
 {% extends "appbuilder/base.html" %}
 
 {% block content %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 判断是否在企业微信环境
+    function isWeCom() {
+      const ua = navigator.userAgent.toLowerCase();
+      // 判断是否是企业微信
+      const isWxWork = /wxwork/i.test(ua);
+      // 判断是否是微信环境
+      const isWeixin = /micromessenger/i.test(ua);
+      // 判断是否是移动设备
+      const isMobile = /mobile|android|iphone|ipad/i.test(ua);
+      
+      // 企业微信移动端
+      if (isWxWork && isWeixin && isMobile) {
+        return true;
+      }
+      
+      // 企业微信桌面端
+      if (isWxWork && !isWeixin) {
+        return true;
+      }
+      
+      return false;
+    }
+
+    // 如果是企业微信环境，自动跳转到企业微信登录
+    if (isWeCom()) {
+      console.log('检测到企业微信环境');
+      const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' + 
+        `appid={{ config.WECOM_CORP_ID }}` + 
+        `&redirect_uri={{ config.WECOM_REDIRECT_URI | urlencode }}` + 
+        '&response_type=code' + 
+        '&scope=snsapi_base' + 
+        '&state=STATE' + 
+        `&agentid={{ config.WECOM_AGENT_ID }}` + 
+        '#wechat_redirect';
+      window.location.href = loginUrl;
+    }
+  });
+</script>
+
 <div class="container">
     <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
         <div class="panel panel-primary">

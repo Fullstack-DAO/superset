@@ -374,8 +374,29 @@ const TopButtons = styled.div`
   button {
     height: 32px;
     padding: 4px 16px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    line-height: 1;
+    
+    background: transparent !important;
+    border: none !important;
+    
+    font-size: 14px;
+    font-weight: normal;
+  }
+
+  .manage-collaborators {
+    font-weight: 500;
+  }
+
+  .action-button {
+    margin-left: 0;
+    
+    .dropdown button {
+      padding: 4px 8px;
+      min-width: 32px;
+    }
   }
 `;
 
@@ -537,6 +558,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           <Button
             buttonStyle="secondary"
             onClick={() => setCollaboratorsModalVisible(true)}
+            className="manage-collaborators"
           >
             {t('管理协作者')}
           </Button>

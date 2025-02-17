@@ -86,6 +86,8 @@ import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
+import Button from 'src/components/Button';
+import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaboratorModal';
 
 type DashboardBuilderProps = {};
 
@@ -205,7 +207,7 @@ const DashboardContentWrapper = styled.div`
       }
 
       .grid-row:after,
-      .dashboard-component-tabs > .hover-menu + div:after {
+      .dashboard-component-tabs > .hover-menu:hover + div:after {
         border: 1px dashed ${theme.colors.grayscale.light2};
       }
 
@@ -361,6 +363,22 @@ const StyledDashboardContent = styled.div<{
   `}
 `;
 
+const TopButtons = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.gridUnit * 2}px;
+  position: absolute;
+  right: ${({ theme }) => theme.gridUnit * 2}px;
+  top: ${({ theme }) => theme.gridUnit * 2}px;
+  align-items: center;
+
+  button {
+    height: 32px;
+    padding: 4px 16px;
+    display: flex;
+    align-items: center;
+  }
+`;
+
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const dispatch = useDispatch();
   const uiConfig = useUiConfig();
@@ -431,6 +449,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
     isReport;
 
   const [barTopOffset, setBarTopOffset] = useState(0);
+  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] = useState(false);
 
   useEffect(() => {
     setBarTopOffset(headerRef.current?.getBoundingClientRect()?.height || 0);
@@ -514,6 +533,29 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const renderDraggableContent = useCallback(
     ({ dropIndicatorProps }: { dropIndicatorProps: JsonObject }) => (
       <div>
+        <TopButtons>
+          <Button
+            buttonStyle="secondary"
+            onClick={() => setCollaboratorsModalVisible(true)}
+          >
+            {t('管理协作者')}
+          </Button>
+          <Button
+            buttonStyle="link"
+            onClick={() => {
+              // 处理编辑操作
+            }}
+          >
+            {t('EDIT DASHBOARD')}
+          </Button>
+          <span className="action-button">
+            <div className="dropdown">
+              <Button buttonStyle="secondary">
+                <i className="fa fa-ellipsis-v" />
+              </Button>
+            </div>
+          </span>
+        </TopButtons>
         {!hideDashboardHeader && <DashboardHeader />}
         {showFilterBar &&
           filterBarOrientation === FilterBarOrientation.HORIZONTAL && (
@@ -612,9 +654,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
         </>
       )}
       <StyledHeader ref={headerRef}>
-        {/* @ts-ignore */}
         <DragDroppable
-          data-test="top-level-tabs"
           component={dashboardRoot}
           parentComponent={null}
           depth={DASHBOARD_ROOT_DEPTH}
@@ -680,6 +720,11 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           `}
         />
       )}
+      <DashboardCollaboratorModal
+        visible={isCollaboratorsModalVisible}
+        onClose={() => setCollaboratorsModalVisible(false)}
+        dashboardId={dashboardId}
+      />
     </DashboardWrapper>
   );
 };

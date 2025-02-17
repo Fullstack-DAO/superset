@@ -21,6 +21,7 @@ import { ResizeCallback, ResizeStartCallback } from 're-resizable';
 import cx from 'classnames';
 import { useSelector } from 'react-redux';
 import { css } from '@superset-ui/core';
+import styled from '@emotion/styled';
 import { LayoutItem, RootState } from 'src/dashboard/types';
 import AnchorLink from 'src/dashboard/components/AnchorLink';
 import Chart from 'src/dashboard/containers/Chart';
@@ -107,6 +108,11 @@ const ChartContainer = styled.div`
     }
   }
 `;
+
+const isMobileDevice = () => {
+  const ua = navigator.userAgent;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+};
 
 const ChartHolder: React.FC<ChartHolderProps> = ({
   id,
@@ -218,13 +224,21 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
     parentComponent.type,
   ]);
 
+  // 添加移动设备状态
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 初始化时检测设备类型
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+  }, []);
+
   const { chartWidth, chartHeight } = useMemo(() => {
     let chartWidth = 0;
     let chartHeight = 0;
 
-    if (isFullSize) {
+    if (isFullSize || isMobile) {
       chartWidth = window.innerWidth - CHART_MARGIN;
-      chartHeight = window.innerHeight - CHART_MARGIN;
+      chartHeight = isMobile ? window.innerHeight / 2 : window.innerHeight - CHART_MARGIN;
     } else {
       chartWidth = Math.floor(
         widthMultiple * columnWidth +
@@ -240,7 +254,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
       chartWidth,
       chartHeight,
     };
-  }, [columnWidth, component, isFullSize, widthMultiple]);
+  }, [columnWidth, component, isFullSize, isMobile, widthMultiple]);
 
   const handleDeleteComponent = useCallback(() => {
     deleteComponent(id, parentId);

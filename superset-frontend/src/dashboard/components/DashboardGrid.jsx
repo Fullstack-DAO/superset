@@ -51,22 +51,55 @@ const renderDraggableContentTop = dropProps =>
     <div className="drop-indicator drop-indicator--top" />
   );
 
-const DashboardEmptyStateContainer = styled.div`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-`;
+// 删除第一个定义
+// const DashboardEmptyStateContainer = styled.div`
+//   position: absolute;
+//   top: 0;
+//   bottom: 0;
+//   left: 0;
+//   right: 0;
+// `;
 
 const GridContent = styled.div`
   ${({ theme }) => css`
     display: flex;
     flex-direction: column;
+    height: auto;
+    max-height: 100%;
+    overflow-y: auto;
+    font-size: 16px;
+
+    /* 添加图表标题样式 */
+    .chart-header {
+      padding: ${theme.gridUnit * 2}px;
+      font-size: ${theme.typography.sizes.m}px;
+      line-height: 1.4;
+      font-weight: ${theme.typography.weights.bold};
+      margin-bottom: ${theme.gridUnit * 2}px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     /* gutters between rows */
     & > div:not(:last-child):not(.empty-droptarget) {
+      margin-bottom: ${theme.gridUnit * 6}px;
+      padding: ${theme.gridUnit * 4}px;
+    }
+
+    // 移动端样式调整
+    @media (max-width: 768px) {
+      font-size: 14px;
+      
+      .chart-header {
+        font-size: ${theme.typography.sizes.s}px;
+        padding: ${theme.gridUnit}px;
+      }
+    }
+
+    & > div:not(:last-child):not(.empty-droptarget) {
       margin-bottom: ${theme.gridUnit * 4}px;
+      padding: ${theme.gridUnit * 2}px;
     }
 
     & > .empty-droptarget {
@@ -88,6 +121,22 @@ const GridContent = styled.div`
       height: 80vh;
     }
   `}
+`;
+
+// 调整空状态容器样式
+const DashboardEmptyStateContainer = styled.div`
+  position: relative;
+  min-height: 200px;
+  padding: 32px;
+  font-size: 16px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${({ theme }) => theme.colors.grayscale.light5};
+  border-radius: 4px;
+  margin: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `;
 
 const GridColumnGuide = styled.div`
@@ -112,10 +161,17 @@ const GridColumnGuide = styled.div`
 `;
 
 // 添加移动端网格配置
+// 修改移动端网格配置
 const MOBILE_GRID_SETTINGS = {
-  columnCount: 2,
+  columnCount: 12,  // 改为12列，与默认的 GRID_COLUMN_COUNT 保持一致
   gutterSize: 8,
   rowHeight: 40,
+  minWidth: 320,
+};
+
+// 添加移动设备检测函数
+const isMobileDevice = () => {
+  return window.innerWidth <= 768;
 };
 
 class DashboardGrid extends React.PureComponent {
@@ -123,6 +179,7 @@ class DashboardGrid extends React.PureComponent {
     super(props);
     this.state = {
       isResizing: false,
+      isMobile: false,  // 添加移动设备状态
     };
 
     this.handleResizeStart = this.handleResizeStart.bind(this);
@@ -179,12 +236,31 @@ class DashboardGrid extends React.PureComponent {
     this.props.setDirectPathToChild(pathToTabIndex);
   }
 
+  componentDidMount() {
+    // 直接使用 props 中的 width 判断
+    this.setState({ isMobile: this.props.width <= 768 });
+    
+    // 添加窗口大小变化监听
+    window.addEventListener('resize', this.handleResize);
+  }
+
+  componentWillUnmount() {
+    // 移除监听器
+    window.removeEventListener('resize', this.handleResize);
+  }
+
+  // 添加 resize 处理函数
+  handleResize = () => {
+    this.setState({ isMobile: window.innerWidth <= 768 });
+  };
+
   render() {
+    const { isResizing, isMobile } = this.state;
     const {
-      gridComponent,
+      width,
+      gridComponent,  // 添加 gridComponent
       handleComponentDrop,
       depth,
-      width,
       isComponentVisible,
       editMode,
       canEdit,
@@ -192,18 +268,23 @@ class DashboardGrid extends React.PureComponent {
       dashboardId,
     } = this.props;
     
-    // 添加移动端判断
-    const isMobile = width <= 768;
-    const columnCount = isMobile ? MOBILE_GRID_SETTINGS.columnCount : GRID_COLUMN_COUNT;
+    // 修改宽度计算逻辑
+    const effectiveWidth = Math.max(width, MOBILE_GRID_SETTINGS.minWidth);
+    const columnCount = isMobile ? 1 : GRID_COLUMN_COUNT;
     const gutterSize = isMobile ? MOBILE_GRID_SETTINGS.gutterSize : GRID_GUTTER_SIZE;
-    const rowHeight = isMobile ? MOBILE_GRID_SETTINGS.rowHeight : GRID_ROW_HEIGHT;
     
-    const columnPlusGutterWidth = (width + gutterSize) / columnCount;
-    const columnWidth = columnPlusGutterWidth - gutterSize;
+    // 调整列宽计算
+    const columnPlusGutterWidth = effectiveWidth / columnCount;
+    const columnWidth = Math.floor(columnPlusGutterWidth - gutterSize);
 
-    const { isResizing } = this.state;
+    // 修改 DashboardComponent 的 availableColumnCount
+    const availableColumnCount = isMobile ? 1 : GRID_COLUMN_COUNT;
+
+    // 移除重复声明
+    // const { isResizing } = this.state;  // 删除这行
 
     const shouldDisplayEmptyState = gridComponent?.children?.length === 0;
+    
     const shouldDisplayTopLevelTabEmptyState =
       shouldDisplayEmptyState && gridComponent.type === TAB_TYPE;
 
@@ -305,13 +386,14 @@ class DashboardGrid extends React.PureComponent {
                 parentId={gridComponent.id}
                 depth={depth + 1}
                 index={index}
-                availableColumnCount={GRID_COLUMN_COUNT}
+                availableColumnCount={availableColumnCount}  // 使用新的 availableColumnCount
                 columnWidth={columnWidth}
                 isComponentVisible={isComponentVisible}
                 onResizeStart={this.handleResizeStart}
                 onResize={this.handleResize}
                 onResizeStop={this.handleResizeStop}
                 onChangeTab={this.handleChangeTab}
+                editMode={editMode}  // 添加 editMode 属性
               />
             ))}
             {/* make the area below components droppable */}

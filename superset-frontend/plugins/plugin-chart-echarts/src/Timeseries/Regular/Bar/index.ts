@@ -21,6 +21,7 @@ import {
   Behavior,
   hasGenericChartAxes,
   t,
+  ChartDataResponseResult,
 } from '@superset-ui/core';
 import {
   EchartsTimeseriesChartProps,
@@ -36,14 +37,55 @@ import example1 from './images/Bar1.png';
 import example2 from './images/Bar2.png';
 import example3 from './images/Bar3.png';
 
-const barTransformProps = (chartProps: EchartsTimeseriesChartProps) =>
-  transformProps({
+// 修改类型定义
+interface ExtendedChartDataResponseResult extends ChartDataResponseResult {
+  label_map?: Record<string, string[]>;
+}
+
+const barTransformProps = (chartProps: EchartsTimeseriesChartProps) => {
+  // 添加类型安全检查
+  const modifiedChartProps = {
     ...chartProps,
+    queriesData: chartProps.queriesData?.map(queryData => {
+      const typedQueryData = queryData as ExtendedChartDataResponseResult;
+      return {
+        ...typedQueryData,
+        data: typedQueryData.data || [],
+        label_map: typedQueryData.label_map || {},
+        // 保持其他必需的 ChartDataResponseResult 属性
+        annotation_data: typedQueryData.annotation_data,
+        cache_key: typedQueryData.cache_key,
+        cache_timeout: typedQueryData.cache_timeout,
+        cached_dttm: typedQueryData.cached_dttm,
+        error: typedQueryData.error,
+        is_cached: typedQueryData.is_cached,
+        query: typedQueryData.query,
+        rowcount: typedQueryData.rowcount,
+        stacktrace: typedQueryData.stacktrace,
+        status: typedQueryData.status,
+      };
+    }) || [{
+      data: [],
+      label_map: {},
+      annotation_data: null,
+      cache_key: null,
+      cache_timeout: null,
+      cached_dttm: null,
+      error: null,
+      is_cached: false,
+      query: '',
+      rowcount: 0,
+      stacktrace: null,
+      status: 'success',
+    }],
     formData: {
       ...chartProps.formData,
       seriesType: EchartsTimeseriesSeriesType.Bar,
     },
-  });
+  };
+
+  return transformProps(modifiedChartProps);
+};
 
 export default class EchartsTimeseriesBarChartPlugin extends EchartsChartPlugin<
   EchartsTimeseriesFormData,

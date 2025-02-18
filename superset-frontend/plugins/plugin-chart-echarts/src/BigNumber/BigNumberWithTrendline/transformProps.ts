@@ -107,7 +107,7 @@ export default function transformProps(
   const compareLag = Number(compareLag_) || 0;
   let formattedSubheader = subheader;
 
-  const { r = 0, g = 0, b = 0, a = 1 } = colorPicker || {};  // 添加空值判断和默认值
+  const { r = 0, g = 0, b = 0} = colorPicker || {};  // 添加空值判断和默认值
   const mainColor = `rgb(${r}, ${g}, ${b})`;
 
   const xAxisLabel = getXAxisLabel(rawFormData) as string;

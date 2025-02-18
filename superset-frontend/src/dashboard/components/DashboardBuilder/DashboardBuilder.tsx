@@ -373,17 +373,15 @@ const TopButtons = styled.div`
 
   button {
     height: 32px;
-    padding: 4px 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
-    
     background: transparent !important;
     border: none !important;
-    
     font-size: 14px;
     font-weight: normal;
+    line-height: 32px;
+    padding: 0 16px;
   }
 
   .manage-collaborators {

@@ -292,32 +292,52 @@ const StyledDashboardContent = styled.div<{
       margin: ${theme.gridUnit * 6}px ${theme.gridUnit * 4}px ${theme.gridUnit * 6}px ${marginLeft}px;
       max-width: 100%;
 
-      // 修改这里，确保网格布局应用到正确的容器
-      .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);  // 三列等宽布局
-        grid-gap: ${theme.gridUnit * 4}px;      // 设置网格间距
-        width: 100%;
+      @media (max-width: 768px) {
+        margin: ${theme.gridUnit * 2}px;
+        width: calc(100% - ${theme.gridUnit * 4}px);
       }
 
-      // 调整网格内的组件样式
-      .dashboard-component-tabs-content {
+      .dashboard-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         grid-gap: ${theme.gridUnit * 4}px;
         width: 100%;
-        margin: 0;
 
-        & > div {
-          margin: 0 !important;  // 覆盖默认边距
-          width: 100%;
+        @media (max-width: 768px) {
+          display: flex;
+          flex-direction: column;
+          gap: ${theme.gridUnit * 2}px;
         }
       }
 
-      ${editMode &&
-      `
-        max-width: calc(100% - ${BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 8}px);
-      `}
+      .dashboard-component-chart-holder {
+        width: 100%;
+        position: relative;
+        background-color: ${theme.colors.grayscale.light5};
+        padding: ${theme.gridUnit * 2}px;
+
+        @media (max-width: 768px) {
+          padding: ${theme.gridUnit}px;
+          height: 400px !important;  // 固定高度
+          margin-bottom: ${theme.gridUnit * 2}px;
+
+          .dashboard-chart {
+            height: 100%;
+            
+            .chart-container {
+              height: 100%;
+              
+              .slice_container {
+                height: 100%;
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+            }
+          }
+        }
+      }
     }
 
     // 图表容器样式
@@ -330,7 +350,13 @@ const StyledDashboardContent = styled.div<{
       padding: ${theme.gridUnit * 2}px;
       overflow: visible;
 
-      // 修改操作按钮样式，移除编辑模式限制
+      // 添加移动端适配
+      @media (max-width: 768px) {
+        min-height: 150px;
+        padding: ${theme.gridUnit}px;
+      }
+
+      // 修改操作按钮样式，支持触摸
       .hover-menu {
         position: absolute;
         right: ${theme.gridUnit}px;
@@ -340,22 +366,28 @@ const StyledDashboardContent = styled.div<{
         transition: opacity 0.3s;
         display: flex;
         gap: ${theme.gridUnit}px;
-        pointer-events: auto;  // 确保按钮可点击
-      }
+        pointer-events: auto;
 
-      &:hover .hover-menu {
-        opacity: 1;
-      }
+        // 移动端样式
+        @media (max-width: 768px) {
+          opacity: 1;
+          background: rgba(255, 255, 255, 0.9);
+          padding: ${theme.gridUnit / 2}px;
+          border-radius: 4px;
 
-      // 编辑模式下的特殊样式
-      .dashboard--editing & {
-        .chart-container {
-          cursor: move;
-          opacity: 0.2;
+          button {
+            padding: ${theme.gridUnit}px;
+            min-width: 32px;
+            min-height: 32px;
+          }
         }
+      }
 
-        &:hover .chart-container {
-          opacity: 0.7;
+      // 移动端始终显示操作按钮
+      @media (max-width: 768px) {
+        &:hover .hover-menu,
+        & .hover-menu {
+          opacity: 1;
         }
       }
     }

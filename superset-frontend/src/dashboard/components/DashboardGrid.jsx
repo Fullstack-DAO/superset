@@ -24,8 +24,13 @@ import { EmptyStateBig } from 'src/components/EmptyState';
 import { componentShape } from '../util/propShapes';
 import DashboardComponent from '../containers/DashboardComponent';
 import DragDroppable from './dnd/DragDroppable';
-import { GRID_GUTTER_SIZE, GRID_COLUMN_COUNT } from '../util/constants';
+import { 
+  GRID_GUTTER_SIZE, 
+  GRID_COLUMN_COUNT,
+  GRID_ROW_HEIGHT,
+} from '../util/constants';
 import { TAB_TYPE } from '../util/componentTypes';
+import _ from 'lodash';
 
 const propTypes = {
   depth: PropTypes.number.isRequired,
@@ -64,61 +69,45 @@ const GridContent = styled.div`
   ${({ theme }) => css`
     display: flex;
     flex-direction: column;
-    height: auto;
-    max-height: 100%;
-    overflow-y: auto;
-    font-size: 16px;
-
-    /* 添加图表标题样式 */
-    .chart-header {
-      padding: ${theme.gridUnit * 2}px;
-      font-size: ${theme.typography.sizes.m}px;
-      line-height: 1.4;
-      font-weight: ${theme.typography.weights.bold};
-      margin-bottom: ${theme.gridUnit * 2}px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* gutters between rows */
-    & > div:not(:last-child):not(.empty-droptarget) {
-      margin-bottom: ${theme.gridUnit * 6}px;
-      padding: ${theme.gridUnit * 4}px;
-    }
-
-    // 移动端样式调整
+    
     @media (max-width: 768px) {
-      font-size: 14px;
-      
-      .chart-header {
-        font-size: ${theme.typography.sizes.s}px;
-        padding: ${theme.gridUnit}px;
+      .dashboard-grid {
+        margin: ${theme.gridUnit}px;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
       }
-    }
 
-    & > div:not(:last-child):not(.empty-droptarget) {
-      margin-bottom: ${theme.gridUnit * 4}px;
-      padding: ${theme.gridUnit * 2}px;
-    }
+      .dashboard-component-chart-holder {
+        width: 100%;
+        margin-bottom: ${theme.gridUnit * 2}px;
+        background-color: ${theme.colors.grayscale.light5};
+        
+        .chart-container {
+          width: 100%;
+          height: ${window.innerWidth * 0.8}px !important;
+          min-height: ${window.innerWidth * 0.8}px !important;
+          
+          .slice_container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
-    & > .empty-droptarget {
-      width: 100%;
-      height: 100%;
-    }
+            & > div {
+              width: 100%;
+              height: 100%;
+            }
 
-    & > .empty-droptarget:first-child {
-      height: ${theme.gridUnit * 12}px;
-      margin-top: ${theme.gridUnit * -6}px;
-    }
-
-    & > .empty-droptarget:last-child {
-      height: ${theme.gridUnit * 12}px;
-      margin-top: ${theme.gridUnit * -6}px;
-    }
-
-    & > .empty-droptarget.empty-droptarget--full:only-child {
-      height: 80vh;
+            canvas,
+            .echarts-for-react {
+              width: 100% !important;
+              height: 100% !important;
+            }
+          }
+        }
+      }
     }
   `}
 `;
@@ -160,12 +149,11 @@ const GridColumnGuide = styled.div`
   `};
 `;
 
-// 添加移动端网格配置
-// 修改移动端网格配置
+// 1. 修改 GridContent 样式组件
 const MOBILE_GRID_SETTINGS = {
-  columnCount: 12,  // 改为12列，与默认的 GRID_COLUMN_COUNT 保持一致
-  gutterSize: 8,
-  rowHeight: 40,
+  columnCount: 1,
+  gutterSize: 4,  // 减小间距
+  rowHeight: GRID_ROW_HEIGHT,  // 使用常量
   minWidth: 320,
 };
 
@@ -178,8 +166,8 @@ class DashboardGrid extends React.PureComponent {
   constructor(props) {
     super(props);
     this.state = {
+      isMobile: false,
       isResizing: false,
-      isMobile: false,  // 添加移动设备状态
     };
 
     this.handleResizeStart = this.handleResizeStart.bind(this);
@@ -237,28 +225,30 @@ class DashboardGrid extends React.PureComponent {
   }
 
   componentDidMount() {
-    // 直接使用 props 中的 width 判断
-    this.setState({ isMobile: this.props.width <= 768 });
-    
-    // 添加窗口大小变化监听
+    this.checkMobileMode();
     window.addEventListener('resize', this.handleResize);
   }
 
   componentWillUnmount() {
-    // 移除监听器
     window.removeEventListener('resize', this.handleResize);
   }
 
-  // 添加 resize 处理函数
-  handleResize = () => {
-    this.setState({ isMobile: window.innerWidth <= 768 });
+  checkMobileMode = () => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile !== this.state.isMobile) {
+      this.setState({ isMobile });
+    }
   };
 
+  handleResize = _.debounce(() => {
+    this.checkMobileMode();
+  }, 250);
+
   render() {
-    const { isResizing, isMobile } = this.state;
+    const { isMobile, isResizing } = this.state;
     const {
       width,
-      gridComponent,  // 添加 gridComponent
+      gridComponent,
       handleComponentDrop,
       depth,
       isComponentVisible,
@@ -268,20 +258,17 @@ class DashboardGrid extends React.PureComponent {
       dashboardId,
     } = this.props;
     
-    // 修改宽度计算逻辑
-    const effectiveWidth = Math.max(width, MOBILE_GRID_SETTINGS.minWidth);
-    const columnCount = isMobile ? 1 : GRID_COLUMN_COUNT;
-    const gutterSize = isMobile ? MOBILE_GRID_SETTINGS.gutterSize : GRID_GUTTER_SIZE;
-    
-    // 调整列宽计算
-    const columnPlusGutterWidth = effectiveWidth / columnCount;
-    const columnWidth = Math.floor(columnPlusGutterWidth - gutterSize);
+    // 移动端布局配置
+    const gridSettings = isMobile ? MOBILE_GRID_SETTINGS : {
+      columnCount: GRID_COLUMN_COUNT,
+      gutterSize: GRID_GUTTER_SIZE,
+      rowHeight: GRID_ROW_HEIGHT,
+    };
 
-    // 修改 DashboardComponent 的 availableColumnCount
-    const availableColumnCount = isMobile ? 1 : GRID_COLUMN_COUNT;
-
-    // 移除重复声明
-    // const { isResizing } = this.state;  // 删除这行
+    const columnWidth = Math.floor(
+      (width - gridSettings.gutterSize * (gridSettings.columnCount - 1)) /
+        gridSettings.columnCount,
+    );
 
     const shouldDisplayEmptyState = gridComponent?.children?.length === 0;
     
@@ -386,14 +373,14 @@ class DashboardGrid extends React.PureComponent {
                 parentId={gridComponent.id}
                 depth={depth + 1}
                 index={index}
-                availableColumnCount={availableColumnCount}  // 使用新的 availableColumnCount
+                availableColumnCount={gridSettings.columnCount}
                 columnWidth={columnWidth}
                 isComponentVisible={isComponentVisible}
                 onResizeStart={this.handleResizeStart}
                 onResize={this.handleResize}
                 onResizeStop={this.handleResizeStop}
                 onChangeTab={this.handleChangeTab}
-                editMode={editMode}  // 添加 editMode 属性
+                editMode={editMode}
               />
             ))}
             {/* make the area below components droppable */}

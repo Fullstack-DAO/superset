@@ -285,78 +285,82 @@ const StyledDashboardContent = styled.div<{
     height: auto;
     flex: 1;
 
-    .grid-container .dashboard-component-tabs {
-      box-shadow: none;
-      padding-left: 0;
-    }
-
     .grid-container {
-      /* without this, the grid will not get smaller upon toggling the builder panel on */
       width: 0;
       flex: 1;
       position: relative;
-      margin-top: ${theme.gridUnit * 6}px;
-      margin-right: ${theme.gridUnit * 8}px;
-      margin-bottom: ${theme.gridUnit * 6}px;
-      margin-left: ${marginLeft}px;
+      margin: ${theme.gridUnit * 6}px ${theme.gridUnit * 4}px ${theme.gridUnit * 6}px ${marginLeft}px;
+      max-width: 100%;
+
+      // 修改这里，确保网格布局应用到正确的容器
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);  // 三列等宽布局
+        grid-gap: ${theme.gridUnit * 4}px;      // 设置网格间距
+        width: 100%;
+      }
+
+      // 调整网格内的组件样式
+      .dashboard-component-tabs-content {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-gap: ${theme.gridUnit * 4}px;
+        width: 100%;
+        margin: 0;
+
+        & > div {
+          margin: 0 !important;  // 覆盖默认边距
+          width: 100%;
+        }
+      }
 
       ${editMode &&
       `
-      max-width: calc(100% - ${
-        BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16
-      }px);
-    `}
-
-      /* this is the ParentSize wrapper */
-    & > div:first-child {
-        height: inherit !important;
-      }
+        max-width: calc(100% - ${BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 8}px);
+      `}
     }
 
-    .dashboard-builder-sidepane {
-      width: ${BUILDER_SIDEPANEL_WIDTH}px;
-      z-index: 1;
-    }
-
+    // 图表容器样式
     .dashboard-component-chart-holder {
       width: 100%;
       height: 100%;
+      min-height: 200px;
       background-color: ${theme.colors.grayscale.light5};
       position: relative;
-      padding: ${theme.gridUnit * 4}px;
-      overflow-y: visible;
+      padding: ${theme.gridUnit * 2}px;
+      overflow: hidden;
+      margin: 0;  // 移除所有边距
 
-      // transitionable traits to show filter relevance
-      transition: opacity ${theme.transitionTiming}s ease-in-out,
-        border-color ${theme.transitionTiming}s ease-in-out,
-        box-shadow ${theme.transitionTiming}s ease-in-out;
-
-      &.fade-in {
-        border-radius: ${theme.borderRadius}px;
-        box-shadow: inset 0 0 0 2px ${theme.colors.primary.base},
-          0 0 0 3px
-            ${addAlpha(
-              theme.colors.primary.base,
-              parseFloat(theme.opacity.light) / 100,
-            )};
+      .error-container,
+      .missing-chart-container {
+        display: none !important;
       }
 
-      &.fade-out {
-        border-radius: ${theme.borderRadius}px;
-        box-shadow: none;
-      }
-
-      & .missing-chart-container {
+      .chart-container {
+        height: 100%;
+        min-height: inherit;
+        position: relative;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        overflow-y: auto;
         justify-content: center;
 
-        .missing-chart-body {
-          font-size: ${theme.typography.sizes.s}px;
-          position: relative;
-          display: flex;
+        & > div {
+          width: 100%;
+          height: 100%;
+        }
+      }
+
+      .dashboard-chart {
+        width: 100%;
+        height: 100%;
+        min-height: inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        & > div {
+          width: 100%;
+          height: 100%;
         }
       }
     }

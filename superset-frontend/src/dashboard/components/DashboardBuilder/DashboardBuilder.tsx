@@ -328,39 +328,34 @@ const StyledDashboardContent = styled.div<{
       background-color: ${theme.colors.grayscale.light5};
       position: relative;
       padding: ${theme.gridUnit * 2}px;
-      overflow: hidden;
-      margin: 0;  // 移除所有边距
+      overflow: visible;
 
-      .error-container,
-      .missing-chart-container {
-        display: none !important;
+      // 修改操作按钮样式，移除编辑模式限制
+      .hover-menu {
+        position: absolute;
+        right: ${theme.gridUnit}px;
+        top: ${theme.gridUnit}px;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.3s;
+        display: flex;
+        gap: ${theme.gridUnit}px;
+        pointer-events: auto;  // 确保按钮可点击
       }
 
-      .chart-container {
-        height: 100%;
-        min-height: inherit;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      &:hover .hover-menu {
+        opacity: 1;
+      }
 
-        & > div {
-          width: 100%;
-          height: 100%;
+      // 编辑模式下的特殊样式
+      .dashboard--editing & {
+        .chart-container {
+          cursor: move;
+          opacity: 0.2;
         }
-      }
 
-      .dashboard-chart {
-        width: 100%;
-        height: 100%;
-        min-height: inherit;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        & > div {
-          width: 100%;
-          height: 100%;
+        &:hover .chart-container {
+          opacity: 0.7;
         }
       }
     }

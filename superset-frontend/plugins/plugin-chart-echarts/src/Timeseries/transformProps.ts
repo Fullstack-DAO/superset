@@ -294,7 +294,12 @@ export default function transformProps(
     getMetricLabel,
   );
 
-  const isMultiSeries = groupby.length || metrics.length > 1;
+  // 确保 groupby 和 metrics 都有值且是数组
+  const groupbyArray = Array.isArray(groupby) ? groupby : [];
+  const metricsArray = Array.isArray(metrics) ? metrics : [];
+
+  // 修改 isMultiSeries 的定义
+  const isMultiSeries = groupbyArray.length > 0 || metricsArray.length > 1;
 
   const [rawSeriesTemp, sortedTotalValuesTemp, minPositiveValueTemp] = extractSeries(
     rebasedData || [],

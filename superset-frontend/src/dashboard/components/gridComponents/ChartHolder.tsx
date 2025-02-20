@@ -79,9 +79,9 @@ const fullSizeStyle = css`
   }
 `;
 
-const ChartContainer = styled.div`
+const StyledChartHolder = styled.div`
   @media (max-width: 768px) {
-    .dashboard-component-chart-holder {
+    &.dashboard-component-chart-holder {
       padding: 8px;
       margin-bottom: 8px;
     }
@@ -314,7 +314,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
           onResizeStop={onResizeStop}
           editMode={editMode}
         >
-          <div
+          <StyledChartHolder
             ref={dragSourceRef}
             data-test="dashboard-component-chart-holder"
             style={focusHighlightStyles}
@@ -322,7 +322,6 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
             className={cx(
               'dashboard-component',
               'dashboard-component-chart-holder',
-              // The following class is added to support custom dashboard styling via the CSS editor
               `dashboard-chart-id-${chartId}`,
               outlinedComponentId ? 'fade-in' : 'fade-out',
             )}
@@ -367,7 +366,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
                 </div>
               </HoverMenu>
             )}
-          </div>
+          </StyledChartHolder>
           {dropIndicatorProps && <div {...dropIndicatorProps} />}
         </ResizableContainer>
       )}

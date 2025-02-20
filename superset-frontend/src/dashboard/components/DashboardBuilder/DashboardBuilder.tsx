@@ -26,8 +26,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import Button from 'src/components/Button';  // 添加这行
 import {
-  addAlpha,
   css,
   isFeatureEnabled,
   FeatureFlag,
@@ -85,7 +85,6 @@ import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
-import Button from 'src/components/Button';
 import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaboratorModal';
 
 type DashboardBuilderProps = {};
@@ -145,7 +144,10 @@ const StyledDashboardContent = styled.div<{
 
       @media (max-width: 768px) {
         margin: ${theme.gridUnit * 2}px;
-        width: calc(100% - ${theme.gridUnit * 4}px);
+        width: 100vw;
+        padding: 0;
+        overflow: visible;
+        position: static;
       }
 
       .dashboard-grid {
@@ -155,9 +157,17 @@ const StyledDashboardContent = styled.div<{
         width: 100%;
 
         @media (max-width: 768px) {
-          display: flex;
-          flex-direction: column;
-          gap: ${theme.gridUnit * 2}px;
+          display: block;
+          padding: ${theme.gridUnit * 2}px;
+          width: 100%;
+          
+          > div {
+            margin-bottom: ${theme.gridUnit * 4}px;
+            width: 100% !important;
+            height: auto !important;
+            position: static !important;
+            transform: none !important;
+          }
         }
       }
 
@@ -168,22 +178,52 @@ const StyledDashboardContent = styled.div<{
         padding: ${theme.gridUnit * 2}px;
 
         @media (max-width: 768px) {
-          padding: ${theme.gridUnit}px;
-          height: 400px !important;  // 保持移动端固定高度
-          margin-bottom: ${theme.gridUnit * 2}px;
+          padding: ${theme.gridUnit * 2}px;
+          height: auto !important;
+          min-height: auto;
+          margin-bottom: ${theme.gridUnit * 4}px;
+          position: static;
+          transform: none !important;
 
           .dashboard-chart {
-            height: 100%;
+            height: auto;
+            position: static;
+            transform: none !important;
             
             .chart-container {
-              height: 100%;
+              height: auto;
+              min-height: 400px;
+              position: static;
+              transform: none !important;
               
               .slice_container {
-                height: 100%;
+                height: auto;
+                min-height: 400px;
                 width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                position: static;
+                overflow: visible;
+                display: block;
+                transform: none !important;
+
+                > div {
+                  width: 100% !important;
+                  height: auto !important;
+                  min-height: 400px;
+                  position: static !important;
+                  transform: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+
+                svg, canvas {
+                  width: 100% !important;
+                  height: auto !important;
+                  min-height: 400px;
+                  max-height: none !important;
+                  position: static !important;
+                  transform: none !important;
+                  object-fit: contain;
+                }
               }
             }
           }
@@ -191,50 +231,23 @@ const StyledDashboardContent = styled.div<{
       }
     }
 
-    // 图表容器样式
+    // 图表容器通用样式
     .dashboard-component-chart-holder {
-      width: 100%;
-      height: 100%;
-      min-height: 200px;
-      background-color: ${theme.colors.grayscale.light5};
-      position: relative;
-      padding: ${theme.gridUnit * 2}px;
-      overflow: visible;
-
       @media (max-width: 768px) {
-        min-height: 150px;
-        padding: ${theme.gridUnit}px;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible;
+        position: static;
       }
 
       .hover-menu {
-        position: absolute;
-        right: ${theme.gridUnit}px;
-        top: ${theme.gridUnit}px;
-        z-index: 10;
-        opacity: 0;
-        transition: opacity 0.3s;
-        display: flex;
-        gap: ${theme.gridUnit}px;
-        pointer-events: auto;
-
         @media (max-width: 768px) {
           opacity: 1;
           background: rgba(255, 255, 255, 0.9);
           padding: ${theme.gridUnit / 2}px;
           border-radius: 4px;
-
-          button {
-            padding: ${theme.gridUnit}px;
-            min-width: 32px;
-            min-height: 32px;
-          }
-        }
-      }
-
-      @media (max-width: 768px) {
-        &:hover .hover-menu,
-        & .hover-menu {
-          opacity: 1;
+          right: ${theme.gridUnit}px;
+          top: ${theme.gridUnit}px;
         }
       }
     }

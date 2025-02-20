@@ -19,18 +19,18 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
+import _ from 'lodash';
 import { addAlpha, css, styled, t } from '@superset-ui/core';
 import { EmptyStateBig } from 'src/components/EmptyState';
 import { componentShape } from '../util/propShapes';
 import DashboardComponent from '../containers/DashboardComponent';
 import DragDroppable from './dnd/DragDroppable';
-import { 
-  GRID_GUTTER_SIZE, 
+import {
+  GRID_GUTTER_SIZE,
   GRID_COLUMN_COUNT,
   GRID_ROW_HEIGHT,
 } from '../util/constants';
 import { TAB_TYPE } from '../util/componentTypes';
-import _ from 'lodash';
 
 const propTypes = {
   depth: PropTypes.number.isRequired,
@@ -56,63 +56,20 @@ const renderDraggableContentTop = dropProps =>
     <div className="drop-indicator drop-indicator--top" />
   );
 
-// 删除第一个定义
-// const DashboardEmptyStateContainer = styled.div`
-//   position: absolute;
-//   top: 0;
-//   bottom: 0;
-//   left: 0;
-//   right: 0;
-// `;
+const GRID_SETTINGS = {
+  default: {
+    columnCount: GRID_COLUMN_COUNT,
+    gutterSize: GRID_GUTTER_SIZE,
+    rowHeight: GRID_ROW_HEIGHT,
+  },
+  mobile: {
+    columnCount: 1,
+    gutterSize: 8,
+    rowHeight: 350,
+    minWidth: 320,
+  },
+};
 
-const GridContent = styled.div`
-  ${({ theme }) => css`
-    display: flex;
-    flex-direction: column;
-    
-    @media (max-width: 768px) {
-      .dashboard-grid {
-        margin: ${theme.gridUnit}px;
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-      }
-
-      .dashboard-component-chart-holder {
-        width: 100%;
-        margin-bottom: ${theme.gridUnit * 2}px;
-        background-color: ${theme.colors.grayscale.light5};
-        
-        .chart-container {
-          width: 100%;
-          height: ${window.innerWidth * 0.8}px !important;
-          min-height: ${window.innerWidth * 0.8}px !important;
-          
-          .slice_container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            & > div {
-              width: 100%;
-              height: 100%;
-            }
-
-            canvas,
-            .echarts-for-react {
-              width: 100% !important;
-              height: 100% !important;
-            }
-          }
-        }
-      }
-    }
-  `}
-`;
-
-// 调整空状态容器样式
 const DashboardEmptyStateContainer = styled.div`
   position: relative;
   min-height: 200px;
@@ -130,7 +87,6 @@ const DashboardEmptyStateContainer = styled.div`
 
 const GridColumnGuide = styled.div`
   ${({ theme }) => css`
-    // /* Editing guides */
     &.grid-column-guide {
       position: absolute;
       top: 0;
@@ -149,18 +105,77 @@ const GridColumnGuide = styled.div`
   `};
 `;
 
-// 1. 修改 GridContent 样式组件
-const MOBILE_GRID_SETTINGS = {
-  columnCount: 1,
-  gutterSize: 4,  // 减小间距
-  rowHeight: GRID_ROW_HEIGHT,  // 使用常量
-  minWidth: 320,
-};
+const GridContent = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
 
-// 添加移动设备检测函数
-const isMobileDevice = () => {
-  return window.innerWidth <= 768;
-};
+  @media (max-width: 768px) {
+    .dashboard-grid {
+      display: block !important;
+      width: 100% !important;
+      padding: ${({ theme }) => theme.gridUnit * 2}px;
+      margin: 0;
+
+      .dashboard-component-chart-holder {
+        position: relative !important;
+        width: 100% !important;
+        margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
+        padding: ${({ theme }) => theme.gridUnit * 2}px;
+        background-color: ${({ theme }) => theme.colors.grayscale.light5};
+        border-radius: ${({ theme }) => theme.gridUnit}px;
+        box-sizing: border-box;
+
+        .chart-container {
+          position: relative !important;
+          width: 100% !important;
+          height: 350px !important;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+
+          .slice_container {
+            position: relative !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+
+            & > div {
+              width: 100% !important;
+              height: 100% !important;
+              position: relative !important;
+            }
+
+            svg,
+            canvas {
+              width: 100% !important;
+              height: 100% !important;
+              position: relative !important;
+            }
+
+            &.big_number {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 200px !important;
+              span {
+                font-size: 48px;
+                line-height: 1.2;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .empty-droptarget {
+      display: none;
+    }
+  }
+`;
 
 class DashboardGrid extends React.PureComponent {
   constructor(props) {
@@ -168,6 +183,7 @@ class DashboardGrid extends React.PureComponent {
     this.state = {
       isMobile: false,
       isResizing: false,
+      mounted: false,
     };
 
     this.handleResizeStart = this.handleResizeStart.bind(this);
@@ -213,7 +229,6 @@ class DashboardGrid extends React.PureComponent {
         ...dropResult,
         destination: {
           ...dropResult.destination,
-          // force appending as the first child if top drop target
           index: 0,
         },
       });
@@ -227,6 +242,9 @@ class DashboardGrid extends React.PureComponent {
   componentDidMount() {
     this.checkMobileMode();
     window.addEventListener('resize', this.handleResize);
+    setTimeout(() => {
+      this.setState({ mounted: true });
+    }, 100);
   }
 
   componentWillUnmount() {
@@ -242,10 +260,15 @@ class DashboardGrid extends React.PureComponent {
 
   handleResize = _.debounce(() => {
     this.checkMobileMode();
+    this.setState({ mounted: false }, () => {
+      setTimeout(() => {
+        this.setState({ mounted: true });
+      }, 100);
+    });
   }, 250);
 
   render() {
-    const { isMobile, isResizing } = this.state;
+    const { isMobile, isResizing, mounted } = this.state;
     const {
       width,
       gridComponent,
@@ -257,13 +280,10 @@ class DashboardGrid extends React.PureComponent {
       setEditMode,
       dashboardId,
     } = this.props;
-    
-    // 移动端布局配置
-    const gridSettings = isMobile ? MOBILE_GRID_SETTINGS : {
-      columnCount: GRID_COLUMN_COUNT,
-      gutterSize: GRID_GUTTER_SIZE,
-      rowHeight: GRID_ROW_HEIGHT,
-    };
+
+    const gridSettings = isMobile
+      ? GRID_SETTINGS.mobile
+      : GRID_SETTINGS.default;
 
     const columnWidth = Math.floor(
       (width - gridSettings.gutterSize * (gridSettings.columnCount - 1)) /
@@ -271,7 +291,7 @@ class DashboardGrid extends React.PureComponent {
     );
 
     const shouldDisplayEmptyState = gridComponent?.children?.length === 0;
-    
+
     const shouldDisplayTopLevelTabEmptyState =
       shouldDisplayEmptyState && gridComponent.type === TAB_TYPE;
 
@@ -346,8 +366,11 @@ class DashboardGrid extends React.PureComponent {
           </DashboardEmptyStateContainer>
         )}
         <div className="dashboard-grid" ref={this.setGridRef}>
-          <GridContent className="grid-content" data-test="grid-content">
-            {/* make the area above components droppable */}
+          <GridContent
+            className="grid-content"
+            data-test="grid-content"
+            style={{ visibility: mounted ? 'visible' : 'hidden' }}
+          >
             {editMode && (
               <DragDroppable
                 component={gridComponent}
@@ -383,7 +406,6 @@ class DashboardGrid extends React.PureComponent {
                 editMode={editMode}
               />
             ))}
-            {/* make the area below components droppable */}
             {editMode && gridComponent?.children?.length > 0 && (
               <DragDroppable
                 component={gridComponent}

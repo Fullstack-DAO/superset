@@ -75,7 +75,6 @@ import { EmptyStateBig } from 'src/components/EmptyState';
 import { useUiConfig } from 'src/components/UiConfigContext';
 import ResizableSidebar from 'src/components/ResizableSidebar';
 import {
-  BUILDER_SIDEPANEL_WIDTH,
   CLOSED_FILTER_BAR_WIDTH,
   FILTER_BAR_HEADER_HEIGHT,
   MAIN_HEADER_HEIGHT,
@@ -126,154 +125,6 @@ const StyledContent = styled.div<{
   ${({ fullSizeChartId }) => fullSizeChartId && `z-index: 101;`}
 `;
 
-const DashboardContentWrapper = styled.div`
-  ${({ theme }) => css`
-    &.dashboard {
-      position: relative;
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-
-      /* drop shadow for top-level tabs only */
-      & .dashboard-component-tabs {
-        box-shadow: 0 ${theme.gridUnit}px ${theme.gridUnit}px 0
-          ${addAlpha(
-            theme.colors.grayscale.dark2,
-            parseFloat(theme.opacity.light) / 100,
-          )};
-        padding-left: ${theme.gridUnit *
-        2}px; /* note this is added to tab-level padding, to match header */
-      }
-
-      .dropdown-toggle.btn.btn-primary .caret {
-        color: ${theme.colors.grayscale.light5};
-      }
-
-      .background--transparent {
-        background-color: transparent;
-      }
-
-      .background--white {
-        background-color: ${theme.colors.grayscale.light5};
-      }
-    }
-    &.dashboard--editing {
-      .grid-row:after,
-      .dashboard-component-tabs > .hover-menu:hover + div:after {
-        border: 1px dashed transparent;
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
-        z-index: 1;
-        pointer-events: none;
-      }
-
-      .resizable-container {
-        & .dashboard-component-chart-holder {
-          .dashboard-chart {
-            .chart-container {
-              cursor: move;
-              opacity: 0.2;
-            }
-
-            .slice_container {
-              /* disable chart interactions in edit mode */
-              pointer-events: none;
-            }
-          }
-
-          &:hover .dashboard-chart .chart-container {
-            opacity: 0.7;
-          }
-        }
-
-        &:hover,
-        &.resizable-container--resizing:hover {
-          & > .dashboard-component-chart-holder:after {
-            border: 1px dashed ${theme.colors.primary.base};
-          }
-        }
-      }
-
-      .resizable-container--resizing:hover > .grid-row:after,
-      .hover-menu:hover + .grid-row:after,
-      .dashboard-component-tabs > .hover-menu:hover + div:after {
-        border: 1px dashed ${theme.colors.primary.base};
-        z-index: 2;
-      }
-
-      .grid-row:after,
-      .dashboard-component-tabs > .hover-menu:hover + div:after {
-        border: 1px dashed ${theme.colors.grayscale.light2};
-      }
-
-      /* provide hit area in case row contents is edge to edge */
-      .dashboard-component-tabs-content {
-        .dragdroppable-row {
-          padding-top: ${theme.gridUnit * 4}px;
-        }
-
-        & > div:not(:last-child):not(.empty-droptarget) {
-          margin-bottom: ${theme.gridUnit * 4}px;
-        }
-      }
-
-      .dashboard-component-chart-holder {
-        &:after {
-          content: '';
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          top: 0;
-          left: 0;
-          z-index: 1;
-          pointer-events: none;
-          border: 1px solid transparent;
-        }
-
-        &:hover:after {
-          border: 1px dashed ${theme.colors.primary.base};
-          z-index: 2;
-        }
-      }
-
-      .contract-trigger:before {
-        display: none;
-      }
-    }
-
-    & .dashboard-component-tabs-content {
-      & > div:not(:last-child):not(.empty-droptarget) {
-        margin-bottom: ${theme.gridUnit * 4}px;
-      }
-
-      & > .empty-droptarget {
-        position: absolute;
-        width: 100%;
-      }
-
-      & > .empty-droptarget:first-child:not(.empty-droptarget--full) {
-        height: ${theme.gridUnit * 4}px;
-        top: -2px;
-        z-index: 10;
-      }
-
-      & > .empty-droptarget:last-child {
-        height: ${theme.gridUnit * 3}px;
-        bottom: 0;
-      }
-    }
-
-    .empty-droptarget:first-child .drop-indicator--bottom {
-      top: ${theme.gridUnit * 6}px;
-    }
-  `}
-`;
-
 const StyledDashboardContent = styled.div<{
   editMode: boolean;
   marginLeft: number;
@@ -318,7 +169,7 @@ const StyledDashboardContent = styled.div<{
 
         @media (max-width: 768px) {
           padding: ${theme.gridUnit}px;
-          height: 400px !important;  // 固定高度
+          height: 400px !important;  // 保持移动端固定高度
           margin-bottom: ${theme.gridUnit * 2}px;
 
           .dashboard-chart {
@@ -350,13 +201,11 @@ const StyledDashboardContent = styled.div<{
       padding: ${theme.gridUnit * 2}px;
       overflow: visible;
 
-      // 添加移动端适配
       @media (max-width: 768px) {
         min-height: 150px;
         padding: ${theme.gridUnit}px;
       }
 
-      // 修改操作按钮样式，支持触摸
       .hover-menu {
         position: absolute;
         right: ${theme.gridUnit}px;
@@ -368,7 +217,6 @@ const StyledDashboardContent = styled.div<{
         gap: ${theme.gridUnit}px;
         pointer-events: auto;
 
-        // 移动端样式
         @media (max-width: 768px) {
           opacity: 1;
           background: rgba(255, 255, 255, 0.9);
@@ -383,7 +231,6 @@ const StyledDashboardContent = styled.div<{
         }
       }
 
-      // 移动端始终显示操作按钮
       @media (max-width: 768px) {
         &:hover .hover-menu,
         & .hover-menu {
@@ -397,35 +244,44 @@ const StyledDashboardContent = styled.div<{
 const TopButtons = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.gridUnit * 2}px;
-  position: absolute;
-  right: ${({ theme }) => theme.gridUnit * 2}px;
-  top: ${({ theme }) => theme.gridUnit * 2}px;
+  position: fixed;
+  right: 240px;
+  top: 72px;
   align-items: center;
+  z-index: 1000;
+  background-color: transparent;
 
   button {
     height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: transparent !important;
-    border: none !important;
     font-size: 14px;
     font-weight: normal;
     line-height: 32px;
     padding: 0 16px;
+    background-color: ${({ theme }) => theme.colors.grayscale.light5} !important;
+    border: 1px solid ${({ theme }) => theme.colors.grayscale.light2} !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
 
   .manage-collaborators {
     font-weight: 500;
+    white-space: nowrap;
+    
+    @media (max-width: 768px) {
+      font-size: 12px;
+      padding: 0 8px;
+    }
   }
 
   .action-button {
-    margin-left: 0;
-    
-    .dropdown button {
-      padding: 4px 8px;
-      min-width: 32px;
-    }
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    right: 180px;
+    top: 72px;
   }
 `;
 
@@ -434,8 +290,8 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const uiConfig = useUiConfig();
   const theme = useTheme();
 
-  const dashboardId = useSelector<RootState, string>(
-    ({ dashboardInfo }) => `${dashboardInfo.id}`,
+  const dashboardId = useSelector<RootState, number>(
+    ({ dashboardInfo }) => Number(dashboardInfo.id),
   );
   const dashboardLayout = useSelector<RootState, DashboardLayout>(
     state => state.dashboardLayout.present,
@@ -591,14 +447,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           >
             {t('管理协作者')}
           </Button>
-          <Button
-            buttonStyle="link"
-            onClick={() => {
-              // 处理编辑操作
-            }}
-          >
-            {t('EDIT DASHBOARD')}
-          </Button>
           <span className="action-button">
             <div className="dropdown">
               <Button buttonStyle="secondary">
@@ -744,9 +592,11 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
               image="dashboard.svg"
             />
           )}
-        <DashboardContentWrapper
+        <StyledDashboardContent
           data-test="dashboard-content-wrapper"
           className={cx('dashboard', editMode && 'dashboard--editing')}
+          editMode={editMode}
+          marginLeft={dashboardContentMarginLeft}
         >
           <StyledDashboardContent
             className="dashboard-content"
@@ -760,7 +610,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
             )}
             {editMode && <BuilderComponentPane topOffset={barTopOffset} />}
           </StyledDashboardContent>
-        </DashboardContentWrapper>
+        </StyledDashboardContent>
       </StyledContent>
       {dashboardIsSaving && (
         <Loading

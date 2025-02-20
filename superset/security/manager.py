@@ -41,6 +41,7 @@ from flask_appbuilder.security.views import (
     RoleModelView,
     UserModelView,
     ViewMenuModelView,
+    AuthOAuthView,
 )
 from flask_appbuilder.widgets import ListWidget
 from flask_babel import lazy_gettext as _
@@ -75,6 +76,8 @@ from superset.utils.core import (
 )
 from superset.utils.filters import get_dataset_access_filters
 from superset.utils.urls import get_url_host
+from flask_appbuilder.security.manager import AUTH_DB, AUTH_OAUTH
+from flask_babel import Babel
 
 if TYPE_CHECKING:
     from superset.common.query_context import QueryContext
@@ -142,201 +145,87 @@ RoleModelView.edit_columns = ["name", "permissions", "user"]
 RoleModelView.related_views = []
 
 
-class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
-    SecurityManager
-):
-    userstatschartview = None
-    READ_ONLY_MODEL_VIEWS = {"Database", "DynamicPlugin"}
+class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
+    oauth_view = AuthOAuthView  # 指定 OAuth 视图类
 
-    USER_MODEL_VIEWS = {
-        "RegisterUserModelView",
-        "UserDBModelView",
-        "UserLDAPModelView",
-        "UserInfoEditView",
-        "UserOAuthModelView",
-        "UserOIDModelView",
-        "UserRemoteUserModelView",
-    }
+    def __init__(self, appbuilder):
+        # 先调用父类的初始化
+        super().__init__(appbuilder)
 
-    GAMMA_READ_ONLY_MODEL_VIEWS = {
-        "Dataset",
-        "Datasource",
-    } | READ_ONLY_MODEL_VIEWS
+        # 确保 Babel 已经初始化
+        if 'babel' not in current_app.extensions:
+            Babel(current_app)
 
-    ADMIN_ONLY_VIEW_MENUS = {
-        "Access Requests",
-        "Action Log",
-        "Log",
-        "List Users",
-        "List Roles",
-        "ResetPasswordView",
-        "RoleModelView",
-        "Row Level Security",
-        "Row Level Security Filters",
-        "RowLevelSecurityFiltersModelView",
-        "Security",
-        "SQL Lab",
-        "User Registrations",
-        "User's Statistics",
-    } | USER_MODEL_VIEWS
+        # 不要在这里注册 OAuth 视图
+        # 改为在 init_app 中注册
 
-    ALPHA_ONLY_VIEW_MENUS = {
-        "Alerts & Report",
-        "Annotation Layers",
-        "Annotation",
-        "CSS Templates",
-        "ColumnarToDatabaseView",
-        "CssTemplate",
-        "CsvToDatabaseView",
-        "ExcelToDatabaseView",
-        "Import dashboards",
-        "ImportExportRestApi",
-        "Manage",
-        "Queries",
-        "ReportSchedule",
-        "TableSchemaView",
-        "Upload a CSV",
-    }
+    def init_app(self, app):
+        """Initialize the security extension with flask app"""
+        super().init_app(app)
 
-    ADMIN_ONLY_PERMISSIONS = {
-        "can_update_role",
-        "all_query_access",
-        "can_grant_guest_token",
-        "can_set_embedded",
-        "can_warm_up_cache",
-    }
-
-    READ_ONLY_PERMISSION = {
-        "can_show",
-        "can_list",
-        "can_get",
-        "can_external_metadata",
-        "can_external_metadata_by_name",
-        "can_read",
-    }
-
-    ALPHA_ONLY_PERMISSIONS = {
-        "muldelete",
-        "all_database_access",
-        "all_datasource_access",
-    }
-
-    OBJECT_SPEC_PERMISSIONS = {
-        "database_access",
-        "schema_access",
-        "datasource_access",
-    }
-
-    ACCESSIBLE_PERMS = {"can_userinfo", "resetmypassword", "can_recent_activity"}
-
-    SQLLAB_ONLY_PERMISSIONS = {
-        ("can_my_queries", "SqlLab"),
-        ("can_read", "SavedQuery"),
-        ("can_write", "SavedQuery"),
-        ("can_export", "SavedQuery"),
-        ("can_read", "Query"),
-        ("can_export_csv", "Query"),
-        ("can_get_results", "SQLLab"),
-        ("can_execute_sql_query", "SQLLab"),
-        ("can_estimate_query_cost", "SQL Lab"),
-        ("can_export_csv", "SQLLab"),
-        ("can_read", "SQLLab"),
-        ("can_sqllab_history", "Superset"),
-        ("can_sqllab", "Superset"),
-        ("can_test_conn", "Superset"),  # Deprecated permission remove on 3.0.0
-        ("can_activate", "TabStateView"),
-        ("can_get", "TabStateView"),
-        ("can_delete_query", "TabStateView"),
-        ("can_post", "TabStateView"),
-        ("can_delete", "TabStateView"),
-        ("can_put", "TabStateView"),
-        ("can_migrate_query", "TabStateView"),
-        ("menu_access", "SQL Lab"),
-        ("menu_access", "SQL Editor"),
-        ("menu_access", "Saved Queries"),
-        ("menu_access", "Query Search"),
-    }
-
-    SQLLAB_EXTRA_PERMISSION_VIEWS = {
-        ("can_csv", "Superset"),  # Deprecated permission remove on 3.0.0
-        ("can_read", "Superset"),
-        ("can_read", "Database"),
-    }
-
-    data_access_permissions = (
-        "database_access",
-        "schema_access",
-        "datasource_access",
-        "all_datasource_access",
-        "all_database_access",
-        "all_query_access",
-    )
-
-    guest_user_cls = GuestUser
-    pyjwt_for_guest_token = _jwt_global_obj
+        # 在这里注册 OAuth 视图
+        if not hasattr(self, '_oauth_view'):
+            self._oauth_view = self.oauth_view()
+            self.appbuilder.add_view_no_menu(self._oauth_view)
 
     def oauth_user_info(self, provider, response=None):
         if provider == 'wecom':
             if response is None:
                 return None
 
-            # 获取 code
             code = response.get('code')
             if not code:
+                logger.error("No code provided in OAuth response")
                 return None
 
-            # 先获取 access_token
-            token_url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken'
-            token_params = {
-                'corpid': current_app.config['WECOM_CORP_ID'],
-                'corpsecret': current_app.config['WECOM_SECRET']
-            }
-            token_resp = requests.get(token_url, params=token_params, verify=False)
-            token_data = token_resp.json()
+            try:
+                # 获取 access_token
+                token_url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken'
+                token_params = {
+                    'corpid': current_app.config['WECOM_CORP_ID'],
+                    'corpsecret': current_app.config['WECOM_SECRET']
+                }
+                token_resp = requests.get(token_url, params=token_params, verify=False)
+                token_data = token_resp.json()
+                logger.info(f"Token response: {token_data}")  # 添加日志
 
-            if token_data.get('errcode') != 0:
-                logger.error(f"获取access_token失败: {token_data}")
+                if token_data.get('errcode') != 0:
+                    logger.error(f"Failed to get access_token: {token_data}")
+                    return None
+
+                access_token = token_data.get('access_token')
+
+                # 获取用户信息
+                user_info_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token={access_token}&code={code}"
+                user_resp = requests.get(user_info_url, verify=False)
+                user_data = user_resp.json()
+                logger.info(f"User info response: {user_data}")  # 添加日志
+
+                if user_data.get('errcode') != 0:
+                    logger.error(f"Failed to get user info: {user_data}")
+                    return None
+
+                userid = user_data.get('UserId')
+                if not userid:
+                    logger.error("No userid in response")
+                    return None
+
+                # 获取用户详细信息
+                detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token={access_token}&userid={userid}"
+                detail_resp = requests.get(detail_url, verify=False)
+                detail_data = detail_resp.json()
+                logger.info(f"User detail response: {detail_data}")  # 添加日志
+
+                return {
+                    'username': userid,
+                    'first_name': detail_data.get('name', ''),
+                    'last_name': '',
+                    'email': detail_data.get('email', f"{userid}@example.com"),
+                    'role_keys': ['Public']
+                }
+            except Exception as e:
+                logger.error(f"Error in OAuth process: {str(e)}")
                 return None
-
-            access_token = token_data.get('access_token')
-
-            # 获取用户身份信息
-            user_info_url = 'https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo'
-            user_params = {
-                'access_token': access_token,
-                'code': code
-            }
-            user_resp = requests.get(user_info_url, params=user_params, verify=False)
-            user_data = user_resp.json()
-
-            if user_data.get('errcode') != 0:
-                logger.error(f"获取用户信息失败: {user_data}")
-                return None
-
-            userid = user_data.get('UserId')
-            if not userid:
-                return None
-
-            # 获取用户详细信息
-            detail_url = 'https://qyapi.weixin.qq.com/cgi-bin/user/get'
-            detail_params = {
-                'access_token': access_token,
-                'userid': userid
-            }
-            detail_resp = requests.get(detail_url, params=detail_params, verify=False)
-            detail_data = detail_resp.json()
-
-            if detail_data.get('errcode') != 0:
-                logger.error(f"获取用户详细信息失败: {detail_data}")
-                return None
-
-            return {
-                'username': detail_data.get('userid'),
-                'first_name': detail_data.get('name', ''),
-                'last_name': '',
-                'email': detail_data.get('email', f"{userid}@fullstack-dao.com"),
-                'role_keys': ['Public']
-            }
 
         return super().oauth_user_info(provider, response)
 

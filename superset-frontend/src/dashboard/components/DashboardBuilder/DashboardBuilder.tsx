@@ -35,11 +35,9 @@ import {
   styled,
   t,
   useTheme,
-  useElementOnScreen,
 } from '@superset-ui/core';
 import { Global } from '@emotion/react';
 import { useDispatch, useSelector } from 'react-redux';
-import ErrorBoundary from 'src/components/ErrorBoundary';
 import BuilderComponentPane from 'src/dashboard/components/BuilderComponentPane';
 import DashboardHeader from 'src/dashboard/containers/DashboardHeader';
 import Icons from 'src/components/Icons';
@@ -73,14 +71,6 @@ import FilterBar from 'src/dashboard/components/nativeFilters/FilterBar';
 import Loading from 'src/components/Loading';
 import { EmptyStateBig } from 'src/components/EmptyState';
 import { useUiConfig } from 'src/components/UiConfigContext';
-import ResizableSidebar from 'src/components/ResizableSidebar';
-import {
-  CLOSED_FILTER_BAR_WIDTH,
-  FILTER_BAR_HEADER_HEIGHT,
-  MAIN_HEADER_HEIGHT,
-  OPEN_FILTER_BAR_MAX_WIDTH,
-  OPEN_FILTER_BAR_WIDTH,
-} from 'src/dashboard/constants';
 import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
@@ -90,20 +80,22 @@ import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaborator
 type DashboardBuilderProps = {};
 
 // @z-index-above-dashboard-charts + 1 = 11
-const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
-  grid-column: 1;
-  grid-row: 1 / span 2;
-  z-index: 11;
-  width: ${({ width }) => width}px;
-  ${({ hidden }) => hidden && `display: none;`}
-`;
+// 删除这段代码
+// const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
+//   grid-column: 1;
+//   grid-row: 1 / span 2;
+//   z-index: 11;
+//   width: ${({ width }) => width}px;
+//   ${({ hidden }) => hidden && `display: none;`}
+// `;
 
-const StickyPanel = styled.div<{ width: number }>`
-  position: sticky;
-  top: -1px;
-  width: ${({ width }) => width}px;
-  flex: 0 0 ${({ width }) => width}px;
-`;
+// 删除这个未使用的组件定义
+// const StickyPanel = styled.div<{ width: number }>`
+//   position: sticky;
+//   top: -1px;
+//   width: ${({ width }) => width}px;
+//   flex: 0 0 ${({ width }) => width}px;
+// `;
 
 // @z-index-above-dashboard-popovers (99) + 1 = 100
 const StyledHeader = styled.div`
@@ -165,16 +157,17 @@ const StyledDashboardContent = styled.div<{
   `}
 `;
 
-const BuilderSidebarContainer = styled.div`
-  position: relative;
-  
-  .manage-collaborators-btn {
-    position: absolute;
-    top: -40px;
-    left: 0;
-    z-index: 100;
-  }
-`;
+// 删除这个未使用的组件
+// const BuilderSidebarContainer = styled.div`
+//   position: relative;
+//
+//   .manage-collaborators-btn {
+//     position: absolute;
+//     top: -40px;
+//     left: 0;
+//     z-index: 100;
+//   }
+// `;
 
 const HeaderButtons = styled.div`
   display: flex;
@@ -281,23 +274,17 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const {
     showDashboard,
     dashboardFiltersOpen,
-    toggleDashboardFiltersOpen,
+    // 移除未使用的 toggleDashboardFiltersOpen
     nativeFiltersEnabled,
   } = useNativeFilters();
 
-  const [containerRef, isSticky] = useElementOnScreen<HTMLDivElement>({
-    threshold: [1],
-  });
+  // 删除未使用的 hook 调用
+  // const [, isSticky] = useElementOnScreen<HTMLDivElement>({
+  //   threshold: [1],
+  // });
 
   const showFilterBar =
     (crossFiltersEnabled || nativeFiltersEnabled) && !editMode;
-
-  const offset =
-    FILTER_BAR_HEADER_HEIGHT +
-    (isSticky || standaloneMode ? 0 : MAIN_HEADER_HEIGHT);
-
-  const filterBarHeight = `calc(100vh - ${offset}px)`;
-  const filterBarOffset = dashboardFiltersOpen ? 0 : barTopOffset + 20;
 
   const draggableStyle = useMemo(
     () => ({

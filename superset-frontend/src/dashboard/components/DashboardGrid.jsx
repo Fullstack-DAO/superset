@@ -117,6 +117,18 @@ const GridContent = styled.div`
       padding: ${({ theme }) => theme.gridUnit * 2}px;
       margin: 0;
 
+      // 添加顶部操作按钮的样式
+      .dashboard-header-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: ${({ theme }) => theme.gridUnit * 2}px;
+        margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
+
+        button {
+          margin: 0;
+        }
+      }
       .dashboard-component-chart-holder {
         position: relative !important;
         width: 100% !important;

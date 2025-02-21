@@ -126,6 +126,26 @@ const editButtonStyle = theme => css`
 const actionButtonsStyle = theme => css`
   display: flex;
   align-items: center;
+  gap: ${theme.gridUnit * 2}px;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: ${theme.gridUnit * 2}px;
+
+    .action-button {
+      margin: 0;
+      height: 32px;
+      min-width: auto;
+      padding: 0 ${theme.gridUnit * 2}px;
+    }
+
+    button {
+      margin: 0;
+      height: 32px;
+    }
+  }
 
   .action-schedule-report {
     margin-left: ${theme.gridUnit * 2}px;

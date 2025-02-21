@@ -144,110 +144,21 @@ const StyledDashboardContent = styled.div<{
 
       @media (max-width: 768px) {
         margin: ${theme.gridUnit * 2}px;
-        width: 100vw;
         padding: 0;
-        overflow: visible;
-        position: static;
-      }
-
-      .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-gap: ${theme.gridUnit * 4}px;
         width: 100%;
-
-        @media (max-width: 768px) {
+        max-width: none;
+        
+        // 移动端网格布局调整
+        .dashboard-grid {
           display: block;
-          padding: ${theme.gridUnit * 2}px;
           width: 100%;
-          
-          > div {
-            margin-bottom: ${theme.gridUnit * 4}px;
-            width: 100% !important;
-            height: auto !important;
-            position: static !important;
-            transform: none !important;
-          }
-        }
-      }
-
-      .dashboard-component-chart-holder {
-        width: 100%;
-        position: relative;
-        background-color: ${theme.colors.grayscale.light5};
-        padding: ${theme.gridUnit * 2}px;
-
-        @media (max-width: 768px) {
           padding: ${theme.gridUnit * 2}px;
-          height: auto !important;
-          min-height: auto;
-          margin-bottom: ${theme.gridUnit * 4}px;
-          position: static;
-          transform: none !important;
-
-          .dashboard-chart {
-            height: auto;
-            position: static;
-            transform: none !important;
-            
-            .chart-container {
-              height: auto;
-              min-height: 400px;
-              position: static;
-              transform: none !important;
-              
-              .slice_container {
-                height: auto;
-                min-height: 400px;
-                width: 100%;
-                position: static;
-                overflow: visible;
-                display: block;
-                transform: none !important;
-
-                > div {
-                  width: 100% !important;
-                  height: auto !important;
-                  min-height: 400px;
-                  position: static !important;
-                  transform: none !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-
-                svg, canvas {
-                  width: 100% !important;
-                  height: auto !important;
-                  min-height: 400px;
-                  max-height: none !important;
-                  position: static !important;
-                  transform: none !important;
-                  object-fit: contain;
-                }
-              }
-            }
+          
+          // 确保每个组件都能完整显示
+          .dashboard-component-chart-holder {
+            width: 100% !important;
+            margin-bottom: ${theme.gridUnit * 4}px;
           }
-        }
-      }
-    }
-
-    // 图表容器通用样式
-    .dashboard-component-chart-holder {
-      @media (max-width: 768px) {
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible;
-        position: static;
-      }
-
-      .hover-menu {
-        @media (max-width: 768px) {
-          opacity: 1;
-          background: rgba(255, 255, 255, 0.9);
-          padding: ${theme.gridUnit / 2}px;
-          border-radius: 4px;
-          right: ${theme.gridUnit}px;
-          top: ${theme.gridUnit}px;
         }
       }
     }
@@ -256,45 +167,20 @@ const StyledDashboardContent = styled.div<{
 
 const TopButtons = styled.div`
   display: flex;
+  flex-direction: row;
   gap: ${({ theme }) => theme.gridUnit * 2}px;
-  position: fixed;
-  right: 240px;
-  top: 72px;
-  align-items: center;
-  z-index: 1000;
-  background-color: transparent;
-
-  button {
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: normal;
-    line-height: 32px;
-    padding: 0 16px;
-    background-color: ${({ theme }) => theme.colors.grayscale.light5} !important;
-    border: 1px solid ${({ theme }) => theme.colors.grayscale.light2} !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-
-  .manage-collaborators {
-    font-weight: 500;
-    white-space: nowrap;
-    
-    @media (max-width: 768px) {
-      font-size: 12px;
-      padding: 0 8px;
-    }
-  }
-
-  .action-button {
-    display: none;
-  }
-
+  padding: ${({ theme }) => theme.gridUnit * 2}px;
+  
   @media (max-width: 768px) {
-    right: 180px;
-    top: 72px;
+    position: static;
+    margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
+    padding: ${({ theme }) => theme.gridUnit * 2}px;
+    background-color: ${({ theme }) => theme.colors.grayscale.light5};
+    
+    button {
+      flex: 1;
+      padding: ${({ theme }) => theme.gridUnit * 2}px;
+    }
   }
 `;
 

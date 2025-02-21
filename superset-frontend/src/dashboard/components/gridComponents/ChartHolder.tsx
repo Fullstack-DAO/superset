@@ -20,7 +20,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ResizeCallback, ResizeStartCallback } from 're-resizable';
 import cx from 'classnames';
 import { useSelector } from 'react-redux';
-import { css } from '@superset-ui/core';
+import { css, SupersetTheme, useTheme } from '@superset-ui/core';
 import styled from '@emotion/styled';
 import { LayoutItem, RootState } from 'src/dashboard/types';
 import AnchorLink from 'src/dashboard/components/AnchorLink';
@@ -79,32 +79,108 @@ const fullSizeStyle = css`
   }
 `;
 
-const StyledChartHolder = styled.div`
+const StyledChartHolder = styled.div<{ theme: SupersetTheme }>`
+  width: 100%;
+  height: 100%;
+  color: ${({ theme }) => theme.colors.grayscale.dark1};
+  background-color: ${({ theme }) => theme.colors.grayscale.light5};
+  border-radius: ${({ theme }) => theme.gridUnit}px;
+  border: 0;
+  position: relative;
+
   @media (max-width: 768px) {
-    &.dashboard-component-chart-holder {
-      padding: 8px;
-      margin-bottom: 8px;
+    width: 100vw !important;  // 使用视口宽度
+    margin-left: -${({ theme }) => theme.gridUnit * 2}px;  // 抵消父容器的padding
+    padding: ${({ theme }) => theme.gridUnit * 2}px;
+    box-sizing: border-box;
+
+    .chart-container {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 400px;  // 增加最小高度
+      position: relative !important;
+      overflow: visible !important;
+
+      .slice_container {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 400px;
+        position: relative !important;
+        transform: none !important;
+
+        // 大数字图表特殊处理
+        &.big_number {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          height: 200px !important;
+          min-height: 200px !important;
+
+          & > div {
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 48px !important;
+          }
+        }
+
+        // 折线图特殊处理
+        &.line {
+          height: 400px !important;
+          min-height: 400px !important;
+
+          & > div {
+            height: 100% !important;
+          }
+        }
+
+        // 通用图表容器样式
+        & > div {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: inherit;
+          position: relative !important;
+          transform: none !important;
+        }
+
+        // 图表元素样式
+        svg, canvas {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: inherit;
+        }
+      }
     }
 
+    // 禁用调整大小功能
+    .resizable-container {
+      resize: none !important;
+      width: 100% !important;
+      height: auto !important;
+      
+      & > div {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
+
+    // 图表标题和控件样式
     .chart-header {
-      flex-direction: column;
-      padding: 8px;
+      padding: ${({ theme }) => theme.gridUnit * 2}px;
+      
+      .header-title {
+        font-size: 16px;
+        padding: ${({ theme }) => theme.gridUnit}px 0;
+      }
     }
 
-    .header-title {
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-
-    .chart-controls {
-      width: 100%;
-      justify-content: flex-start;
-      margin-top: 8px;
-    }
-
-    .dashboard-chart {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+    // 确保所有内容可见
+    .dashboard-component-chart-holder {
+      overflow: visible !important;
+      width: 100% !important;
+      height: auto !important;
     }
   }
 `;
@@ -137,6 +213,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
   setFullSizeChartId,
   isInView,
 }) => {
+  const theme = useTheme();
   const { chartId } = component.meta;
   const isFullSize = fullSizeChartId === chartId;
 
@@ -225,20 +302,25 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
   ]);
 
   // 添加移动设备状态
+  const [isMounted, setIsMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // 初始化时检测设备类型
   useEffect(() => {
     setIsMobile(isMobileDevice());
+    setIsMounted(true);
   }, []);
 
   const { chartWidth, chartHeight } = useMemo(() => {
     let chartWidth = 0;
     let chartHeight = 0;
 
-    if (isFullSize || isMobile) {
+    if (isFullSize) {
       chartWidth = window.innerWidth - CHART_MARGIN;
-      chartHeight = isMobile ? window.innerHeight / 2 : window.innerHeight - CHART_MARGIN;
+      chartHeight = window.innerHeight - CHART_MARGIN;
+    } else if (isMobile) {
+      chartWidth = window.innerWidth - (theme.gridUnit * 4); // 减去左右padding
+      chartHeight = 400; // 使用固定高度
     } else {
       chartWidth = Math.floor(
         widthMultiple * columnWidth +
@@ -254,7 +336,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
       chartWidth,
       chartHeight,
     };
-  }, [columnWidth, component, isFullSize, isMobile, widthMultiple]);
+  }, [columnWidth, component, isFullSize, isMobile, widthMultiple, theme.gridUnit]);
 
   const handleDeleteComponent = useCallback(() => {
     deleteComponent(id, parentId);
@@ -315,6 +397,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
           editMode={editMode}
         >
           <StyledChartHolder
+            theme={theme}
             ref={dragSourceRef}
             data-test="dashboard-component-chart-holder"
             style={focusHighlightStyles}
@@ -375,3 +458,4 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
 };
 
 export default ChartHolder;
+

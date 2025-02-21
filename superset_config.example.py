@@ -8,7 +8,7 @@ SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://postgres:123456@localhost:5432/
 WECOM_CORP_ID = 'wwc2d2bc12f207d229'
 WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
-WECOM_REDIRECT_URI = 'http://bi.fullstack-dao.com/oauth-authorized/wecom'
+WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
 
 # 认证相关配置
 AUTH_TYPE = AUTH_DB  # 保持使用数据库认证作为主认证方式
@@ -48,12 +48,13 @@ OAUTH_PROVIDERS = [
                 'scope': 'snsapi_userinfo',
                 'state': 'wecom'
             },
-            'h5_authorize_params': {  # H5 授权参数
+            'h5_authorize_params': {
                 'appid': WECOM_CORP_ID,
                 'agentid': WECOM_AGENT_ID,
                 'redirect_uri': WECOM_REDIRECT_URI,
                 'response_type': 'code',
-                'scope': 'snsapi_base'  # H5 使用 snsapi_base
+                'scope': 'snsapi_base',  # H5登录使用 base 即可
+                'state': 'wecom_h5'
             }
         }
     }

@@ -167,21 +167,10 @@ const StyledDashboardContent = styled.div<{
 
 const TopButtons = styled.div`
   display: flex;
-  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
   gap: ${({ theme }) => theme.gridUnit * 2}px;
   padding: ${({ theme }) => theme.gridUnit * 2}px;
-  
-  @media (max-width: 768px) {
-    position: static;
-    margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
-    padding: ${({ theme }) => theme.gridUnit * 2}px;
-    background-color: ${({ theme }) => theme.colors.grayscale.light5};
-    
-    button {
-      flex: 1;
-      padding: ${({ theme }) => theme.gridUnit * 2}px;
-    }
-  }
 `;
 
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
@@ -338,22 +327,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const renderDraggableContent = useCallback(
     ({ dropIndicatorProps }: { dropIndicatorProps: JsonObject }) => (
       <div>
-        <TopButtons>
-          <Button
-            buttonStyle="secondary"
-            onClick={() => setCollaboratorsModalVisible(true)}
-            className="manage-collaborators"
-          >
-            {t('管理协作者')}
-          </Button>
-          <span className="action-button">
-            <div className="dropdown">
-              <Button buttonStyle="secondary">
-                <i className="fa fa-ellipsis-v" />
-              </Button>
-            </div>
-          </span>
-        </TopButtons>
         {!hideDashboardHeader && <DashboardHeader />}
         {showFilterBar &&
           filterBarOrientation === FilterBarOrientation.HORIZONTAL && (
@@ -452,6 +425,15 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
         </>
       )}
       <StyledHeader ref={headerRef}>
+        <TopButtons>
+          <Button
+            buttonStyle="secondary"
+            onClick={() => setCollaboratorsModalVisible(true)}
+            className="manage-collaborators"
+          >
+            {t('管理协作者')}
+          </Button>
+        </TopButtons>
         <DragDroppable
           component={dashboardRoot}
           parentComponent={null}
@@ -460,7 +442,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           orientation="column"
           onDrop={handleDrop}
           editMode={editMode}
-          // you cannot drop on/displace tabs if they already exist
           disableDragDrop={!!topLevelTabs}
           style={draggableStyle}
         >

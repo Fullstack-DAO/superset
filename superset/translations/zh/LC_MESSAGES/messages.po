@@ -16670,7 +16670,7 @@ msgstr "撤消？"
 #: superset-frontend/src/components/ErrorBoundary/index.jsx:51
 #: superset-frontend/src/components/ErrorMessage/ErrorMessageWithStackTrace.tsx:25
 msgid "Unexpected error"
-msgstr "意外错误。"
+msgstr "没有权限查看此图表。"
 
 #: superset/commands/database/exceptions.py:137
 #: superset/commands/database/exceptions.py:142
@@ -16679,7 +16679,7 @@ msgstr "发生意外错误，请检查日志以了解详细信息"
 
 #: superset-frontend/src/utils/getClientErrorObject.ts:75
 msgid "Unexpected error: "
-msgstr "意外错误。"
+msgstr "没有权限查看此图表。"
 
 #: superset/views/api.py:108
 #, python-format

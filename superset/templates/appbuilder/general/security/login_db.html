@@ -6,6 +6,8 @@
     // 判断是否在企业微信环境
     function isWeCom() {
       const ua = navigator.userAgent.toLowerCase();
+      console.log('User Agent:', ua); // 记录用户代理字符串
+
       // 判断是否是企业微信
       const isWxWork = /wxwork/i.test(ua);
       // 判断是否是微信环境
@@ -29,15 +31,20 @@
     // 如果是企业微信环境，自动跳转到企业微信登录
     if (isWeCom()) {
       console.log('检测到企业微信环境');
-      const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' + 
-        `appid={{ config.WECOM_CORP_ID }}` + 
-        `&redirect_uri={{ config.WECOM_REDIRECT_URI | urlencode }}` + 
-        '&response_type=code' + 
-        '&scope=snsapi_base' + 
-        '&state=STATE' + 
-        `&agentid={{ config.WECOM_AGENT_ID }}` + 
-        '#wechat_redirect';
-      window.location.href = loginUrl;
+      try {
+        const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' + 
+          `appid={{ config.WECOM_CORP_ID }}` + 
+          `&redirect_uri={{ config.WECOM_REDIRECT_URI | urlencode }}` + 
+          '&response_type=code' + 
+          '&scope=snsapi_base' + 
+          '&state=STATE' + 
+          `&agentid={{ config.WECOM_AGENT_ID }}` + 
+          '#wechat_redirect';
+        console.log('Redirecting to:', loginUrl); // 记录跳转的 URL
+        window.location.href = loginUrl;
+      } catch (error) {
+        console.error('Error during redirect:', error); // 记录错误信息
+      }
     }
   });
 </script>

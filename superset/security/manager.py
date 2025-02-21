@@ -185,9 +185,10 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
                     'corpid': current_app.config['WECOM_CORP_ID'],
                     'corpsecret': current_app.config['WECOM_SECRET']
                 }
+                logger.info(f"Requesting token with params: {token_params}")  # 记录请求参数
                 token_resp = requests.get(token_url, params=token_params, verify=False)
                 token_data = token_resp.json()
-                logger.info(f"Token response: {token_data}")  # 添加日志
+                logger.info(f"Token response: {token_data}")
 
                 if token_data.get('errcode') != 0:
                     logger.error(f"Failed to get access_token: {token_data}")
@@ -197,9 +198,10 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
 
                 # 获取用户信息
                 user_info_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token={access_token}&code={code}"
+                logger.info(f"Requesting user info with URL: {user_info_url}")  # 记录请求URL
                 user_resp = requests.get(user_info_url, verify=False)
                 user_data = user_resp.json()
-                logger.info(f"User info response: {user_data}")  # 添加日志
+                logger.info(f"User info response: {user_data}")
 
                 if user_data.get('errcode') != 0:
                     logger.error(f"Failed to get user info: {user_data}")
@@ -212,17 +214,20 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
 
                 # 获取用户详细信息
                 detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token={access_token}&userid={userid}"
+                logger.info(f"Requesting user detail with URL: {detail_url}")  # 记录请求URL
                 detail_resp = requests.get(detail_url, verify=False)
                 detail_data = detail_resp.json()
-                logger.info(f"User detail response: {detail_data}")  # 添加日志
+                logger.info(f"User detail response: {detail_data}")
 
-                return {
+                user_info = {
                     'username': userid,
                     'first_name': detail_data.get('name', ''),
                     'last_name': '',
                     'email': detail_data.get('email', f"{userid}@example.com"),
                     'role_keys': ['Public']
                 }
+                logger.info(f"Successfully retrieved user info: {user_info}")  # 记录成功的用户信息
+                return user_info
             except Exception as e:
                 logger.error(f"Error in OAuth process: {str(e)}")
                 return None

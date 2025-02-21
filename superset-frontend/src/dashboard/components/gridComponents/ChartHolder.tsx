@@ -302,7 +302,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
   ]);
 
   // 添加移动设备状态
-  const [isMounted, setIsMounted] = useState(false);
+  const [, setIsMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // 初始化时检测设备类型

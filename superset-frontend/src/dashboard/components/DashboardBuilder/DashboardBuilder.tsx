@@ -165,12 +165,26 @@ const StyledDashboardContent = styled.div<{
   `}
 `;
 
-const TopButtons = styled.div`
+const BuilderSidebarContainer = styled.div`
+  position: relative;
+  
+  .manage-collaborators-btn {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    z-index: 100;
+  }
+`;
+
+const HeaderButtons = styled.div`
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  gap: ${({ theme }) => theme.gridUnit * 2}px;
-  padding: ${({ theme }) => theme.gridUnit * 2}px;
+  gap: ${({ theme }) => theme.gridUnit * 6}px;  // 48px 间距
+  position: absolute;
+  right: ${({ theme }) => theme.gridUnit * 64}px; // 49 + 15 = 64，再往左移动120px
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 99;
 `;
 
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
@@ -325,9 +339,22 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   }, [topLevelTabs]);
 
   const renderDraggableContent = useCallback(
-    ({ dropIndicatorProps }: { dropIndicatorProps: JsonObject }) => (
-      <div>
-        {!hideDashboardHeader && <DashboardHeader />}
+      ({ dropIndicatorProps }: { dropIndicatorProps: JsonObject }) => (
+        <div>
+          {!hideDashboardHeader && (
+            <div style={{ position: 'relative' }}>
+              <DashboardHeader />
+              <HeaderButtons>
+                <Button
+                  buttonStyle="secondary"
+                  onClick={() => setCollaboratorsModalVisible(true)}
+                  className="manage-collaborators"
+                >
+                  {t('管理协作者')}
+                </Button>
+              </HeaderButtons>
+            </div>
+          )}
         {showFilterBar &&
           filterBarOrientation === FilterBarOrientation.HORIZONTAL && (
             <FilterBar
@@ -372,6 +399,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
       isReport,
       topLevelTabs,
       uiConfig.hideNav,
+      setCollaboratorsModalVisible,
     ],
   );
 
@@ -385,55 +413,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
 
   return (
     <DashboardWrapper>
-      {showFilterBar && filterBarOrientation === FilterBarOrientation.VERTICAL && (
-        <>
-          <ResizableSidebar
-            id={`dashboard:${dashboardId}`}
-            enable={dashboardFiltersOpen}
-            minWidth={OPEN_FILTER_BAR_WIDTH}
-            maxWidth={OPEN_FILTER_BAR_MAX_WIDTH}
-            initialWidth={OPEN_FILTER_BAR_WIDTH}
-          >
-            {adjustedWidth => {
-              const filterBarWidth = dashboardFiltersOpen
-                ? adjustedWidth
-                : CLOSED_FILTER_BAR_WIDTH;
-              return (
-                <FiltersPanel
-                  width={filterBarWidth}
-                  hidden={isReport}
-                  data-test="dashboard-filters-panel"
-                >
-                  <StickyPanel ref={containerRef} width={filterBarWidth}>
-                    <ErrorBoundary>
-                      <FilterBar
-                        orientation={FilterBarOrientation.VERTICAL}
-                        verticalConfig={{
-                          filtersOpen: dashboardFiltersOpen,
-                          toggleFiltersBar: toggleDashboardFiltersOpen,
-                          width: filterBarWidth,
-                          height: filterBarHeight,
-                          offset: filterBarOffset,
-                        }}
-                      />
-                    </ErrorBoundary>
-                  </StickyPanel>
-                </FiltersPanel>
-              );
-            }}
-          </ResizableSidebar>
-        </>
-      )}
       <StyledHeader ref={headerRef}>
-        <TopButtons>
-          <Button
-            buttonStyle="secondary"
-            onClick={() => setCollaboratorsModalVisible(true)}
-            className="manage-collaborators"
-          >
-            {t('管理协作者')}
-          </Button>
-        </TopButtons>
         <DragDroppable
           component={dashboardRoot}
           parentComponent={null}

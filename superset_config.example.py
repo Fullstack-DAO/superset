@@ -11,10 +11,14 @@ WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
 WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
 
 # 认证相关配置
-AUTH_TYPE = AUTH_DB  # 保持使用数据库认证作为主认证方式
-AUTHENTICATION_PROVIDERS = ["db", "oauth"]  # 同时支持数据库和 OAuth 认证
+AUTH_TYPE = AUTH_DB
+AUTHENTICATION_PROVIDERS = ["db", "oauth"]
 AUTH_USER_REGISTRATION = True
 AUTH_USER_REGISTRATION_ROLE = "Public"
+
+# 基本 Session 配置 - 只保留必要的
+SESSION_COOKIE_SAMESITE = None  # 允许跨站点 cookie
+SESSION_COOKIE_SECURE = True    # 只在 HTTPS 下发送 cookie
 
 # Babel 配置
 BABEL_DEFAULT_LOCALE = 'zh'  # 设置默认语言为中文
@@ -63,10 +67,10 @@ OAUTH_PROVIDERS = [
 # 服务器配置
 ENABLE_PROXY_FIX = True
 WEBSERVER_ADDRESS = "0.0.0.0"
-WEBSERVER_PORT = 8088  # 改为 8088 以匹配 docker-compose 配置
-PREFERRED_URL_SCHEME = 'https'
+WEBSERVER_PORT = 8088
 
 # 代理配置
+ENABLE_PROXY_FIX_FOR_HTTPS = True
 PROXY_FIX_CONFIG = {
     "x_for": 1,
     "x_proto": 1,
@@ -76,14 +80,14 @@ PROXY_FIX_CONFIG = {
 }
 
 # 添加这些配置
-ENABLE_PROXY_FIX_FOR_HTTPS = True
 FILTER_STATE_CACHE_CONFIG = {
     'CACHE_TYPE': 'SimpleCache',
     'CACHE_DEFAULT_TIMEOUT': 10 * 60  # 10 minutes
 }
 
-# 登录重定向配置
-LOGIN_REDIRECT_URL = '/superset/welcome'
+# URL 配置
+PREFERRED_URL_SCHEME = 'https'
+LOGIN_REDIRECT_URL = '/superset/welcome/'  # 确保这里有末尾的斜杠
 
 # 移动端适配配置
 ENABLE_RESPONSIVE_DASHBOARD = True

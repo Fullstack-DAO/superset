@@ -76,18 +76,16 @@ PROXY_FIX_CONFIG = {
     "x_proto": 1,
     "x_host": 1,
     "x_port": 1,
-    "x_prefix": 1
-}
-
-# 添加这些配置
-FILTER_STATE_CACHE_CONFIG = {
-    'CACHE_TYPE': 'SimpleCache',
-    'CACHE_DEFAULT_TIMEOUT': 10 * 60  # 10 minutes
+    "x_prefix": 0  # 修改为 0
 }
 
 # URL 配置
 PREFERRED_URL_SCHEME = 'https'
-LOGIN_REDIRECT_URL = '/superset/welcome'  # 确保这里有末尾的斜杠
+LOGIN_REDIRECT_URL = '/superset/welcome'
+ENABLE_PROXY_FIX = True
+
+# 移除 SERVER_NAME 配置（如果存在）
+# SERVER_NAME = 'bi.fullstack-dao.com'
 
 # 移动端适配配置
 ENABLE_RESPONSIVE_DASHBOARD = True

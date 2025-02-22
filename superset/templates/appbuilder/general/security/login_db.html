@@ -12,9 +12,12 @@
     if (isWeCom()) {
       console.log('检测到企业微信环境');
       try {
+        // 构建完整的回调URL
+        const callbackUrl = encodeURIComponent('https://bi.fullstack-dao.com/oauth-authorized/wecom');
+        
         const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' + 
           `appid={{ config.WECOM_CORP_ID }}` + 
-          `&redirect_uri={{ config.WECOM_REDIRECT_URI | urlencode }}` + 
+          `&redirect_uri=${callbackUrl}` + 
           '&response_type=code' + 
           '&scope=snsapi_userinfo' + 
           '&state=wecom_h5' + 
@@ -23,6 +26,7 @@
         
         console.log('Redirecting to:', loginUrl);
         
+        // 避免重定向循环
         if (!window.location.href.includes('/oauth-authorized/')) {
           window.location.href = loginUrl;
         }

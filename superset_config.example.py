@@ -64,7 +64,7 @@ OAUTH_PROVIDERS = [
 ENABLE_PROXY_FIX = True
 WEBSERVER_ADDRESS = "0.0.0.0"
 WEBSERVER_PORT = 9000  # 改为数字类型
-PREFERRED_URL_SCHEME = 'http'
+PREFERRED_URL_SCHEME = 'https'
 
 # 代理配置
 PROXY_FIX_CONFIG = {
@@ -93,3 +93,6 @@ MENU_HIDE_USER_SECTION = True  # 隐藏用户菜单部分
 COPILOT_URL = "http://your-copilot-url.com"
 REPORT_URL = "http://your-report-url.com"
 DOCS_URL = "http://your-docs-url.com"
+
+# 添加域名配置
+SERVER_NAME = 'bi.fullstack-dao.com'

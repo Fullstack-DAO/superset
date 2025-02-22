@@ -87,7 +87,7 @@ FILTER_STATE_CACHE_CONFIG = {
 
 # URL 配置
 PREFERRED_URL_SCHEME = 'https'
-LOGIN_REDIRECT_URL = '/superset/welcome/'  # 确保这里有末尾的斜杠
+LOGIN_REDIRECT_URL = '/superset/welcome'  # 确保这里有末尾的斜杠
 
 # 移动端适配配置
 ENABLE_RESPONSIVE_DASHBOARD = True

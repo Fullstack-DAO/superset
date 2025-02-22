@@ -63,7 +63,7 @@ OAUTH_PROVIDERS = [
 # 服务器配置
 ENABLE_PROXY_FIX = True
 WEBSERVER_ADDRESS = "0.0.0.0"
-WEBSERVER_PORT = 9000  # 改为数字类型
+WEBSERVER_PORT = 8088  # 改为 8088 以匹配 docker-compose 配置
 PREFERRED_URL_SCHEME = 'https'
 
 # 代理配置
@@ -73,6 +73,13 @@ PROXY_FIX_CONFIG = {
     "x_host": 1,
     "x_port": 1,
     "x_prefix": 1
+}
+
+# 添加这些配置
+ENABLE_PROXY_FIX_FOR_HTTPS = True
+FILTER_STATE_CACHE_CONFIG = {
+    'CACHE_TYPE': 'SimpleCache',
+    'CACHE_DEFAULT_TIMEOUT': 10 * 60  # 10 minutes
 }
 
 # 登录重定向配置
@@ -94,5 +101,6 @@ COPILOT_URL = "http://your-copilot-url.com"
 REPORT_URL = "http://your-report-url.com"
 DOCS_URL = "http://your-docs-url.com"
 
-# 添加域名配置
-SERVER_NAME = 'bi.fullstack-dao.com'
+# 修改 WEBDRIVER 配置
+WEBDRIVER_BASEURL = "http://localhost:8088"
+WEBDRIVER_BASEURL_USER_FRIENDLY = "https://bi.fullstack-dao.com"

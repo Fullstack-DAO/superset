@@ -145,30 +145,143 @@ RoleModelView.edit_columns = ["name", "permissions", "user"]
 RoleModelView.related_views = []
 
 
-class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
-    oauth_view = AuthOAuthView  # 指定 OAuth 视图类
+class SupersetSecurityManager(SecurityManager):
+    """
+    Superset Security Manager Class
+    """
+    userstatschartview = None
+    READ_ONLY_MODEL_VIEWS = {"Database", "DynamicPlugin"}
 
-    def __init__(self, appbuilder):
-        # 先调用父类的初始化
-        super().__init__(appbuilder)
+    USER_MODEL_VIEWS = {
+        "RegisterUserModelView",
+        "UserDBModelView",
+        "UserLDAPModelView",
+        "UserInfoEditView",
+        "UserOAuthModelView",
+        "UserOIDModelView",
+        "UserRemoteUserModelView",
+    }
 
-        # 确保 Babel 已经初始化
-        if 'babel' not in current_app.extensions:
-            Babel(current_app)
+    GAMMA_READ_ONLY_MODEL_VIEWS = {
+        "Dataset",
+        "Datasource",
+    } | READ_ONLY_MODEL_VIEWS
 
-        # 不要在这里注册 OAuth 视图
-        # 改为在 init_app 中注册
+    ADMIN_ONLY_VIEW_MENUS = {
+        "Access Requests",
+        "Action Log",
+        "Log",
+        "List Users",
+        "List Roles",
+        "ResetPasswordView",
+        "RoleModelView",
+        "Row Level Security",
+        "Row Level Security Filters",
+        "RowLevelSecurityFiltersModelView",
+        "Security",
+        "SQL Lab",
+        "User Registrations",
+        "User's Statistics",
+    } | USER_MODEL_VIEWS
 
-    def init_app(self, app):
-        """Initialize the security extension with flask app"""
-        super().init_app(app)
+    ALPHA_ONLY_VIEW_MENUS = {
+        "Alerts & Report",
+        "Annotation Layers",
+        "Annotation",
+        "CSS Templates",
+        "ColumnarToDatabaseView",
+        "CssTemplate",
+        "CsvToDatabaseView",
+        "ExcelToDatabaseView",
+        "Import dashboards",
+        "ImportExportRestApi",
+        "Manage",
+        "Queries",
+        "ReportSchedule",
+        "TableSchemaView",
+        "Upload a CSV",
+    }
 
-        # 在这里注册 OAuth 视图
-        if not hasattr(self, '_oauth_view'):
-            self._oauth_view = self.oauth_view()
-            self.appbuilder.add_view_no_menu(self._oauth_view)
+    ADMIN_ONLY_PERMISSIONS = {
+        "can_update_role",
+        "all_query_access",
+        "can_grant_guest_token",
+        "can_set_embedded",
+        "can_warm_up_cache",
+    }
+
+    READ_ONLY_PERMISSION = {
+        "can_show",
+        "can_list",
+        "can_get",
+        "can_external_metadata",
+        "can_external_metadata_by_name",
+        "can_read",
+    }
+
+    ALPHA_ONLY_PERMISSIONS = {
+        "muldelete",
+        "all_database_access",
+        "all_datasource_access",
+    }
+
+    OBJECT_SPEC_PERMISSIONS = {
+        "database_access",
+        "schema_access",
+        "datasource_access",
+    }
+
+    ACCESSIBLE_PERMS = {"can_userinfo", "resetmypassword", "can_recent_activity"}
+
+    SQLLAB_ONLY_PERMISSIONS = {
+        ("can_my_queries", "SqlLab"),
+        ("can_read", "SavedQuery"),
+        ("can_write", "SavedQuery"),
+        ("can_export", "SavedQuery"),
+        ("can_read", "Query"),
+        ("can_export_csv", "Query"),
+        ("can_get_results", "SQLLab"),
+        ("can_execute_sql_query", "SQLLab"),
+        ("can_estimate_query_cost", "SQL Lab"),
+        ("can_export_csv", "SQLLab"),
+        ("can_read", "SQLLab"),
+        ("can_sqllab_history", "Superset"),
+        ("can_sqllab", "Superset"),
+        ("can_test_conn", "Superset"),
+        ("can_activate", "TabStateView"),
+        ("can_get", "TabStateView"),
+        ("can_delete_query", "TabStateView"),
+        ("can_post", "TabStateView"),
+        ("can_delete", "TabStateView"),
+        ("can_put", "TabStateView"),
+        ("can_migrate_query", "TabStateView"),
+        ("menu_access", "SQL Lab"),
+        ("menu_access", "SQL Editor"),
+        ("menu_access", "Saved Queries"),
+        ("menu_access", "Query Search"),
+    }
+
+    SQLLAB_EXTRA_PERMISSION_VIEWS = {
+        ("can_csv", "Superset"),
+        ("can_read", "Superset"),
+        ("can_read", "Database"),
+    }
+
+    data_access_permissions = (
+        "database_access",
+        "schema_access",
+        "datasource_access",
+        "all_datasource_access",
+        "all_database_access",
+        "all_query_access",
+    )
+
+    guest_user_cls = GuestUser
+    pyjwt_for_guest_token = _jwt_global_obj
+    oauth_view = AuthOAuthView
 
     def oauth_user_info(self, provider, response=None):
+        """处理 OAuth 用户信息"""
         if provider == 'wecom':
             if response is None:
                 return None
@@ -185,7 +298,7 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
                     'corpid': current_app.config['WECOM_CORP_ID'],
                     'corpsecret': current_app.config['WECOM_SECRET']
                 }
-                logger.info(f"Requesting token with params: {token_params}")  # 记录请求参数
+                logger.info(f"Requesting token with params: {token_params}")
                 token_resp = requests.get(token_url, params=token_params, verify=False)
                 token_data = token_resp.json()
                 logger.info(f"Token response: {token_data}")
@@ -197,9 +310,13 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
                 access_token = token_data.get('access_token')
 
                 # 获取用户信息
-                user_info_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token={access_token}&code={code}"
-                logger.info(f"Requesting user info with URL: {user_info_url}")  # 记录请求URL
-                user_resp = requests.get(user_info_url, verify=False)
+                user_info_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
+                user_params = {
+                    'access_token': access_token,
+                    'code': code
+                }
+                logger.info(f"Requesting user info with params: {user_params}")
+                user_resp = requests.get(user_info_url, params=user_params, verify=False)
                 user_data = user_resp.json()
                 logger.info(f"User info response: {user_data}")
 
@@ -213,9 +330,13 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
                     return None
 
                 # 获取用户详细信息
-                detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token={access_token}&userid={userid}"
-                logger.info(f"Requesting user detail with URL: {detail_url}")  # 记录请求URL
-                detail_resp = requests.get(detail_url, verify=False)
+                detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get"
+                detail_params = {
+                    'access_token': access_token,
+                    'userid': userid
+                }
+                logger.info(f"Requesting user detail with params: {detail_params}")
+                detail_resp = requests.get(detail_url, params=detail_params, verify=False)
                 detail_data = detail_resp.json()
                 logger.info(f"User detail response: {detail_data}")
 
@@ -223,11 +344,12 @@ class SupersetSecurityManager(SecurityManager):  # 改回原来的类名
                     'username': userid,
                     'first_name': detail_data.get('name', ''),
                     'last_name': '',
-                    'email': detail_data.get('email', f"{userid}@example.com"),
+                    'email': detail_data.get('email', f"{userid}@fullstack-dao.com"),
                     'role_keys': ['Public']
                 }
-                logger.info(f"Successfully retrieved user info: {user_info}")  # 记录成功的用户信息
+                logger.info(f"Successfully retrieved user info: {user_info}")
                 return user_info
+
             except Exception as e:
                 logger.error(f"Error in OAuth process: {str(e)}")
                 return None

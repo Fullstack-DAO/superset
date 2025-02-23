@@ -78,6 +78,7 @@ SESSION_COOKIE_SAMESITE = 'Lax'  # 生产环境建议使用 Lax
 SESSION_COOKIE_SECURE = True     # 生产环境必须为 True
 SESSION_COOKIE_HTTPONLY = True
 PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
+SESSION_COOKIE_PATH = '/'
 
 # URL 配置
 PREFERRED_URL_SCHEME = 'https'  # 生产环境使用 https
@@ -95,10 +96,7 @@ PROXY_FIX_CONFIG = {
 }
 
 # Session 配置
-SESSION_COOKIE_SAMESITE = None  # 修改为 None 以支持代理
-SESSION_COOKIE_SECURE = False   # 开发环境设置为 False
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_PATH = '/'
+
 
 # Babel 配置
 BABEL_DEFAULT_LOCALE = 'zh'

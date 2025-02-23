@@ -1,10 +1,13 @@
 from superset.security import SupersetSecurityManager
 from flask_appbuilder.security.manager import AUTH_DB, AUTH_OAUTH
 
+# 生产环境密钥 - 确保使用强密码
 SECRET_KEY = 'lyIKAEGRDGQw5RtU7pLQgPxrSaUvBiJQW1/067h1g/UkL4N8oYYh1iiF'
+
+# 数据库配置 - 使用生产环境的数据库
 SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://postgres:123456@localhost:5432/superset'
 
-# 企业微信配置参数
+# 企业微信配置
 WECOM_CORP_ID = 'wwc2d2bc12f207d229'
 WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
@@ -61,30 +64,20 @@ OAUTH_PROVIDERS = [
 ]
 
 # 安全配置
+WTF_CSRF_ENABLED = True  # 生产环境必须启用
 FAB_ADD_SECURITY_VIEWS = True
-WTF_CSRF_ENABLED = False  # 本地开发时暂时禁用
-FAB_ADD_SECURITY_PERMISSION_VIEW = False
-FAB_ADD_SECURITY_VIEW_MENU_VIEW = False
-FAB_ADD_SECURITY_PERMISSION_VIEWS_VIEW = False
-
-# # 自定义安全管理器
-# CUSTOM_SECURITY_MANAGER = "superset.security.SupersetSecurityManager"
+FAB_ADD_SECURITY_PERMISSION_VIEW = True
+FAB_ADD_SECURITY_VIEW_MENU_VIEW = True
+FAB_ADD_SECURITY_PERMISSION_VIEWS_VIEW = True
 
 # Session 配置
-SESSION_COOKIE_SAMESITE = None
-SESSION_COOKIE_SECURE = False  # 本地开发环境设置为 False
+SESSION_COOKIE_SAMESITE = 'Lax'  # 生产环境建议使用 Lax
+SESSION_COOKIE_SECURE = True     # 生产环境必须为 True
 SESSION_COOKIE_HTTPONLY = True
 PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
 
-
-# 安全配置
-WTF_CSRF_ENABLED = False  # 本地开发时暂时禁用
-FAB_ADD_SECURITY_VIEWS = True
-PUBLIC_ROLE_LIKE = "Gamma"  # 设置默认角色权限
-PUBLIC_ROLE_LIKE_GAMMA = True
-
 # URL 配置
-PREFERRED_URL_SCHEME = 'https'
+PREFERRED_URL_SCHEME = 'https'  # 生产环境使用 https
 LOGIN_REDIRECT_URL = '/superset/welcome'
 
 # 代理配置
@@ -98,76 +91,13 @@ PROXY_FIX_CONFIG = {
     "x_prefix": 0
 }
 
-# 基本 Session 配置 - 只保留必要的
-SESSION_COOKIE_SAMESITE = None  # 允许跨站点 cookie
-SESSION_COOKIE_SECURE = True    # 只在 HTTPS 下发送 cookie
-
 # Babel 配置
-BABEL_DEFAULT_LOCALE = 'zh'  # 设置默认语言为中文
-BABEL_DEFAULT_FOLDER = 'superset/translations'  # 翻译文件目录
+BABEL_DEFAULT_LOCALE = 'zh'
+BABEL_DEFAULT_FOLDER = 'superset/translations'
 LANGUAGES = {
     'en': {'flag': 'us', 'name': 'English'},
     'zh': {'flag': 'cn', 'name': 'Chinese'},
 }
-
-# 服务器配置
-ENABLE_PROXY_FIX = True
-WEBSERVER_ADDRESS = "0.0.0.0"
-WEBSERVER_PORT = 9000
-
-# 认证和会话配置
-SESSION_COOKIE_SAMESITE = None
-SESSION_COOKIE_SECURE = False  # 本地开发环境必须为 False
-SESSION_COOKIE_HTTPONLY = True  # 增强安全性
-
-
-# 代理配置（保留一个统一的配置）
-PROXY_FIX_CONFIG = {
-    "x_for": 1,
-    "x_proto": 1,
-    "x_host": 1,
-    "x_port": 1,
-    "x_prefix": 0
-}
-
-# URL 配置
-PREFERRED_URL_SCHEME = 'http'  # 本地开发使用 http
-LOGIN_REDIRECT_URL = '/superset/welcome'  # 不要在末尾加斜杠
-
-# 添加登录相关配置
-FAB_ADD_SECURITY_VIEWS = True  # 启用安全视图
-WTF_CSRF_ENABLED = True  # 启用 CSRF 保护
-WTF_CSRF_EXEMPT_LIST = ['superset.views.core.log']  # CSRF 豁免列表
-
-# 代理配置
-ENABLE_PROXY_FIX_FOR_HTTPS = True
-PROXY_FIX_CONFIG = {
-    "x_for": 1,
-    "x_proto": 1,
-    "x_host": 1,
-    "x_port": 1,
-    "x_prefix": 0
-}
-
-# URL 配置
-PREFERRED_URL_SCHEME = 'http'  # 本地开发使用 http
-LOGIN_REDIRECT_URL = '/superset/welcome'
-
-# 移除这些配置
-# SERVER_NAME = 'bi.fullstack-dao.com'
-# APPLICATION_ROOT = '/superset'
-# SCRIPT_NAME = '/superset'
-
-# 移动端适配配置
-ENABLE_RESPONSIVE_DASHBOARD = True
-DASHBOARD_MOBILE_BREAKPOINT = 768
-
-# UI 配置
-ENABLE_JAVASCRIPT_CONTROLS = True  # 启用 JavaScript 控件
-FAB_SECURITY_UI_VIEWS = True      # 启用安全视图
-HIDE_EDIT_BUTTONS = False         # 显示编辑按钮
-FAB_ADD_SECURITY_VIEWS = True     # 启用安全视图
-MENU_HIDE_USER_SECTION = False    # 显示用户菜单部分
 
 # 功能开关
 FEATURE_FLAGS = {
@@ -178,11 +108,21 @@ FEATURE_FLAGS = {
     'ENABLE_TEMPLATE_REMOVE_FILTERS': True,
 }
 
+# 移动端适配
+ENABLE_RESPONSIVE_DASHBOARD = True
+DASHBOARD_MOBILE_BREAKPOINT = 768
+
+# UI 配置
+ENABLE_JAVASCRIPT_CONTROLS = True
+FAB_SECURITY_UI_VIEWS = True
+HIDE_EDIT_BUTTONS = False
+MENU_HIDE_USER_SECTION = False
+
 # 其他配置
 COPILOT_URL = "http://your-copilot-url.com"
 REPORT_URL = "http://your-report-url.com"
 DOCS_URL = "http://your-docs-url.com"
 
-# 修改 WEBDRIVER 配置
-WEBDRIVER_BASEURL = "http://localhost:8088"
-WEBDRIVER_BASEURL_USER_FRIENDLY = "https://bi.fullstack-dao.com"
+# WEBDRIVER 配置
+WEBDRIVER_BASEURL = "https://bi.fullstack-dao.com"  # 改为生产环境域名
+WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL

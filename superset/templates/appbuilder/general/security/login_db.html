@@ -1,44 +1,6 @@
 {% extends "appbuilder/base.html" %}
 
 {% block content %}
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    function isWeCom() {
-      const ua = navigator.userAgent.toLowerCase();
-      console.log('User Agent:', ua);
-      return /wxwork/i.test(ua);
-    }
-
-    if (isWeCom()) {
-      console.log('检测到企业微信环境');
-      try {
-        // 构建完整的回调URL
-        const callbackUrl = encodeURIComponent('https://bi.fullstack-dao.com/oauth-authorized/wecom');
-        
-        const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' + 
-          `appid={{ config.WECOM_CORP_ID }}` + 
-          `&redirect_uri=${callbackUrl}` + 
-          '&response_type=code' + 
-          '&scope=snsapi_userinfo' + 
-          '&state=wecom_h5' + 
-          `&agentid={{ config.WECOM_AGENT_ID }}` + 
-          '#wechat_redirect';
-        
-        console.log('Redirecting to:', loginUrl);
-        
-        // 避免重定向循环
-        if (!window.location.href.includes('/oauth-authorized/')) {
-          window.location.href = loginUrl;
-        }
-      } catch (error) {
-        console.error('Error during redirect:', error);
-      }
-    } else {
-      console.log('非企业微信环境');
-    }
-  });
-</script>
-
 <div class="container">
     <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
         <div class="panel panel-primary">
@@ -46,59 +8,64 @@
                 <div class="panel-title">{{ title }}</div>
             </div>
             <div style="padding-top:30px" class="panel-body">
-                {% if request.args.get('provider') == 'wecom' %}
-                    <div class="text-center">
-                        <h3>{{ _("选择登录方式:") }}</h3>
-                        <div style="margin-top: 30px;">
-                            <!-- 企业微信扫码登录 -->
-                            <a href="https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={{ config.WECOM_CORP_ID }}&agentid={{ config.WECOM_AGENT_ID }}&redirect_uri={{ config.WECOM_REDIRECT_URI }}&state=wecom" 
-                               class="btn btn-block" 
-                               style="background-color: #1890ff; color: white; border: none; padding: 8px; margin-bottom: 15px;">
-                                <i class="fa fa-qrcode"></i> {{ _('企业微信扫码登录') }}
-                            </a>
-                            
-                            <!-- 用户名密码登录 -->
-                            <a href="{{ url_for('AuthDBView.login') }}" 
-                               class="btn btn-block" 
-                               style="background-color: #52c41a; color: white; border: none; padding: 8px;">
-                                <i class="fa fa-user"></i> {{ _('用户名密码登录') }}
-                            </a>
+                <form class="form" action="" method="post" name="login">
+                    {{ form.hidden_tag() }}
+                    <div class="help-block">{{ _("Enter your login and password below:") }}</div>
+                    <div class="control-group">
+                        <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
+                        <div class="controls">
+                            <input class="form-control" id="username" name="username" type="text" />
                         </div>
                     </div>
-                {% else %}
-                    <form class="form" action="" method="post" name="login">
-                        {{ form.hidden_tag() }}
-                        <div class="help-block">{{ _("Enter your login and password below:") }}</div>
-                        <div class="control-group">
-                            <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
-                            <div class="controls">
-                                <input class="form-control" id="username" name="username" type="text" />
+                    <div class="control-group">
+                        <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
+                        <div class="controls">
+                            <input class="form-control" id="password" name="password" type="password" />
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="controls">
+                            <div>
+                                <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
+                            </div>
+                            <div style="margin-top: 20px; text-align: center;">
+                                <a href="https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={{ config.WECOM_CORP_ID }}&agentid={{ config.WECOM_AGENT_ID }}&redirect_uri={{ 'https://bi.fullstack-dao.com/oauth-authorized/wecom'|urlencode }}&state=wecom" 
+                                   class="btn" 
+                                   style="background-color: #1890ff; color: white; border: none; padding: 8px;">
+                                    <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
+                                </a>
                             </div>
                         </div>
-                        <div class="control-group">
-                            <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
-                            <div class="controls">
-                                <input class="form-control" id="password" name="password" type="password" />
-                            </div>
-                        </div>
-                        <div class="control-group">
-                            <div class="controls">
-                                <div>
-                                    <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
-                                </div>
-                                <div style="margin-top: 20px; text-align: center;">
-                                    <a href="{{ url_for('AuthOAuthView.login', provider='wecom') }}" 
-                                       class="btn" 
-                                       style="background-color: #1890ff; color: white; border: none; padding: 8px;">
-                                        <i class="fa fa-wechat"></i> {{ _('使用企业微信登录') }}
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                {% endif %}
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function isWeCom() {
+        const ua = navigator.userAgent.toLowerCase();
+        return /wxwork/i.test(ua);
+    }
+
+    if (isWeCom()) {
+        console.log('检测到企业微信环境');
+        const callbackUrl = encodeURIComponent('https://bi.fullstack-dao.com/oauth-authorized/wecom');
+        const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' +
+            'appid={{ config.WECOM_CORP_ID }}' +
+            '&redirect_uri=' + callbackUrl +
+            '&response_type=code' +
+            '&scope=snsapi_base' +
+            '&state=wecom_h5' +
+            '&agentid={{ config.WECOM_AGENT_ID }}' +
+            '#wechat_redirect';
+        
+        if (!window.location.href.includes('/oauth-authorized/wecom')) {
+            window.location.href = loginUrl;
+        }
+    }
+});
+</script>
 {% endblock %}

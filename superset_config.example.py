@@ -63,6 +63,9 @@ OAUTH_PROVIDERS = [
     }
 ]
 
+# OAuth 回调配置
+OAUTH_CALLBACK_ROUTE = '/oauth-authorized/wecom'
+
 # 安全配置
 WTF_CSRF_ENABLED = True  # 生产环境必须启用
 FAB_ADD_SECURITY_VIEWS = True
@@ -84,12 +87,18 @@ LOGIN_REDIRECT_URL = '/superset/welcome'
 ENABLE_PROXY_FIX = True
 ENABLE_PROXY_FIX_FOR_HTTPS = True
 PROXY_FIX_CONFIG = {
-    "x_for": 1,
-    "x_proto": 1,
-    "x_host": 1,
-    "x_port": 1,
-    "x_prefix": 0
+    "x_for": 2,
+    "x_proto": 2,
+    "x_host": 2,
+    "x_port": 2,
+    "x_prefix": 1
 }
+
+# Session 配置
+SESSION_COOKIE_SAMESITE = None  # 修改为 None 以支持代理
+SESSION_COOKIE_SECURE = False   # 开发环境设置为 False
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_PATH = '/'
 
 # Babel 配置
 BABEL_DEFAULT_LOCALE = 'zh'

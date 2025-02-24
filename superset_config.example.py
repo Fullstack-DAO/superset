@@ -67,20 +67,25 @@ OAUTH_PROVIDERS = [
 OAUTH_CALLBACK_ROUTE = '/oauth-authorized/wecom'
 
 # 安全配置
-WTF_CSRF_ENABLED = True  # 生产环境必须启用
+WTF_CSRF_ENABLED = True
 FAB_ADD_SECURITY_VIEWS = True
 FAB_ADD_SECURITY_PERMISSION_VIEW = True
 FAB_ADD_SECURITY_VIEW_MENU_VIEW = True
 FAB_ADD_SECURITY_PERMISSION_VIEWS_VIEW = True
 
+# 禁用欢迎页面重定向
+FEATURE_FLAGS = {
+    'ENABLE_WELCOME_PAGE': False,
+}
+
 # Session 配置
-SESSION_COOKIE_SAMESITE = 'Lax'  # 生产环境建议使用 Lax
-SESSION_COOKIE_SECURE = True     # 生产环境必须为 True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
 
 # URL 配置
-PREFERRED_URL_SCHEME = 'https'  # 生产环境使用 https
+PREFERRED_URL_SCHEME = 'https'
 
 # 代理配置
 ENABLE_PROXY_FIX = True
@@ -98,15 +103,6 @@ BABEL_DEFAULT_FOLDER = 'superset/translations'
 LANGUAGES = {
     'en': {'flag': 'us', 'name': 'English'},
     'zh': {'flag': 'cn', 'name': 'Chinese'},
-}
-
-# 功能开关
-FEATURE_FLAGS = {
-    'DASHBOARD_NATIVE_FILTERS': True,
-    'DASHBOARD_CROSS_FILTERS': True,
-    'DASHBOARD_NATIVE_FILTERS_SET': True,
-    'ENABLE_TEMPLATE_PROCESSING': True,
-    'ENABLE_TEMPLATE_REMOVE_FILTERS': True,
 }
 
 # 移动端适配

@@ -13,11 +13,28 @@ WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
 WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
 
+# Flask-AppBuilder 配置 - 移到文件前面的重要配置区域
+FAB_INDEX_URL = '/superset/welcome/'
+FAB_BASE_URL = '/superset'
+FAB_API_URL = '/api/v1'
+FAB_SECURITY_URL_PREFIX = '/security'
+FAB_SECURITY_LOGIN_URL = '/security/login'
+
 # 认证相关配置
-AUTH_TYPE = AUTH_DB  # 使用数据库认证
-AUTHENTICATION_PROVIDERS = ["db", "oauth"]  # 同时支持数据库和 OAuth 认证
+AUTH_TYPE = AUTH_DB
+AUTHENTICATION_PROVIDERS = ["db", "oauth"]
 AUTH_USER_REGISTRATION = True
 AUTH_USER_REGISTRATION_ROLE = "Public"
+
+# 功能标志配置
+FEATURE_FLAGS = {
+    'ENABLE_WELCOME_PAGE': False,  # 禁用欢迎页
+    'DASHBOARD_NATIVE_FILTERS': True,
+    'DASHBOARD_CROSS_FILTERS': True,
+    'DASHBOARD_NATIVE_FILTERS_SET': True,
+    'ENABLE_TEMPLATE_PROCESSING': True,
+    'ENABLE_TEMPLATE_REMOVE_FILTERS': True,
+}
 
 # OAuth 基本配置
 AUTH_OAUTH_PROVIDERS = ["wecom"]
@@ -73,11 +90,6 @@ FAB_ADD_SECURITY_PERMISSION_VIEW = True
 FAB_ADD_SECURITY_VIEW_MENU_VIEW = True
 FAB_ADD_SECURITY_PERMISSION_VIEWS_VIEW = True
 
-# 禁用欢迎页面重定向
-FEATURE_FLAGS = {
-    'ENABLE_WELCOME_PAGE': False,
-}
-
 # Session 配置
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = True
@@ -123,3 +135,8 @@ DOCS_URL = "http://your-docs-url.com"
 # WEBDRIVER 配置
 WEBDRIVER_BASEURL = "https://bi.fullstack-dao.com"  # 改为生产环境域名
 WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
+
+# 路由配置
+BLUEPRINT_URL_PREFIX = ''
+ENABLE_CORS = True
+HTTP_HEADERS = {'X-Frame-Options': 'ALLOW-FROM *'}

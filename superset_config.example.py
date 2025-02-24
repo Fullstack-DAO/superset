@@ -78,25 +78,19 @@ SESSION_COOKIE_SAMESITE = 'Lax'  # 生产环境建议使用 Lax
 SESSION_COOKIE_SECURE = True     # 生产环境必须为 True
 SESSION_COOKIE_HTTPONLY = True
 PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
-SESSION_COOKIE_PATH = '/'
 
 # URL 配置
 PREFERRED_URL_SCHEME = 'https'  # 生产环境使用 https
-LOGIN_REDIRECT_URL = '/superset/welcome'
 
 # 代理配置
 ENABLE_PROXY_FIX = True
-ENABLE_PROXY_FIX_FOR_HTTPS = True
 PROXY_FIX_CONFIG = {
-    "x_for": 2,
-    "x_proto": 2,
-    "x_host": 2,
-    "x_port": 2,
+    "x_for": 1,
+    "x_proto": 1,
+    "x_host": 1,
+    "x_port": 1,
     "x_prefix": 1
 }
-
-# Session 配置
-
 
 # Babel 配置
 BABEL_DEFAULT_LOCALE = 'zh'

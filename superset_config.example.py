@@ -13,8 +13,8 @@ WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
 WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
 
-# Flask-AppBuilder 配置 - 移到文件前面的重要配置区域
-FAB_INDEX_URL = '/superset/welcome/'
+# Flask-AppBuilder 配置
+FAB_INDEX_URL = '/superset/dashboard/list/'  # 修改登录后的默认页面
 FAB_BASE_URL = '/superset'
 FAB_API_URL = '/api/v1'
 FAB_SECURITY_URL_PREFIX = '/security'

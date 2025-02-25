@@ -282,7 +282,7 @@ class SupersetSecurityManager(SecurityManager):
 
     def oauth_user_info(self, provider, response=None):
         """处理 OAuth 用户信息"""
-        if provider == 'wecom':
+        if provider in ['wecom', 'wecom_h5']:  # 同时处理两种登录方式
             if response is None:
                 return None
 
@@ -310,7 +310,7 @@ class SupersetSecurityManager(SecurityManager):
                 access_token = token_data.get('access_token')
 
                 # 获取用户信息
-                user_info_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
+                user_info_url = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
                 user_params = {
                     'access_token': access_token,
                     'code': code
@@ -330,7 +330,7 @@ class SupersetSecurityManager(SecurityManager):
                     return None
 
                 # 获取用户详细信息
-                detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get"
+                detail_url = "https://qyapi.weixin.qq.com/cgi-bin/user/get"
                 detail_params = {
                     'access_token': access_token,
                     'userid': userid
@@ -340,6 +340,11 @@ class SupersetSecurityManager(SecurityManager):
                 detail_data = detail_resp.json()
                 logger.info(f"User detail response: {detail_data}")
 
+                if detail_data.get('errcode') != 0:
+                    logger.error(f"Failed to get user detail: {detail_data}")
+                    return None
+
+                # 构建用户信息
                 user_info = {
                     'username': userid,
                     'first_name': detail_data.get('name', ''),
@@ -352,6 +357,8 @@ class SupersetSecurityManager(SecurityManager):
 
             except Exception as e:
                 logger.error(f"Error in OAuth process: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
                 return None
 
         return super().oauth_user_info(provider, response)

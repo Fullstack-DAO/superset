@@ -21,43 +21,47 @@ FAB_SECURITY_URL_PREFIX = '/security'
 FAB_SECURITY_LOGIN_URL = '/security/login'
 
 # 认证相关配置
-AUTH_TYPE = AUTH_DB
-AUTHENTICATION_PROVIDERS = ["db", "oauth"]
+AUTH_TYPE = AUTH_DB  # 保持 AUTH_DB 以支持用户名密码登录
+AUTHENTICATION_PROVIDERS = ["db", "oauth"]  # 同时支持数据库和 OAuth 认证
 AUTH_USER_REGISTRATION = True
 AUTH_USER_REGISTRATION_ROLE = "Public"
+AUTH_OAUTH_ALLOW_DB = True  # 确保允许数据库认证
+AUTH_OAUTH_ALLOW_MULTIPLE_PROVIDERS = True  # 允许多个认证提供者
 
-# 功能标志配置
-FEATURE_FLAGS = {
-    'ENABLE_WELCOME_PAGE': False,  # 禁用欢迎页
-    'WELCOME_PAGE_LAST_TAB': None,
-    'DASHBOARD_NATIVE_FILTERS': True,
-    'DASHBOARD_CROSS_FILTERS': True,
-    'DASHBOARD_NATIVE_FILTERS_SET': True,
-    'ENABLE_TEMPLATE_PROCESSING': True,
-    'ENABLE_TEMPLATE_REMOVE_FILTERS': True,
-}
+# # 功能标志配置
+# FEATURE_FLAGS = {
+#     'ENABLE_WELCOME_PAGE': False,  # 禁用欢迎页
+#     'WELCOME_PAGE_LAST_TAB': None,
+#     'DASHBOARD_NATIVE_FILTERS': True,
+#     'DASHBOARD_CROSS_FILTERS': True,
+#     'DASHBOARD_NATIVE_FILTERS_SET': True,
+#     'ENABLE_TEMPLATE_PROCESSING': True,
+#     'ENABLE_TEMPLATE_REMOVE_FILTERS': True,
+# }
 
-# 路由重写配置
-DISABLE_LEGACY_ENDPOINTS = True
-ENABLE_WELCOME_ROUTE = False
-WELCOME_PAGE_REDIRECT_TO = '/superset/dashboard/list/'
+# # 路由重写配置
+# DISABLE_LEGACY_ENDPOINTS = True
+# ENABLE_WELCOME_ROUTE = False
+# WELCOME_PAGE_REDIRECT_TO = '/superset/dashboard/list/'
 
 # 主页重定向配置
 TALISMAN_ENABLED = False
 PREVENT_UNSAFE_DEFAULT_URLS = False
 
 # OAuth 基本配置
-AUTH_OAUTH_PROVIDERS = ["wecom"]
+AUTH_OAUTH_PROVIDERS = ["wecom", "wecom_h5"]  # 添加 wecom_h5 提供者
 AUTH_OAUTH_PROVIDER_DEFAULT = None  # 移除默认提供者
-AUTH_OAUTH_ALLOW_DB = True
-AUTH_OAUTH_ALLOW_MULTIPLE_PROVIDERS = True
+
+# OAuth 回调配置
+OAUTH_CALLBACK_ROUTE = 'oauth-authorized'  # 移除前导斜杠
 
 # OAuth 提供者配置
 OAUTH_PROVIDERS = [
     {
-        'name': 'wecom',
+        'name': 'wecom',  # 企业微信扫码登录
         'icon': 'fa-weixin',
         'token_key': 'access_token',
+        'whitelist': [],
         'remote_app': {
             'client_id': WECOM_CORP_ID,
             'client_secret': WECOM_SECRET,
@@ -67,8 +71,9 @@ OAUTH_PROVIDERS = [
                 'verify': False,
                 'token_endpoint_auth_method': 'client_secret_post'
             },
-            'authorize_url': 'https://open.work.weixin.qq.com/wwopen/sso/qrConnect',  # 扫码登录地址
-            'h5_authorize_url': 'https://open.weixin.qq.com/connect/oauth2/authorize',  # H5 登录地址
+            'request_token_url': None,
+            'access_token_method': 'GET',
+            'authorize_url': 'https://open.work.weixin.qq.com/wwopen/sso/qrConnect',
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken',
             'authorize_params': {
                 'appid': WECOM_CORP_ID,
@@ -77,21 +82,38 @@ OAUTH_PROVIDERS = [
                 'response_type': 'code',
                 'scope': 'snsapi_userinfo',
                 'state': 'wecom'
+            }
+        }
+    },
+    {
+        'name': 'wecom_h5',  # 企业微信 H5 登录
+        'icon': 'fa-weixin',
+        'token_key': 'access_token',
+        'whitelist': [],
+        'remote_app': {
+            'client_id': WECOM_CORP_ID,
+            'client_secret': WECOM_SECRET,
+            'api_base_url': 'https://qyapi.weixin.qq.com/cgi-bin/',
+            'client_kwargs': {
+                'scope': 'snsapi_base',
+                'verify': False,
+                'token_endpoint_auth_method': 'client_secret_post'
             },
-            'h5_authorize_params': {
+            'request_token_url': None,
+            'access_token_method': 'GET',
+            'authorize_url': 'https://open.weixin.qq.com/connect/oauth2/authorize',
+            'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken',
+            'authorize_params': {
                 'appid': WECOM_CORP_ID,
                 'agentid': WECOM_AGENT_ID,
-                'redirect_uri': WECOM_REDIRECT_URI,
+                'redirect_uri': 'https://bi.fullstack-dao.com/oauth-authorized/wecom_h5',
                 'response_type': 'code',
-                'scope': 'snsapi_base',  # H5登录使用 base 即可
+                'scope': 'snsapi_base',
                 'state': 'wecom_h5'
             }
         }
     }
 ]
-
-# OAuth 回调配置
-OAUTH_CALLBACK_ROUTE = '/oauth-authorized/wecom'
 
 # 安全配置
 WTF_CSRF_ENABLED = True
@@ -105,11 +127,11 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
+#
+# # URL 配置
+# PREFERRED_URL_SCHEME = 'https'
 
-# URL 配置
-PREFERRED_URL_SCHEME = 'https'
-
-# 代理配置
+# 代理配置 - 取消注释并启用
 ENABLE_PROXY_FIX = True
 PROXY_FIX_CONFIG = {
     "x_for": 1,
@@ -127,9 +149,9 @@ LANGUAGES = {
     'zh': {'flag': 'cn', 'name': 'Chinese'},
 }
 
-# 移动端适配
-ENABLE_RESPONSIVE_DASHBOARD = True
-DASHBOARD_MOBILE_BREAKPOINT = 768
+# # 移动端适配
+# ENABLE_RESPONSIVE_DASHBOARD = True
+# DASHBOARD_MOBILE_BREAKPOINT = 768
 
 # UI 配置
 ENABLE_JAVASCRIPT_CONTROLS = True
@@ -146,7 +168,4 @@ DOCS_URL = "http://your-docs-url.com"
 WEBDRIVER_BASEURL = "https://bi.fullstack-dao.com"  # 改为生产环境域名
 WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
 
-# 路由配置
-BLUEPRINT_URL_PREFIX = ''
-ENABLE_CORS = True
-HTTP_HEADERS = {'X-Frame-Options': 'ALLOW-FROM *'}
+

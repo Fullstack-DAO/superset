@@ -25,23 +25,23 @@ FAB_SECURITY_URL_PREFIX = '/security'
 FAB_SECURITY_LOGIN_URL = '/security/login'
 
 # 认证相关配置
-AUTH_TYPE = AUTH_DB  # 改为 AUTH_DB 作为主认证方式
+AUTH_TYPE = AUTH_DB  # 保持使用数据库认证作为主认证方式
 AUTHENTICATION_PROVIDERS = ["db", "oauth"]  # 同时支持数据库和 OAuth 认证
 AUTH_USER_REGISTRATION = True
 AUTH_USER_REGISTRATION_ROLE = "Public"
-AUTH_OAUTH_ALLOW_DB = True  # 确保允许数据库认证
-AUTH_OAUTH_ALLOW_MULTIPLE_PROVIDERS = True  # 允许多个认证提供者
+AUTH_OAUTH_ALLOW_DB = True
+AUTH_OAUTH_ALLOW_MULTIPLE_PROVIDERS = True
+
+# OAuth 基本配置
+AUTH_OAUTH_PROVIDERS = ["wecom", "wecom_h5"]
+AUTH_OAUTH_PROVIDER_DEFAULT = None
+
+# OAuth 回调配置
+OAUTH_CALLBACK_ROUTE = '/oauth-authorized'
 
 # 主页重定向配置
 TALISMAN_ENABLED = False
 PREVENT_UNSAFE_DEFAULT_URLS = False
-
-# OAuth 基本配置
-AUTH_OAUTH_PROVIDERS = ["wecom", "wecom_h5"]  # 添加 wecom_h5 提供者
-AUTH_OAUTH_PROVIDER_DEFAULT = None  # 移除默认提供者
-
-# OAuth 回调配置
-OAUTH_CALLBACK_ROUTE = '/oauth-authorized'  # 使用基础路径，Flask-AppBuilder 会自动添加提供者名称
 
 # OAuth 提供者配置
 OAUTH_PROVIDERS = [
@@ -50,14 +50,14 @@ OAUTH_PROVIDERS = [
         'icon': 'fa-weixin',
         'token_key': 'access_token',
         'remote_app': {
-            'client_id': WECOM_CORP_ID,  # 使用已定义的企业微信 CorpID
-            'client_secret': WECOM_SECRET,  # 使用已定义的企业微信 Secret
+            'client_id': WECOM_CORP_ID,
+            'client_secret': WECOM_SECRET,
             'api_base_url': 'https://qyapi.weixin.qq.com/cgi-bin/',
             'request_token_url': None,
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={client_id}&corpsecret={client_secret}',
             'authorize_url': f'https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={WECOM_CORP_ID}&agentid={WECOM_AGENT_ID}&redirect_uri={WECOM_REDIRECT_URI}',
             'request_token_params': {
-                'scope': 'snsapi_base',
+                'scope': 'snsapi_privateinfo',
                 'response_type': 'code',
             },
         },
@@ -72,9 +72,9 @@ OAUTH_PROVIDERS = [
             'api_base_url': 'https://qyapi.weixin.qq.com/cgi-bin/',
             'request_token_url': None,
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={client_id}&corpsecret={client_secret}',
-            'authorize_url': f'https://open.weixin.qq.com/connect/oauth2/authorize?appid={WECOM_CORP_ID}&redirect_uri=https://bi.fullstack-dao.com/oauth-authorized/wecom_h5&response_type=code&scope=snsapi_base&state=wecom_h5#wechat_redirect',
+            'authorize_url': f'https://open.weixin.qq.com/connect/oauth2/authorize?appid={WECOM_CORP_ID}&redirect_uri=https://bi.fullstack-dao.com/oauth-authorized/wecom_h5&response_type=code&scope=snsapi_privateinfo&state=wecom_h5#wechat_redirect',
             'request_token_params': {
-                'scope': 'snsapi_base',
+                'scope': 'snsapi_privateinfo',
                 'response_type': 'code',
             },
         },
@@ -93,9 +93,6 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
-#
-# # URL 配置
-# PREFERRED_URL_SCHEME = 'https'
 
 # 代理配置 - 取消注释并启用
 ENABLE_PROXY_FIX = True
@@ -108,10 +105,6 @@ LANGUAGES = {
     'en': {'flag': 'us', 'name': 'English'},
     'zh': {'flag': 'cn', 'name': 'Chinese'},
 }
-
-# # 移动端适配
-# ENABLE_RESPONSIVE_DASHBOARD = True
-# DASHBOARD_MOBILE_BREAKPOINT = 768
 
 # UI 配置
 ENABLE_JAVASCRIPT_CONTROLS = True
@@ -136,3 +129,21 @@ LOGIN_URL = '/login/'
 
 # 添加 DATA_DIR 配置
 DATA_DIR = os.path.join(os.path.expanduser('~'), '.superset')
+
+# 添加调试日志
+import logging
+logger = logging.getLogger(__name__)
+
+# 设置日志级别为DEBUG以获取更多信息
+logging.getLogger('flask_appbuilder').setLevel(logging.DEBUG)
+logging.getLogger('superset.security').setLevel(logging.DEBUG)
+
+# 自定义安全管理器，确保OAuth回调路由被正确注册
+class CustomSecurityManager(SupersetSecurityManager):
+    def __init__(self, appbuilder):
+        super().__init__(appbuilder)
+        logger.info("Custom security manager initialized")
+        # 不需要重复实现oauth_user_info方法，因为已经在security/manager.py中实现了
+
+# 使用自定义安全管理器
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager

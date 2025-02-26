@@ -57,7 +57,7 @@ OAUTH_PROVIDERS = [
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={client_id}&corpsecret={client_secret}',
             'authorize_url': f'https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={WECOM_CORP_ID}&agentid={WECOM_AGENT_ID}&redirect_uri={WECOM_REDIRECT_URI}',
             'request_token_params': {
-                'scope': 'snsapi_privateinfo',
+                'scope': 'snsapi_userinfo',
                 'response_type': 'code',
             },
         },
@@ -74,7 +74,7 @@ OAUTH_PROVIDERS = [
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={client_id}&corpsecret={client_secret}',
             'authorize_url': f'https://open.weixin.qq.com/connect/oauth2/authorize?appid={WECOM_CORP_ID}&redirect_uri=https://bi.fullstack-dao.com/oauth-authorized/wecom_h5&response_type=code&scope=snsapi_privateinfo&state=wecom_h5#wechat_redirect',
             'request_token_params': {
-                'scope': 'snsapi_privateinfo',
+                'scope': 'snsapi_base',
                 'response_type': 'code',
             },
         },

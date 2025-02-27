@@ -232,12 +232,14 @@ def init_oauth_views(app):
                     from superset import db, security_manager
 
                     # 检查用户是否已存在
+                    logger.info(f"检查用户 {username} 是否已存在")
                     user = db.session.query(User).filter_by(username=username).first()
 
                     if not user:
                         logger.info(f"用户 {username} 不存在，正在创建新用户")
                         # 创建新用户
                         role = security_manager.find_role(AUTH_USER_REGISTRATION_ROLE)
+                        logger.info(f"为新用户分配角色: {AUTH_USER_REGISTRATION_ROLE}")
                         user = security_manager.add_user(
                             username=username,
                             first_name=name,
@@ -247,11 +249,12 @@ def init_oauth_views(app):
                             password="OAUTH_USER"  # 设置一个无法直接登录的密码
                         )
                         db.session.commit()
-                        logger.info(f"成功创建用户 {username}")
+                        logger.info(f"成功创建用户 {username}，用户ID: {user.id}")
                     else:
-                        logger.info(f"用户 {username} 已存在")
+                        logger.info(f"用户 {username} 已存在，用户ID: {user.id}，无需重新注册")
 
                         # 更新用户信息（可选）
+                        logger.info(f"更新用户 {username} 的信息")
                         user.first_name = name
                         user.email = email
                         db.session.commit()
@@ -322,6 +325,23 @@ def init_oauth_views(app):
         logger.info(f"重定向到企业微信H5授权页面: {authorize_url}")
         return redirect(authorize_url)
 
+    # 添加自动检测企业微信环境并重定向的功能
+    def auto_wecom_login():
+        """检测企业微信环境并自动重定向到相应的登录方式"""
+        user_agent = request.headers.get('User-Agent', '').lower()
+        logger.info(f"检测到User-Agent: {user_agent}")
+
+        # 检测是否在企业微信内打开
+        is_wecom = 'wxwork' in user_agent or 'micromessenger' in user_agent
+
+        if is_wecom:
+            logger.info("检测到企业微信环境，自动重定向到企业微信H5登录")
+            return wecom_h5_login()
+        else:
+            logger.info("非企业微信环境，显示标准登录页面")
+            # 返回None，继续处理标准登录页面
+            return None
+
     # 注册企业微信登录入口点
     app.add_url_rule(
         '/login/wecom',
@@ -336,6 +356,15 @@ def init_oauth_views(app):
         wecom_h5_login,
         methods=['GET']
     )
+
+    # 注册登录页面前置处理
+    @app.before_request
+    def before_request():
+        # 只处理登录页面请求
+        if request.path == '/login/' or request.path == '/login':
+            result = auto_wecom_login()
+            if result is not None:
+                return result
 
     logger.info("OAuth回调路由和登录入口点已注册")
     return app

@@ -15,7 +15,7 @@ SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://postgres:123456@localhost:5432/
 WECOM_CORP_ID = 'wwc2d2bc12f207d229'
 WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
-WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
+WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/security/oauth-authorized/wecom'
 
 # Flask-AppBuilder 配置
 FAB_INDEX_URL = '/superset/dashboard/list/'  # 修改登录后的默认页面
@@ -72,7 +72,7 @@ OAUTH_PROVIDERS = [
             'api_base_url': 'https://qyapi.weixin.qq.com/cgi-bin/',
             'request_token_url': None,
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={client_id}&corpsecret={client_secret}',
-            'authorize_url': f'https://open.weixin.qq.com/connect/oauth2/authorize?appid={WECOM_CORP_ID}&redirect_uri=https://bi.fullstack-dao.com/oauth-authorized/wecom_h5&response_type=code&scope=snsapi_privateinfo&state=wecom_h5#wechat_redirect',
+            'authorize_url': f'https://open.weixin.qq.com/connect/oauth2/authorize?appid={WECOM_CORP_ID}&redirect_uri=https://bi.fullstack-dao.com/security/oauth-authorized/wecom_h5&response_type=code&scope=snsapi_privateinfo&state=wecom_h5#wechat_redirect',
             'request_token_params': {
                 'scope': 'snsapi_privateinfo',
                 'response_type': 'code',
@@ -137,51 +137,3 @@ logger = logging.getLogger(__name__)
 # 设置日志级别为DEBUG以获取更多信息
 logging.getLogger('flask_appbuilder').setLevel(logging.DEBUG)
 logging.getLogger('superset.security').setLevel(logging.DEBUG)
-
-# 添加Flask应用初始化函数，确保OAuth回调路由被正确注册
-def init_oauth_views(app):
-    """
-    确保OAuth回调路由被正确注册
-    """
-    from flask_appbuilder.security.views import AuthOAuthView
-    from flask_appbuilder._compat import as_unicode
-    from flask import url_for, redirect, request
-
-    appbuilder = app.appbuilder
-
-    # 确保OAuth回调视图被正确注册
-    if not hasattr(appbuilder.sm, 'oauth_view'):
-        logger.info("注册OAuth回调视图")
-        appbuilder.sm.oauth_view = AuthOAuthView()
-
-    # 显式注册OAuth回调路由
-    app.add_url_rule(
-        '/oauth-authorized/<provider>',
-        'oauth_authorized',
-        appbuilder.sm.oauth_view.oauth_authorized,
-        methods=['GET', 'POST']
-    )
-
-    # 显式注册企业微信回调路由
-    app.add_url_rule(
-        '/oauth-authorized/wecom',
-        'oauth_authorized_wecom',
-        appbuilder.sm.oauth_view.oauth_authorized,
-        methods=['GET', 'POST'],
-        defaults={'provider': 'wecom'}
-    )
-
-    # 显式注册企业微信H5回调路由
-    app.add_url_rule(
-        '/oauth-authorized/wecom_h5',
-        'oauth_authorized_wecom_h5',
-        appbuilder.sm.oauth_view.oauth_authorized,
-        methods=['GET', 'POST'],
-        defaults={'provider': 'wecom_h5'}
-    )
-
-    logger.info("OAuth回调路由已注册")
-    return app
-
-# 使用Flask应用初始化函数
-FLASK_APP_MUTATOR = init_oauth_views

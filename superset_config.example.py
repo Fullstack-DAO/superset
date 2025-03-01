@@ -206,21 +206,27 @@ def init_oauth_views(app):
                     return Response(json.dumps({"error": "获取用户名称失败"}), status=500, mimetype='application/json')
 
                 # 构建用户信息
-                username = detail_data.get('userid', '')
-                name = detail_data.get('name', '')
+                userid = detail_data.get('userid', '')  # 企业微信的用户ID（通常是拼音）
+                name = detail_data.get('name', '')      # 用户的真实姓名（通常是中文）
+
+                # 使用用户的真实姓名作为username，这样在Superset中显示的将是用户的中文名
+                # 注意：如果有同名用户，可能需要添加额外的标识符
+                username = name
+
                 # 使用硬编码的域名，避免依赖全局变量
                 default_email_domain = 'fullstack-dao.com'
-                email = detail_data.get('email', f"{username}@{default_email_domain}")
+                email = detail_data.get('email', f"{userid}@{default_email_domain}")
 
                 # 将用户信息存储在session中，供后续使用
                 user_info = {
-                    'username': username,
+                    'username': username,  # 使用真实姓名作为用户名
                     'name': name,
                     'email': email,
                     'first_name': name,
                     'last_name': '',
                     'role_keys': [],
                     'provider': provider,  # 记录认证提供者
+                    'userid': userid,      # 保存原始的企业微信用户ID，以备后用
                 }
                 session['oauth_user_info'] = user_info
                 logger.info(f"已将用户信息存储在session中: {user_info}")

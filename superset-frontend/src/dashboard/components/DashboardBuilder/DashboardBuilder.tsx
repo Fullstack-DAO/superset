@@ -88,7 +88,6 @@ import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
 import DashboardCollaboratorModal from "../PropertiesModal/DashboardCollaboratorModal";
-import SidebarButtons from './SidebarButtons';
 
 type DashboardBuilderProps = {};
 
@@ -304,74 +303,64 @@ const StyledDashboardContent = styled.div<{
         `max-width: calc(100% - ${BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16}px);`
       }
 
-      /* Mobile styles */
-      @media screen and (max-width: 768px) {
+      @media (max-width: 768px) {
         margin: ${theme.gridUnit * 2}px;
         
-        /* Force single column layout */
         .dashboard-grid {
           display: flex !important;
           flex-direction: column !important;
-          
-          & > div {
-            width: 100% !important;
-            margin-bottom: ${theme.gridUnit * 4}px;
-          }
+        }
+        
+        .dashboard-grid > div {
+          width: 100% !important;
+          margin-bottom: ${theme.gridUnit * 4}px;
         }
 
-        /* Ensure each chart takes full width */
         .dashboard-component-chart-holder {
           width: 100% !important;
           height: auto !important;
           margin-bottom: ${theme.gridUnit * 4}px !important;
         }
 
-        /* Reset grid layout to single column */
         .grid-column,
         .grid-row {
           width: 100% !important;
           display: block !important;
         }
 
-        /* Adjust chart container */
         .chart-container {
           width: 100% !important;
           min-height: 400px !important;
         }
 
-        /* Maintain font sizes */
         .slice_container {
           transform: none !important;
           font-size: 14px !important;
         }
 
-        /* Adjust filter bar for better mobile experience */
         .filter-bar {
           flex-direction: column;
           padding: ${theme.gridUnit * 2}px;
-          
-          .filter-item {
-            width: 100%;
-            margin-bottom: ${theme.gridUnit * 2}px;
-          }
+        }
+        
+        .filter-bar .filter-item {
+          width: 100%;
+          margin-bottom: ${theme.gridUnit * 2}px;
         }
 
-        /* Ensure proper spacing between components */
         .dashboard-component {
           margin-bottom: ${theme.gridUnit * 4}px !important;
         }
 
-        /* Remove any multi-column layouts */
         .dragdroppable-row {
           display: block !important;
-          
-          & > div {
-            width: 100% !important;
-            margin-bottom: ${theme.gridUnit * 4}px;
-          }
+        }
+        
+        .dragdroppable-row > div {
+          width: 100% !important;
+          margin-bottom: ${theme.gridUnit * 4}px;
         }
 
-        /* Ensure charts don't get squished */
         .resizable-container {
           width: 100% !important;
           height: auto !important;
@@ -651,7 +640,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
       isReport,
       topLevelTabs,
       uiConfig.hideNav,
-      setCollaboratorsModalVisible,
     ],
   );
 
@@ -778,7 +766,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
         onClose={() => setCollaboratorsModalVisible(false)}
         dashboardId={dashboardId}
       />
-      <SidebarButtons />
     </DashboardWrapper>
   );
 };

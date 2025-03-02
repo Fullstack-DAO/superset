@@ -422,7 +422,7 @@ const HeaderButtons = styled.div`
   align-items: center;
   gap: ${({ theme }) => theme.gridUnit * 6}px;  // 48px 间距
   position: absolute;
-  right: ${({ theme }) => theme.gridUnit * 64}px; // 49 + 15 = 64，再往左移动120px
+  right: ${({ theme }) => theme.gridUnit * 56}px; // 将64改为56，向右平移8px
   top: 50%;
   transform: translateY(-50%);
   z-index: 99;

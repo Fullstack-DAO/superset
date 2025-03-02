@@ -44,49 +44,27 @@ const StyledButton = styled.button`
 
 const SidebarButtons: React.FC = () => {
   const handleSidebarToggle = useCallback(() => {
-    const selectors = [
-      '[data-test="dashboard-filters-panel"] button',
-      '.filter-bar-toggle',
-      '.sidebar-toggle',
-      '.dashboard-builder-sidepane-collapse',
-      '.navbar-toggle'
-    ];
-
-    for (const selector of selectors) {
+    const selectors = ['.dashboard-builder-sidepane', '.dashboard-component-tabs'];
+    selectors.forEach(selector => {
       const elements = document.querySelectorAll<HTMLElement>(selector);
-      const button = Array.from(elements).find(
-        el =>
-          window.getComputedStyle(el).display !== 'none' &&
+      Array.from(elements).find(
+        el => 
+          window.getComputedStyle(el).display !== 'none' && 
           window.getComputedStyle(el).visibility !== 'hidden'
-      );
-      if (button) {
-        button.click();
-        return;
-      }
-    }
+      )?.click();
+    });
   }, []);
 
   const handleFilterToggle = useCallback(() => {
-    const selectors = [
-      '.dashboard-builder-sidepane-header button',
-      '[data-test="dashboard-filters-control"]',
-      '.filter-icon',
-      '.filter-button',
-      '.filter-dropdown-toggle'
-    ];
-
-    for (const selector of selectors) {
+    const selectors = ['.dashboard-builder-sidepane', '.dashboard-component-tabs'];
+    selectors.forEach(selector => {
       const elements = document.querySelectorAll<HTMLElement>(selector);
-      const button = Array.from(elements).find(
-        el =>
-          window.getComputedStyle(el).display !== 'none' &&
+      Array.from(elements).find(
+        el => 
+          window.getComputedStyle(el).display !== 'none' && 
           window.getComputedStyle(el).visibility !== 'hidden'
-      );
-      if (button) {
-        button.click();
-        return;
-      }
-    }
+      )?.click();
+    });
   }, []);
 
   return (

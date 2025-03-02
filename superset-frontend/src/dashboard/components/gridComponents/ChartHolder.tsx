@@ -20,7 +20,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ResizeCallback, ResizeStartCallback } from 're-resizable';
 import cx from 'classnames';
 import { useSelector } from 'react-redux';
-import { css, SupersetTheme, useTheme } from '@superset-ui/core';
+import { css, useTheme } from '@superset-ui/core';
 import styled from '@emotion/styled';
 import { LayoutItem, RootState } from 'src/dashboard/types';
 import AnchorLink from 'src/dashboard/components/AnchorLink';

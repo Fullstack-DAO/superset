@@ -292,7 +292,6 @@ const StyledDashboardContent = styled.div<{
     }
 
     .grid-container {
-      /* without this, the grid will not get smaller upon toggling the builder panel on */
       width: 0;
       flex: 1;
       position: relative;
@@ -302,15 +301,83 @@ const StyledDashboardContent = styled.div<{
       margin-left: ${marginLeft}px;
 
       ${editMode &&
-`
-      max-width: calc(100% - ${
-  BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16
-}px);
-    `}
+        `max-width: calc(100% - ${BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16}px);`
+      }
 
-      /* this is the ParentSize wrapper */
-    & > div:first-child {
-        height: inherit !important;
+      /* Mobile styles */
+      @media screen and (max-width: 768px) {
+        margin: ${theme.gridUnit * 2}px;
+        
+        /* Force single column layout */
+        .dashboard-grid {
+          display: flex !important;
+          flex-direction: column !important;
+          
+          & > div {
+            width: 100% !important;
+            margin-bottom: ${theme.gridUnit * 4}px;
+          }
+        }
+
+        /* Ensure each chart takes full width */
+        .dashboard-component-chart-holder {
+          width: 100% !important;
+          height: auto !important;
+          margin-bottom: ${theme.gridUnit * 4}px !important;
+        }
+
+        /* Reset grid layout to single column */
+        .grid-column,
+        .grid-row {
+          width: 100% !important;
+          display: block !important;
+        }
+
+        /* Adjust chart container */
+        .chart-container {
+          width: 100% !important;
+          min-height: 400px !important;
+        }
+
+        /* Maintain font sizes */
+        .slice_container {
+          transform: none !important;
+          font-size: 14px !important;
+        }
+
+        /* Adjust filter bar for better mobile experience */
+        .filter-bar {
+          flex-direction: column;
+          padding: ${theme.gridUnit * 2}px;
+          
+          .filter-item {
+            width: 100%;
+            margin-bottom: ${theme.gridUnit * 2}px;
+          }
+        }
+
+        /* Ensure proper spacing between components */
+        .dashboard-component {
+          margin-bottom: ${theme.gridUnit * 4}px !important;
+        }
+
+        /* Remove any multi-column layouts */
+        .dragdroppable-row {
+          display: block !important;
+          
+          & > div {
+            width: 100% !important;
+            margin-bottom: ${theme.gridUnit * 4}px;
+          }
+        }
+
+        /* Ensure charts don't get squished */
+        .resizable-container {
+          width: 100% !important;
+          height: auto !important;
+          min-height: 400px;
+          resize: none !important;
+        }
       }
     }
 
@@ -336,10 +403,7 @@ const StyledDashboardContent = styled.div<{
         border-radius: ${theme.borderRadius}px;
         box-shadow: inset 0 0 0 2px ${theme.colors.primary.base},
           0 0 0 3px
-            ${addAlpha(
-  theme.colors.primary.base,
-  parseFloat(theme.opacity.light) / 100,
-)};
+            ${addAlpha(theme.colors.primary.base, parseFloat(theme.opacity.light) / 100)};
       }
 
       &.fade-out {

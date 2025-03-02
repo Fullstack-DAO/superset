@@ -79,108 +79,46 @@ const fullSizeStyle = css`
   }
 `;
 
-const StyledChartHolder = styled.div<{ theme: SupersetTheme }>`
+const ChartContainer = styled.div`
+  position: relative;
   width: 100%;
   height: 100%;
-  color: ${({ theme }) => theme.colors.grayscale.dark1};
-  background-color: ${({ theme }) => theme.colors.grayscale.light5};
-  border-radius: ${({ theme }) => theme.gridUnit}px;
-  border: 0;
-  position: relative;
+  overflow: hidden;
 
-  @media (max-width: 768px) {
-    width: 100vw !important;  // 使用视口宽度
-    margin-left: -${({ theme }) => theme.gridUnit * 2}px;  // 抵消父容器的padding
-    padding: ${({ theme }) => theme.gridUnit * 2}px;
-    box-sizing: border-box;
+  .chart-container {
+    position: relative;
+    height: 100%;
+    overflow: auto;
+
+    .slice_container {
+      height: 100%;
+    }
+  }
+
+  /* Mobile styles */
+  @media screen and (max-width: 768px) {
+    height: auto !important;
+    min-height: 300px;
 
     .chart-container {
-      width: 100% !important;
-      height: 100% !important;
-      min-height: 400px;  // 增加最小高度
-      position: relative !important;
-      overflow: visible !important;
+      height: auto !important;
+      min-height: 300px;
 
       .slice_container {
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 400px;
-        position: relative !important;
-        transform: none !important;
-
-        // 大数字图表特殊处理
-        &.big_number {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          height: 200px !important;
-          min-height: 200px !important;
-
-          & > div {
-            width: 100% !important;
-            height: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-size: 48px !important;
-          }
-        }
-
-        // 折线图特殊处理
-        &.line {
-          height: 400px !important;
-          min-height: 400px !important;
-
-          & > div {
-            height: 100% !important;
-          }
-        }
-
-        // 通用图表容器样式
-        & > div {
-          width: 100% !important;
-          height: 100% !important;
-          min-height: inherit;
-          position: relative !important;
-          transform: none !important;
-        }
-
-        // 图表元素样式
-        svg, canvas {
-          width: 100% !important;
-          height: 100% !important;
-          min-height: inherit;
-        }
-      }
-    }
-
-    // 禁用调整大小功能
-    .resizable-container {
-      resize: none !important;
-      width: 100% !important;
-      height: auto !important;
-      
-      & > div {
-        width: 100% !important;
         height: auto !important;
+        min-height: 300px;
+        transform: none !important;
       }
     }
 
-    // 图表标题和控件样式
-    .chart-header {
-      padding: ${({ theme }) => theme.gridUnit * 2}px;
-      
-      .header-title {
-        font-size: 16px;
-        padding: ${({ theme }) => theme.gridUnit}px 0;
-      }
+    /* Ensure text remains readable */
+    text {
+      font-size: 12px !important;
     }
 
-    // 确保所有内容可见
+    /* Adjust chart padding */
     .dashboard-component-chart-holder {
-      overflow: visible !important;
-      width: 100% !important;
-      height: auto !important;
+      padding: ${({ theme }) => theme.gridUnit * 2}px !important;
     }
   }
 `;
@@ -396,8 +334,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
           onResizeStop={onResizeStop}
           editMode={editMode}
         >
-          <StyledChartHolder
-            theme={theme}
+          <ChartContainer
             ref={dragSourceRef}
             data-test="dashboard-component-chart-holder"
             style={focusHighlightStyles}
@@ -449,7 +386,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
                 </div>
               </HoverMenu>
             )}
-          </StyledChartHolder>
+          </ChartContainer>
           {dropIndicatorProps && <div {...dropIndicatorProps} />}
         </ResizableContainer>
       )}

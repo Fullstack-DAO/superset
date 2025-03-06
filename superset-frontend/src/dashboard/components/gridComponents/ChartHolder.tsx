@@ -20,7 +20,8 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ResizeCallback, ResizeStartCallback } from 're-resizable';
 import cx from 'classnames';
 import { useSelector } from 'react-redux';
-import { css } from '@superset-ui/core';
+import { css, useTheme } from '@superset-ui/core';
+import styled from '@emotion/styled';
 import { LayoutItem, RootState } from 'src/dashboard/types';
 import AnchorLink from 'src/dashboard/components/AnchorLink';
 import Chart from 'src/dashboard/containers/Chart';
@@ -78,6 +79,55 @@ const fullSizeStyle = css`
   }
 `;
 
+const ChartContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+
+  .chart-container {
+    position: relative;
+    height: 100%;
+    overflow: auto;
+
+    .slice_container {
+      height: 100%;
+    }
+  }
+
+  /* Mobile styles */
+  @media screen and (max-width: 768px) {
+    height: auto !important;
+    min-height: 300px;
+
+    .chart-container {
+      height: auto !important;
+      min-height: 300px;
+
+      .slice_container {
+        height: auto !important;
+        min-height: 300px;
+        transform: none !important;
+      }
+    }
+
+    /* Ensure text remains readable */
+    text {
+      font-size: 12px !important;
+    }
+
+    /* Adjust chart padding */
+    .dashboard-component-chart-holder {
+      padding: ${({ theme }) => theme.gridUnit * 2}px !important;
+    }
+  }
+`;
+
+const isMobileDevice = () => {
+  const ua = navigator.userAgent;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+};
+
 const ChartHolder: React.FC<ChartHolderProps> = ({
   id,
   parentId,
@@ -101,6 +151,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
   setFullSizeChartId,
   isInView,
 }) => {
+  const theme = useTheme();
   const { chartId } = component.meta;
   const isFullSize = fullSizeChartId === chartId;
 
@@ -188,6 +239,16 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
     parentComponent.type,
   ]);
 
+  // 添加移动设备状态
+  const [, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 初始化时检测设备类型
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    setIsMounted(true);
+  }, []);
+
   const { chartWidth, chartHeight } = useMemo(() => {
     let chartWidth = 0;
     let chartHeight = 0;
@@ -195,6 +256,9 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
     if (isFullSize) {
       chartWidth = window.innerWidth - CHART_MARGIN;
       chartHeight = window.innerHeight - CHART_MARGIN;
+    } else if (isMobile) {
+      chartWidth = window.innerWidth - (theme.gridUnit * 4); // 减去左右padding
+      chartHeight = 400; // 使用固定高度
     } else {
       chartWidth = Math.floor(
         widthMultiple * columnWidth +
@@ -210,7 +274,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
       chartWidth,
       chartHeight,
     };
-  }, [columnWidth, component, isFullSize, widthMultiple]);
+  }, [columnWidth, component, isFullSize, isMobile, widthMultiple, theme.gridUnit]);
 
   const handleDeleteComponent = useCallback(() => {
     deleteComponent(id, parentId);
@@ -270,7 +334,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
           onResizeStop={onResizeStop}
           editMode={editMode}
         >
-          <div
+          <ChartContainer
             ref={dragSourceRef}
             data-test="dashboard-component-chart-holder"
             style={focusHighlightStyles}
@@ -278,7 +342,6 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
             className={cx(
               'dashboard-component',
               'dashboard-component-chart-holder',
-              // The following class is added to support custom dashboard styling via the CSS editor
               `dashboard-chart-id-${chartId}`,
               outlinedComponentId ? 'fade-in' : 'fade-out',
             )}
@@ -323,7 +386,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
                 </div>
               </HoverMenu>
             )}
-          </div>
+          </ChartContainer>
           {dropIndicatorProps && <div {...dropIndicatorProps} />}
         </ResizableContainer>
       )}
@@ -332,3 +395,4 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
 };
 
 export default ChartHolder;
+

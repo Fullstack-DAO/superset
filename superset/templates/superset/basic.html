@@ -13,8 +13,10 @@ governing permissions and limitations under the License. #}
 {% import 'appbuilder/general/lib.html' as lib %} {% from
 'superset/partials/asset_bundle.html' import css_bundle, js_bundle with context
 %} {% set favicons = appbuilder.app.config['FAVICONS'] %}
-<html>
+<html lang="{{ language }}">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=no">
     <title>
       {% block title %} {% if title %} {{ title }} {% elif appbuilder and
       appbuilder.app_name %} {{ appbuilder.app_name }} {% endif %} {% endblock
@@ -76,6 +78,22 @@ governing permissions and limitations under the License. #}
       id="csrf_token"
       value="{{ csrf_token() if csrf_token else '' }}"
     />
+    <style>
+      /* Mobile-specific styles */
+      @media screen and (max-width: 768px) {
+        /* Prevent font scaling */
+        body {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+        
+        /* Force minimum width to prevent tiny charts */
+        .dashboard .chart-container {
+          min-width: 100% !important;
+          width: 100% !important;
+        }
+      }
+    </style>
   </head>
 
   <body {% if standalone_mode %}class="standalone" {% endif %}>

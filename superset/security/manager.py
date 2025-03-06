@@ -22,7 +22,7 @@ import re
 import time
 from collections import defaultdict
 from typing import Any, Callable, cast, NamedTuple, Optional, TYPE_CHECKING, Union
-
+import requests
 from flask import current_app, Flask, g, Request
 from flask_appbuilder import Model
 from flask_appbuilder.security.sqla.manager import SecurityManager
@@ -41,6 +41,7 @@ from flask_appbuilder.security.views import (
     RoleModelView,
     UserModelView,
     ViewMenuModelView,
+    AuthOAuthView,
 )
 from flask_appbuilder.widgets import ListWidget
 from flask_babel import lazy_gettext as _
@@ -75,6 +76,8 @@ from superset.utils.core import (
 )
 from superset.utils.filters import get_dataset_access_filters
 from superset.utils.urls import get_url_host
+from flask_appbuilder.security.manager import AUTH_DB, AUTH_OAUTH
+from flask_babel import Babel
 
 if TYPE_CHECKING:
     from superset.common.query_context import QueryContext
@@ -142,9 +145,10 @@ RoleModelView.edit_columns = ["name", "permissions", "user"]
 RoleModelView.related_views = []
 
 
-class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
-    SecurityManager
-):
+class SupersetSecurityManager(SecurityManager):
+    """
+    Superset Security Manager Class
+    """
     userstatschartview = None
     READ_ONLY_MODEL_VIEWS = {"Database", "DynamicPlugin"}
 
@@ -243,7 +247,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
         ("can_read", "SQLLab"),
         ("can_sqllab_history", "Superset"),
         ("can_sqllab", "Superset"),
-        ("can_test_conn", "Superset"),  # Deprecated permission remove on 3.0.0
+        ("can_test_conn", "Superset"),
         ("can_activate", "TabStateView"),
         ("can_get", "TabStateView"),
         ("can_delete_query", "TabStateView"),
@@ -258,7 +262,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
     }
 
     SQLLAB_EXTRA_PERMISSION_VIEWS = {
-        ("can_csv", "Superset"),  # Deprecated permission remove on 3.0.0
+        ("can_csv", "Superset"),
         ("can_read", "Superset"),
         ("can_read", "Database"),
     }
@@ -274,6 +278,90 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
 
     guest_user_cls = GuestUser
     pyjwt_for_guest_token = _jwt_global_obj
+    oauth_view = AuthOAuthView
+
+    def oauth_user_info(self, provider, response=None):
+        """处理 OAuth 用户信息"""
+        if provider in ['wecom', 'wecom_h5']:  # 同时处理两种登录方式
+            if response is None:
+                return None
+
+            code = response.get('code')
+            if not code:
+                logger.error("No code provided in OAuth response")
+                return None
+
+            try:
+                # 获取 access_token
+                token_url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken'
+                token_params = {
+                    'corpid': current_app.config['WECOM_CORP_ID'],
+                    'corpsecret': current_app.config['WECOM_SECRET']
+                }
+                logger.info(f"Requesting token with params: {token_params}")
+                token_resp = requests.get(token_url, params=token_params, verify=False)
+                token_data = token_resp.json()
+                logger.info(f"Token response: {token_data}")
+
+                if token_data.get('errcode') != 0:
+                    logger.error(f"Failed to get access_token: {token_data}")
+                    return None
+
+                access_token = token_data.get('access_token')
+
+                # 获取用户信息
+                user_info_url = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo"
+                user_params = {
+                    'access_token': access_token,
+                    'code': code
+                }
+                logger.info(f"Requesting user info with params: {user_params}")
+                user_resp = requests.get(user_info_url, params=user_params, verify=False)
+                user_data = user_resp.json()
+                logger.info(f"User info response: {user_data}")
+
+                if user_data.get('errcode') != 0:
+                    logger.error(f"Failed to get user info: {user_data}")
+                    return None
+
+                userid = user_data.get('UserId')
+                if not userid:
+                    logger.error("No userid in response")
+                    return None
+
+                # 获取用户详细信息
+                detail_url = "https://qyapi.weixin.qq.com/cgi-bin/user/get"
+                detail_params = {
+                    'access_token': access_token,
+                    'userid': userid
+                }
+                logger.info(f"Requesting user detail with params: {detail_params}")
+                detail_resp = requests.get(detail_url, params=detail_params, verify=False)
+                detail_data = detail_resp.json()
+                logger.info(f"User detail response: {detail_data}")
+
+                if detail_data.get('errcode') != 0:
+                    logger.error(f"Failed to get user detail: {detail_data}")
+                    return None
+
+                # 构建用户信息
+                user_info = {
+                    'username': userid,
+                    'first_name': detail_data.get('name', ''),
+                    'last_name': '',
+                    'email': detail_data.get('email', f"{userid}@fullstack-dao.com"),
+                    'role_keys': ['Public']
+                }
+                logger.info(f"Successfully retrieved user info: {user_info}")
+                return user_info
+
+            except Exception as e:
+                logger.error(f"Error in OAuth process: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                return None
+
+        return super().oauth_user_info(provider, response)
 
     def create_login_manager(self, app: Flask) -> LoginManager:
         lm = super().create_login_manager(app)

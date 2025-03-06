@@ -42,6 +42,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import ErrorBoundary from 'src/components/ErrorBoundary';
 import BuilderComponentPane from 'src/dashboard/components/BuilderComponentPane';
 import DashboardHeader from 'src/dashboard/containers/DashboardHeader';
+import Button from 'src/components/Button';  // 添加这行
 import Icons from 'src/components/Icons';
 import IconButton from 'src/dashboard/components/IconButton';
 import DragDroppable from 'src/dashboard/components/dnd/DragDroppable';
@@ -86,6 +87,7 @@ import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
+import DashboardCollaboratorModal from "../PropertiesModal/DashboardCollaboratorModal";
 
 type DashboardBuilderProps = {};
 
@@ -137,11 +139,11 @@ const DashboardContentWrapper = styled.div`
       & .dashboard-component-tabs {
         box-shadow: 0 ${theme.gridUnit}px ${theme.gridUnit}px 0
           ${addAlpha(
-            theme.colors.grayscale.dark2,
-            parseFloat(theme.opacity.light) / 100,
-          )};
+  theme.colors.grayscale.dark2,
+  parseFloat(theme.opacity.light) / 100,
+)};
         padding-left: ${theme.gridUnit *
-        2}px; /* note this is added to tab-level padding, to match header */
+2}px; /* note this is added to tab-level padding, to match header */
       }
 
       .dropdown-toggle.btn.btn-primary .caret {
@@ -289,7 +291,6 @@ const StyledDashboardContent = styled.div<{
     }
 
     .grid-container {
-      /* without this, the grid will not get smaller upon toggling the builder panel on */
       width: 0;
       flex: 1;
       position: relative;
@@ -299,15 +300,73 @@ const StyledDashboardContent = styled.div<{
       margin-left: ${marginLeft}px;
 
       ${editMode &&
-      `
-      max-width: calc(100% - ${
-        BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16
-      }px);
-    `}
+        `max-width: calc(100% - ${BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16}px);`
+      }
 
-      /* this is the ParentSize wrapper */
-    & > div:first-child {
-        height: inherit !important;
+      @media (max-width: 768px) {
+        margin: ${theme.gridUnit * 2}px;
+        
+        .dashboard-grid {
+          display: flex !important;
+          flex-direction: column !important;
+        }
+        
+        .dashboard-grid > div {
+          width: 100% !important;
+          margin-bottom: ${theme.gridUnit * 4}px;
+        }
+
+        .dashboard-component-chart-holder {
+          width: 100% !important;
+          height: auto !important;
+          margin-bottom: ${theme.gridUnit * 4}px !important;
+        }
+
+        .grid-column,
+        .grid-row {
+          width: 100% !important;
+          display: block !important;
+        }
+
+        .chart-container {
+          width: 100% !important;
+          min-height: 400px !important;
+        }
+
+        .slice_container {
+          transform: none !important;
+          font-size: 14px !important;
+        }
+
+        .filter-bar {
+          flex-direction: column;
+          padding: ${theme.gridUnit * 2}px;
+        }
+        
+        .filter-bar .filter-item {
+          width: 100%;
+          margin-bottom: ${theme.gridUnit * 2}px;
+        }
+
+        .dashboard-component {
+          margin-bottom: ${theme.gridUnit * 4}px !important;
+        }
+
+        .dragdroppable-row {
+          display: block !important;
+        }
+        
+        .dragdroppable-row > div {
+          width: 100% !important;
+          margin-bottom: ${theme.gridUnit * 4}px;
+        }
+
+        .resizable-container {
+          width: 100% !important;
+          height: auto !important;
+          min-height: 400px;
+          resize: none !important;
+        }
       }
     }
 
@@ -333,10 +392,7 @@ const StyledDashboardContent = styled.div<{
         border-radius: ${theme.borderRadius}px;
         box-shadow: inset 0 0 0 2px ${theme.colors.primary.base},
           0 0 0 3px
-            ${addAlpha(
-              theme.colors.primary.base,
-              parseFloat(theme.opacity.light) / 100,
-            )};
+            ${addAlpha(theme.colors.primary.base, parseFloat(theme.opacity.light) / 100)};
       }
 
       &.fade-out {
@@ -361,13 +417,25 @@ const StyledDashboardContent = styled.div<{
   `}
 `;
 
+const HeaderButtons = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.gridUnit * 6}px;  // 48px 间距
+  position: absolute;
+  right: ${({ theme }) => theme.gridUnit * 58}px; // 将56改为58，向左平移2px
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 99;
+`;
+
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const dispatch = useDispatch();
   const uiConfig = useUiConfig();
   const theme = useTheme();
 
-  const dashboardId = useSelector<RootState, string>(
-    ({ dashboardInfo }) => `${dashboardInfo.id}`,
+  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] = useState(false);
+  const dashboardId = useSelector<RootState, number>(
+    ({ dashboardInfo }) => dashboardInfo.id,
   );
   const dashboardLayout = useSelector<RootState, DashboardLayout>(
     state => state.dashboardLayout.present,
@@ -514,7 +582,20 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const renderDraggableContent = useCallback(
     ({ dropIndicatorProps }: { dropIndicatorProps: JsonObject }) => (
       <div>
-        {!hideDashboardHeader && <DashboardHeader />}
+        {!hideDashboardHeader && (
+          <div style={{ position: 'relative' }}>
+            <DashboardHeader />
+            <HeaderButtons>
+              <Button
+                buttonStyle="secondary"
+                onClick={() => setCollaboratorsModalVisible(true)}
+                className="manage-collaborators"
+              >
+                {t('管理协作者')}
+              </Button>
+            </HeaderButtons>
+          </div>
+        )}
         {showFilterBar &&
           filterBarOrientation === FilterBarOrientation.HORIZONTAL && (
             <FilterBar
@@ -634,7 +715,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           styles={css`
             // @z-index-above-dashboard-header (100) + 1 = 101
             ${fullSizeChartId &&
-            `div > .filterStatusPopover.ant-popover{z-index: 101}`}
+          `div > .filterStatusPopover.ant-popover{z-index: 101}`}
           `}
         />
         {!editMode &&
@@ -680,6 +761,11 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           `}
         />
       )}
+      <DashboardCollaboratorModal
+        visible={isCollaboratorsModalVisible}
+        onClose={() => setCollaboratorsModalVisible(false)}
+        dashboardId={dashboardId}
+      />
     </DashboardWrapper>
   );
 };

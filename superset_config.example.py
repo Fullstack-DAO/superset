@@ -115,6 +115,7 @@ FAB_SECURITY_UI_VIEWS = True
 HIDE_EDIT_BUTTONS = False
 MENU_HIDE_USER_SECTION = False
 
+
 # 其他配置
 COPILOT_URL = "http://your-copilot-url.com"
 REPORT_URL = "http://your-report-url.com"
@@ -206,27 +207,19 @@ def init_oauth_views(app):
                     return Response(json.dumps({"error": "获取用户名称失败"}), status=500, mimetype='application/json')
 
                 # 构建用户信息
-                userid = detail_data.get('userid', '')  # 企业微信的用户ID（通常是拼音）
-                name = detail_data.get('name', '')      # 用户的真实姓名（通常是中文）
-
-                # 使用用户的真实姓名作为username，这样在Superset中显示的将是用户的中文名
-                # 注意：如果有同名用户，可能需要添加额外的标识符
-                username = name
-
-                # 使用硬编码的域名，避免依赖全局变量
-                default_email_domain = 'fullstack-dao.com'
-                email = detail_data.get('email', f"{userid}@{default_email_domain}")
+                username = detail_data.get('userid', '')
+                name = detail_data.get('name', '')
+                email = detail_data.get('email', f"{username}@{WECOM_DEFAULT_EMAIL_DOMAIN}")
 
                 # 将用户信息存储在session中，供后续使用
                 user_info = {
-                    'username': username,  # 使用真实姓名作为用户名
+                    'username': username,
                     'name': name,
                     'email': email,
                     'first_name': name,
                     'last_name': '',
                     'role_keys': [],
                     'provider': provider,  # 记录认证提供者
-                    'userid': userid,      # 保存原始的企业微信用户ID，以备后用
                 }
                 session['oauth_user_info'] = user_info
                 logger.info(f"已将用户信息存储在session中: {user_info}")
@@ -238,29 +231,19 @@ def init_oauth_views(app):
                     from superset import db, security_manager
 
                     # 检查用户是否已存在
-                    logger.info(f"检查用户 {username} 是否已存在")
                     user = db.session.query(User).filter_by(username=username).first()
 
                     if not user:
-                        logger.info(f"用户 {username} 不存在，正在创建新用户")
-                        # 创建新用户
-                        role = security_manager.find_role(AUTH_USER_REGISTRATION_ROLE)
-                        logger.info(f"为新用户分配角色: {AUTH_USER_REGISTRATION_ROLE}")
-                        user = security_manager.add_user(
-                            username=username,
-                            first_name=name,
-                            last_name="",
-                            email=email,
-                            role=role,
-                            password="OAUTH_USER"  # 设置一个无法直接登录的密码
-                        )
-                        db.session.commit()
-                        logger.info(f"成功创建用户 {username}，用户ID: {user.id}")
+                        logger.info(f"用户 {username} 不存在，返回提示信息")
+                        # 不创建用户，而是设置一个session变量，用于前端显示提示
+                        session['user_not_found'] = True
+                        session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
+                        # 重定向到登录页面
+                        return redirect('/login/?error=user_not_found')
                     else:
-                        logger.info(f"用户 {username} 已存在，用户ID: {user.id}，无需重新注册")
+                        logger.info(f"用户 {username} 已存在")
 
                         # 更新用户信息（可选）
-                        logger.info(f"更新用户 {username} 的信息")
                         user.first_name = name
                         user.email = email
                         db.session.commit()
@@ -280,7 +263,7 @@ def init_oauth_views(app):
                     # 尝试标准OAuth流程作为备选
                     return redirect(f'/security/oauth-authorized/{provider}?code={code}&state={state}')
 
-                # 重定向到首页
+                # 重定向到首页或仪表板列表
                 # 直接使用硬编码的URL，避免依赖全局变量
                 target_url = '/superset/welcome'
                 logger.info(f"重定向到首页: {target_url}")

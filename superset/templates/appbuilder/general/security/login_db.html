@@ -3,6 +3,12 @@
 {% block content %}
 <div class="container">
     <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+        {% if request.args.get('error') == 'user_not_found' %}
+        <div class="alert alert-warning" role="alert" style="margin-bottom: 20px;">
+            <strong>提示：</strong> 您的账号尚未注册，请先从企业微信工作台登录系统
+        </div>
+        {% endif %}
+        
         <div class="panel panel-primary">
             <div class="panel-heading">
                 <div class="panel-title">{{ title }}</div>
@@ -40,6 +46,11 @@
                         <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
                     </a>
                     {% endif %}
+                    
+                    <!-- 添加企业微信工作台入口提示 -->
+                    <div style="margin-top: 15px; font-size: 14px; color: #666;">
+                        <p>首次使用请从<strong>企业微信工作台</strong>进入系统</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -68,6 +79,34 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = loginUrl;
         }
     }
+    
+    // 显示Toast提示
+    {% if request.args.get('error') == 'user_not_found' %}
+    // 如果页面上没有原生的toast功能，可以创建一个简单的toast
+    const toast = document.createElement('div');
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.backgroundColor = '#ff9800';
+    toast.style.color = 'white';
+    toast.style.padding = '10px 20px';
+    toast.style.borderRadius = '4px';
+    toast.style.zIndex = '10000';
+    toast.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    toast.innerText = '您的账号尚未注册，请先从企业微信工作台登录系统';
+    
+    document.body.appendChild(toast);
+    
+    // 3秒后自动消失
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s';
+        setTimeout(function() {
+            document.body.removeChild(toast);
+        }, 500);
+    }, 3000);
+    {% endif %}
 });
 </script>
 {% endblock %}

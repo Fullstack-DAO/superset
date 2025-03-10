@@ -76,10 +76,14 @@ OAUTH_PROVIDERS = [
             'api_base_url': 'https://qyapi.weixin.qq.com/cgi-bin/',
             'request_token_url': None,
             'access_token_url': 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid={client_id}&corpsecret={client_secret}',
-            'authorize_url': f'https://open.weixin.qq.com/connect/oauth2/authorize?appid={WECOM_CORP_ID}&redirect_uri=https://bi.fullstack-dao.com/oauth-authorized/wecom_h5&response_type=code&scope=snsapi_privateinfo&state=wecom_h5#wechat_redirect',
+            'authorize_url': 'https://open.weixin.qq.com/connect/oauth2/authorize',
             'request_token_params': {
-                'scope': 'snsapi_privateinfo',
+                'appid': WECOM_CORP_ID,
+                'redirect_uri': 'https://bi.fullstack-dao.com/oauth-authorized/wecom_h5',
                 'response_type': 'code',
+                'scope': 'snsapi_privateinfo',
+                'agentid': WECOM_AGENT_ID,
+                'state': 'wecom_h5',
             },
         },
     }
@@ -130,7 +134,7 @@ WEBDRIVER_BASEURL_USER_FRIENDLY = WEBDRIVER_BASEURL
 WELCOME_PAGE_LAST_TAB = False
 
 # 设置登录页面 - 修改为正确的路径
-LOGIN_URL = '/security/login'
+LOGIN_URL = '/login'
 
 # 添加 DATA_DIR 配置
 DATA_DIR = os.path.join(os.path.expanduser('~'), '.superset')
@@ -220,8 +224,8 @@ def init_oauth_views(app):
                     # 设置session变量，用于前端显示提示
                     session['email_not_set'] = True
                     session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
-                    # 重定向到正确的登录页面
-                    return redirect('/security/login?error=email_not_set')
+                    # 重定向到正确的登录页面 - 修改为/login而不是/security/login
+                    return redirect('/login?error=email_not_set')
 
                 # 将用户信息存储在session中，供后续使用
                 user_info = {
@@ -271,8 +275,8 @@ def init_oauth_views(app):
                             # 对于非H5登录，仍然返回提示信息
                             session['user_not_found'] = True
                             session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
-                            # 修改为正确的登录页面路径
-                            return redirect('/security/login?error=user_not_found')
+                            # 修改为正确的登录页面路径 - 使用/login而不是/security/login
+                            return redirect('/login?error=user_not_found')
                     else:
                         logger.info(f"找到用户 {user.username}，邮箱 {user.email}")
 
@@ -355,9 +359,10 @@ def init_oauth_views(app):
         encoded_redirect_uri = urllib.parse.quote(redirect_uri, safe='')
 
         # 记录当前时间戳，防止缓存
+        import time
         timestamp = int(time.time())
 
-        # 构建授权URL - 注意：企业微信内部应用H5登录使用不同的URL格式
+        # 构建授权URL - 企业微信内部应用H5登录的标准格式
         authorize_url = (
             f'https://open.weixin.qq.com/connect/oauth2/authorize?'
             f'appid={WECOM_CORP_ID}&'
@@ -365,7 +370,7 @@ def init_oauth_views(app):
             f'response_type=code&'
             f'scope=snsapi_privateinfo&'
             f'agentid={WECOM_AGENT_ID}&'
-            f'state=wecom_h5_{timestamp}#wechat_redirect'
+            f'state=STATE_{timestamp}#wechat_redirect'
         )
 
         logger.info(f"重定向到企业微信H5授权页面: {authorize_url}")
@@ -374,7 +379,13 @@ def init_oauth_views(app):
         session.pop('redirect_attempted', None)
         session.modified = True
 
-        return redirect(authorize_url)
+        # 添加响应头，确保不被缓存
+        response = redirect(authorize_url)
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+
+        return response
 
     # 添加自动检测企业微信环境并重定向的功能
     def auto_wecom_login():
@@ -387,27 +398,34 @@ def init_oauth_views(app):
         user_agent = request.headers.get('User-Agent', '').lower()
         logger.info(f"检测到User-Agent: {user_agent}")
 
-        # 检测是否在企业微信内打开 - 更精确的检测逻辑
-        is_wecom = 'wxwork' in user_agent and ('micromessenger' in user_agent or 'wechatdevtools' in user_agent)
+        # 更宽松的企业微信环境检测逻辑
+        is_wecom = 'wxwork' in user_agent or 'micromessenger' in user_agent
 
-        # 添加请求路径和来源检查，避免API请求也被重定向
+        # 记录详细的检测结果
+        logger.info(f"企业微信环境检测结果: {is_wecom}, UA包含wxwork: {'wxwork' in user_agent}, UA包含micromessenger: {'micromessenger' in user_agent}")
+
+        # 添加请求路径检查
         is_login_page = request.path in ['/login/', '/login', '/security/login']
-        is_direct_access = not request.referrer or 'login' in request.referrer.lower()
+        logger.info(f"当前请求路径: {request.path}, 是否为登录页面: {is_login_page}")
 
-        if is_wecom and is_login_page and is_direct_access:
-            logger.info("检测到企业微信环境，自动重定向到企业微信H5登录")
+        if is_wecom and is_login_page:
+            logger.info("检测到企业微信环境，准备重定向到企业微信H5登录")
+
+            # 清除之前的会话数据，确保重新开始
+            session.pop('redirect_count', None)
+
             # 设置标记，防止循环重定向
             session['redirect_attempted'] = True
-            # 确保会话被保存
             session.modified = True
+
+            # 直接调用H5登录函数
             return wecom_h5_login()
         else:
             if not is_wecom:
                 logger.info("非企业微信环境，显示标准登录页面")
             elif not is_login_page:
                 logger.info(f"非登录页面请求 ({request.path})，跳过重定向")
-            elif not is_direct_access:
-                logger.info(f"非直接访问登录页面 (来源: {request.referrer})，跳过重定向")
+
             # 返回None，继续处理标准登录页面
             return None
 
@@ -429,34 +447,48 @@ def init_oauth_views(app):
     # 注册登录页面前置处理
     @app.before_request
     def before_request():
-        # 只处理登录页面请求 - 添加 /security/login 路径
-        if request.path in ['/login/', '/login', '/security/login']:
-            # 清除会话中的重定向标记，如果这不是登录页面的请求
-            if request.args.get('error') == 'redirect_loop':
-                logger.warning("检测到重定向循环错误，清除重定向标记")
+        # 记录所有请求的路径和用户代理
+        logger.info(f"收到请求: {request.path}, User-Agent: {request.headers.get('User-Agent', '')[:50]}...")
+
+        # 处理所有可能的登录页面路径
+        login_paths = ['/login', '/login/', '/security/login', '/superset/login']
+
+        if request.path in login_paths:
+            logger.info(f"检测到登录页面请求: {request.path}")
+
+            # 清除会话中的重定向标记，如果这是带有错误参数的请求
+            if request.args.get('error'):
+                error_type = request.args.get('error')
+                logger.warning(f"检测到错误参数: {error_type}")
                 session.pop('redirect_attempted', None)
+                session.pop('redirect_count', None)
                 session.modified = True
                 return None
 
             # 检查是否已经尝试过太多次重定向
             redirect_count = session.get('redirect_count', 0)
-            if redirect_count > 3:
+            logger.info(f"当前重定向计数: {redirect_count}")
+
+            if redirect_count > 2:  # 降低阈值，避免过多重定向
                 logger.error("重定向次数过多，可能存在循环重定向")
                 session.pop('redirect_attempted', None)
                 session.pop('redirect_count', None)
                 session.modified = True
                 # 重定向到带有错误参数的登录页面
-                return redirect('/security/login?error=redirect_loop')
+                return redirect('/login?error=redirect_loop')
 
             # 增加重定向计数
             session['redirect_count'] = redirect_count + 1
             session.modified = True
 
+            # 尝试自动检测企业微信环境并重定向
             result = auto_wecom_login()
             if result is not None:
+                logger.info("执行企业微信自动重定向")
                 return result
 
             # 如果没有重定向，重置计数
+            logger.info("未执行重定向，重置计数")
             session.pop('redirect_count', None)
             session.modified = True
 

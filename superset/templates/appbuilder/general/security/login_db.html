@@ -1,118 +1,87 @@
-{% extends "appbuilder/base.html" %}
+{% extends "appbuilder/general/security/login_oauth.html" %}
 
-{% block content %}
+{% block login %}
+{{ super() }}
+
 <div class="container">
-    <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
-        {% if request.args.get('error') == 'user_not_found' %}
-        <div class="alert alert-warning" role="alert" style="margin-bottom: 20px;">
-            <strong>提示：</strong> 您的账号尚未注册，请先从企业微信工作台登录系统
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="panel panel-primary">
+        <div class="panel-heading">
+          <h3 class="panel-title">{{ _('登录') }}</h3>
         </div>
-        {% endif %}
-        
-        {% if request.args.get('error') == 'email_not_set' %}
-        <div class="alert alert-warning" role="alert" style="margin-bottom: 20px;">
-            <strong>提示：</strong> 您的企业邮箱未设置，请先从企业微信工作台登录系统
-        </div>
-        {% endif %}
-        
-        <div class="panel panel-primary">
-            <div class="panel-heading">
-                <div class="panel-title">{{ title }}</div>
+        <div class="panel-body">
+          <form method="post" action="">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+              {{ form.username.label }}
+              {{ form.username(size=80, class_="form-control", autofocus=true) }}
             </div>
-            <div style="padding-top:30px" class="panel-body">
-                <form class="form" action="" method="post" name="login">
-                    {{ form.hidden_tag() }}
-                    <div class="help-block">{{ _("Enter your login and password below:") }}</div>
-                    <div class="control-group">
-                        <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
-                        <div class="controls">
-                            <input class="form-control" id="username" name="username" type="text" />
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
-                        <div class="controls">
-                            <input class="form-control" id="password" name="password" type="password" />
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <div class="controls">
-                            <div>
-                                <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-                <hr>
-                <div style="text-align: center;">
-                    {% if 'wxwork' not in request.user_agent.string|lower %}
-                    <a href="https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={{ config.WECOM_CORP_ID }}&agentid={{ config.WECOM_AGENT_ID }}&redirect_uri={{ config.WECOM_REDIRECT_URI|urlencode }}&response_type=code&scope=snsapi_userinfo&state=wecom" 
-                       class="btn btn-block" 
-                       style="background-color: #1890ff; color: white; border: none; padding: 8px; margin-bottom: 10px;">
-                        <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
-                    </a>
-                    {% endif %}
-                    
-                    <!-- 添加企业微信工作台入口提示 -->
-                    <div style="margin-top: 15px; font-size: 14px; color: #666;">
-                        <p>首次使用请从<strong>企业微信工作台</strong>进入系统</p>
-                    </div>
-                </div>
+            <div class="form-group">
+              {{ form.password.label }}
+              {{ form.password(size=80, class_="form-control") }}
             </div>
+            <div class="form-group">
+              {{ form.remember_me.label }}
+              {{ form.remember_me() }}
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">{{ _('登录') }}</button>
+          </form>
+          
+          <!-- 添加企业微信登录按钮 -->
+          <div style="margin-top: 20px; text-align: center;">
+            <p>{{ _('首次使用请从企业微信工作台进入系统') }}</p>
+            <a href="/direct_wecom_login" class="btn btn-success btn-block">
+              <i class="fa fa-weixin"></i> {{ _('企业微信登录') }}
+            </a>
+          </div>
+          
+          {% if appbuilder.sm.auth_user_registration %}
+          <div style="margin-top: 20px; text-align: center;">
+            <a href="{{appbuilder.sm.get_url_for_registeruser}}">
+              {{ _('注册新用户') }}
+            </a>
+          </div>
+          {% endif %}
+          <div style="margin-top: 10px; text-align: center;">
+            <a href="{{appbuilder.sm.get_url_for_resetpassword}}">
+              {{ _('忘记密码?') }}
+            </a>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
+  
+  <!-- 添加错误提示 -->
+  {% if session.get('email_not_set') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-warning">
+        {{ session.get('email_not_set_message', '您的企业邮箱未设置，请先在企业微信中设置邮箱') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  
+  {% if session.get('email_generated') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-info">
+        {{ session.get('email_generated_message', '系统已为您生成临时邮箱') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  
+  {% if session.get('user_not_found') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-warning">
+        {{ session.get('user_not_found_message', '用户不存在，请先从企业微信工作台登录') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function isWeCom() {
-        const ua = navigator.userAgent.toLowerCase();
-        return /wxwork/i.test(ua);
-    }
-
-    if (isWeCom()) {
-        console.log('检测到企业微信环境');
-        const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' +
-            'appid={{ config.WECOM_CORP_ID }}' +
-            '&redirect_uri={{ config.WECOM_REDIRECT_URI|urlencode }}' +
-            '&response_type=code' +
-            '&scope=snsapi_base' +
-            '&state=wecom_h5' +
-            '&agentid={{ config.WECOM_AGENT_ID }}' +
-            '#wechat_redirect';
-        
-        if (!window.location.href.includes('/oauth-authorized/wecom')) {
-            window.location.href = loginUrl;
-        }
-    }
-    
-    // 显示Toast提示
-    {% if request.args.get('error') == 'user_not_found' %}
-    // 如果页面上没有原生的toast功能，可以创建一个简单的toast
-    const toast = document.createElement('div');
-    toast.style.position = 'fixed';
-    toast.style.top = '20px';
-    toast.style.left = '50%';
-    toast.style.transform = 'translateX(-50%)';
-    toast.style.backgroundColor = '#ff9800';
-    toast.style.color = 'white';
-    toast.style.padding = '10px 20px';
-    toast.style.borderRadius = '4px';
-    toast.style.zIndex = '10000';
-    toast.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-    toast.innerText = '您的账号尚未注册，请先从企业微信工作台登录系统';
-    
-    document.body.appendChild(toast);
-    
-    // 3秒后自动消失
-    setTimeout(function() {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.5s';
-        setTimeout(function() {
-            document.body.removeChild(toast);
-        }, 500);
-    }, 3000);
-    {% endif %}
-});
-</script>
 {% endblock %}

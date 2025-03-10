@@ -209,7 +209,18 @@ def init_oauth_views(app):
                 # 构建用户信息
                 username = detail_data.get('userid', '')
                 name = detail_data.get('name', '')
-                email = detail_data.get('email', f"{username}@{WECOM_DEFAULT_EMAIL_DOMAIN}")
+
+                # 直接使用企业邮箱(biz_mail)，如果为空则提示用户设置
+                if 'biz_mail' in detail_data and detail_data['biz_mail']:
+                    email = detail_data['biz_mail']
+                    logger.info(f"从接口获取到企业邮箱: {email}")
+                else:
+                    logger.warning(f"用户 {username} 未设置企业邮箱")
+                    # 设置session变量，用于前端显示提示
+                    session['email_not_set'] = True
+                    session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
+                    # 重定向到登录页面
+                    return redirect('/login/?error=email_not_set')
 
                 # 将用户信息存储在session中，供后续使用
                 user_info = {
@@ -229,25 +240,51 @@ def init_oauth_views(app):
                     # 导入需要的模块
                     from flask_appbuilder.security.sqla.models import User
                     from superset import db, security_manager
+                    from sqlalchemy import or_
 
-                    # 检查用户是否已存在
-                    user = db.session.query(User).filter_by(username=username).first()
+                    # 同时根据用户名和企业邮箱查询用户
+                    user = db.session.query(User).filter(
+                        or_(
+                            User.username == username,
+                            User.email == email
+                        )
+                    ).first()
 
                     if not user:
-                        logger.info(f"用户 {username} 不存在，返回提示信息")
-                        # 不创建用户，而是设置一个session变量，用于前端显示提示
-                        session['user_not_found'] = True
-                        session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
-                        # 重定向到登录页面
-                        return redirect('/login/?error=user_not_found')
+                        logger.info(f"用户 {username} 或邮箱 {email} 不存在")
+
+                        # 对于企业微信H5登录，如果有企业邮箱，则自动创建用户
+                        if provider == 'wecom_h5':
+                            logger.info(f"企业微信H5登录，自动创建用户 {username}")
+                            # 创建新用户
+                            user = security_manager.add_user(
+                                username=username,
+                                first_name=name,
+                                last_name="",
+                                email=email,
+                                role=security_manager.find_role("Public"),  # 使用默认角色
+                                password="",  # 空密码，因为使用OAuth登录
+                            )
+                            logger.info(f"已创建用户 {username}")
+                        else:
+                            # 对于非H5登录，仍然返回提示信息
+                            session['user_not_found'] = True
+                            session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
+                            # 重定向到登录页面
+                            return redirect('/login/?error=user_not_found')
                     else:
-                        logger.info(f"用户 {username} 已存在")
+                        logger.info(f"找到用户 {user.username}，邮箱 {user.email}")
 
                         # 更新用户信息（可选）
+                        # 如果找到的用户名与当前用户名不同，可能需要更新
+                        if user.username != username:
+                            logger.info(f"用户名不匹配，更新用户名从 {user.username} 到 {username}")
+                            user.username = username
+
                         user.first_name = name
                         user.email = email
                         db.session.commit()
-                        logger.info(f"已更新用户 {username} 的信息")
+                        logger.info(f"已更新用户信息")
 
                     # 登录用户
                     from flask_login import login_user

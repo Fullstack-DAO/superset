@@ -43,7 +43,7 @@
   </div>
   
   <!-- 添加错误提示 - 只在需要时显示 -->
-  {% if not session.get('authenticated') and session.get('email_not_set') %}
+  {% if session.get('email_not_set') %}
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
       <div class="alert alert-warning">
@@ -53,7 +53,7 @@
   </div>
   {% endif %}
   
-  {% if not session.get('authenticated') and session.get('email_generated') %}
+  {% if session.get('email_generated') %}
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
       <div class="alert alert-info">
@@ -63,11 +63,22 @@
   </div>
   {% endif %}
   
-  {% if not session.get('authenticated') and session.get('user_not_found') %}
+  {% if session.get('user_not_found') %}
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
       <div class="alert alert-warning">
         {{ session.get('user_not_found_message', '用户不存在，请先从企业微信工作台登录') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- 添加URL参数错误提示 -->
+  {% if request.args.get('error') == 'user_not_found' %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-warning">
+        用户不存在，请先从企业微信工作台登录
       </div>
     </div>
   </div>

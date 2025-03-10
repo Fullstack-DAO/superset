@@ -19,6 +19,7 @@ WECOM_CORP_ID = 'wwc2d2bc12f207d229'
 WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
 WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
+WECOM_DEFAULT_EMAIL_DOMAIN = 'fullstack-dao.com'  # 设置默认邮箱域名
 
 # Flask-AppBuilder 配置
 FAB_INDEX_URL = '/superset/dashboard/list/'  # 修改登录后的默认页面
@@ -158,14 +159,28 @@ def check_user_exists(username, email=None):
         from flask_appbuilder.security.sqla.models import User
         from superset import db
 
+        # 记录详细的查询信息
+        logger.info(f"检查用户是否存在: username={username}, email={email}")
+
         query = db.session.query(User)
-        if email:
+        if email and email.strip():
+            # 如果提供了有效的邮箱，则同时检查用户名和邮箱
             query = query.filter(or_(User.username == username, User.email == email))
+            logger.info(f"使用用户名或邮箱查询: username={username}, email={email}")
         else:
+            # 否则只检查用户名
             query = query.filter(User.username == username)
+            logger.info(f"仅使用用户名查询: username={username}")
 
         user = query.first()
-        return user is not None, user
+        exists = user is not None
+
+        if exists:
+            logger.info(f"找到用户: username={user.username}, email={user.email}, id={user.id}")
+        else:
+            logger.warning(f"未找到用户: username={username}, email={email}")
+
+        return exists, user
     except Exception as e:
         logger.exception(f"检查用户存在时发生错误: {e}")
         return False, None
@@ -343,13 +358,19 @@ def init_oauth_views(app):
                             )
                             logger.info(f"已创建用户 {username}")
                         else:
-                            # 对于非H5登录或没有邮箱的情况，返回提示信息
+                            # 对于非H5登录或没有邮箱的情况，设置用户不存在提示
+                            logger.warning(f"设置用户不存在提示: username={username}")
                             session['user_not_found'] = True
                             session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
+                            session.modified = True
                             # 修改为正确的登录页面路径
                             return redirect('/login?error=user_not_found')
                     else:
                         logger.info(f"找到用户 {user.username}，邮箱 {user.email}")
+                        # 清除用户不存在提示
+                        session.pop('user_not_found', None)
+                        session.pop('user_not_found_message', None)
+                        session.modified = True
 
                         # 更新用户信息（可选）
                         # 如果找到的用户名与当前用户名不同，可能需要更新
@@ -562,6 +583,13 @@ def init_oauth_views(app):
                 session.pop('email_generated_message', None)
                 session.pop('user_not_found', None)
                 session.pop('user_not_found_message', None)
+                session.modified = True
+
+            # 检查是否有错误参数，如果有user_not_found错误，确保设置会话变量
+            if request.args.get('error') == 'user_not_found' and not session.get('user_not_found'):
+                logger.info("检测到user_not_found错误参数，设置会话变量")
+                session['user_not_found'] = True
+                session['user_not_found_message'] = "用户不存在，请先从企业微信工作台登录"
                 session.modified = True
 
             # 清除会话中的重定向标记，如果这是带有错误参数的请求

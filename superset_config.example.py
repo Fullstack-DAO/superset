@@ -151,6 +151,25 @@ logger = logging.getLogger(__name__)
 logging.getLogger('flask_appbuilder').setLevel(logging.DEBUG)
 logging.getLogger('superset.security').setLevel(logging.DEBUG)
 
+# 添加检查用户是否存在的函数
+def check_user_exists(username, email=None):
+    """检查用户是否存在于ab_user表中"""
+    try:
+        from flask_appbuilder.security.sqla.models import User
+        from superset import db
+
+        query = db.session.query(User)
+        if email:
+            query = query.filter(or_(User.username == username, User.email == email))
+        else:
+            query = query.filter(User.username == username)
+
+        user = query.first()
+        return user is not None, user
+    except Exception as e:
+        logger.exception(f"检查用户存在时发生错误: {e}")
+        return False, None
+
 # 添加OAuth回调路由处理函数
 def init_oauth_views(app):
     """
@@ -303,17 +322,11 @@ def init_oauth_views(app):
                     # 导入需要的模块
                     from flask_appbuilder.security.sqla.models import User
                     from superset import db, security_manager
-                    # 注意：or_已经在函数开头导入，这里不需要再导入
 
-                    # 同时根据用户名和企业邮箱查询用户
-                    user = db.session.query(User).filter(
-                        or_(
-                            User.username == username,
-                            User.email == email
-                        )
-                    ).first()
+                    # 使用新函数检查用户是否存在
+                    user_exists, user = check_user_exists(username, email)
 
-                    if not user:
+                    if not user_exists:
                         logger.info(f"用户 {username} 或邮箱 {email} 不存在")
 
                         # 对于企业微信H5登录，如果有企业邮箱，则自动创建用户
@@ -358,6 +371,15 @@ def init_oauth_views(app):
                     # 设置登录成功的cookie或session标记
                     session['authenticated'] = True
                     session['user_id'] = user.id
+
+                    # 清除错误提示会话变量
+                    session.pop('email_not_set', None)
+                    session.pop('email_not_set_message', None)
+                    session.pop('email_generated', None)
+                    session.pop('email_generated_message', None)
+                    session.pop('user_not_found', None)
+                    session.pop('user_not_found_message', None)
+                    session.modified = True
 
                 except Exception as e:
                     logger.exception(f"注册/登录用户时发生错误: {e}")
@@ -530,6 +552,17 @@ def init_oauth_views(app):
 
         if request.path in login_paths:
             logger.info(f"检测到登录页面请求: {request.path}")
+
+            # 检查用户是否已登录，如果已登录则清除错误提示
+            if session.get('authenticated'):
+                logger.info("用户已登录，清除错误提示")
+                session.pop('email_not_set', None)
+                session.pop('email_not_set_message', None)
+                session.pop('email_generated', None)
+                session.pop('email_generated_message', None)
+                session.pop('user_not_found', None)
+                session.pop('user_not_found_message', None)
+                session.modified = True
 
             # 清除会话中的重定向标记，如果这是带有错误参数的请求
             if request.args.get('error'):

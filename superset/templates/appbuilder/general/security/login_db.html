@@ -1,8 +1,7 @@
-{% extends "appbuilder/general/security/login_oauth.html" %}
+{% extends "appbuilder/base.html" %}
 
+{% block content %}
 {% block login %}
-{{ super() }}
-
 <div class="container">
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
@@ -11,8 +10,10 @@
           <h3 class="panel-title">{{ _('登录') }}</h3>
         </div>
         <div class="panel-body">
+          <!-- 用户名密码登录表单 -->
+          <h4>{{ _('用户名密码登录') }}</h4>
           <form method="post" action="">
-            {{ form.hidden_tag() }}
+            {{ form.hidden_tag() if form.hidden_tag }}
             <div class="form-group">
               {{ form.username.label }}
               {{ form.username(size=80, class_="form-control", autofocus=true) }}
@@ -28,12 +29,24 @@
             <button type="submit" class="btn btn-primary btn-block">{{ _('登录') }}</button>
           </form>
           
-          <!-- 添加企业微信登录按钮 -->
-          <div style="margin-top: 20px; text-align: center;">
-            <p>{{ _('首次使用请从企业微信工作台进入系统') }}</p>
-            <a href="/direct_wecom_login" class="btn btn-success btn-block">
-              <i class="fa fa-weixin"></i> {{ _('企业微信登录') }}
+          <hr>
+          
+          <!-- 企业微信登录选项 -->
+          <h4>{{ _('企业微信登录') }}</h4>
+          
+          <!-- 企业微信扫码登录 -->
+          <div style="margin-bottom: 10px;">
+            <a href="/login/wecom" class="btn btn-success btn-block">
+              <i class="fa fa-weixin"></i> {{ _('企业微信扫码登录') }}
             </a>
+          </div>
+          
+          <!-- 企业微信内部H5登录 -->
+          <div>
+            <a href="/direct_wecom_login" class="btn btn-info btn-block">
+              <i class="fa fa-weixin"></i> {{ _('企业微信内部登录') }}
+            </a>
+            <p class="text-center" style="margin-top: 5px; font-size: 12px;">{{ _('在企业微信中打开时使用') }}</p>
           </div>
           
           {% if appbuilder.sm.auth_user_registration %}
@@ -63,7 +76,16 @@
     </div>
   </div>
   {% endif %}
-
+  
+  {% if session.get('email_generated') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-info">
+        {{ session.get('email_generated_message', '系统已为您生成临时邮箱') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
   
   {% if session.get('user_not_found') %}
   <div class="row">
@@ -75,4 +97,5 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
 {% endblock %}

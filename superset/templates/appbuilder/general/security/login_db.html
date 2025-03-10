@@ -37,15 +37,13 @@
             </a>
             <p class="text-center" style="margin-top: 5px; font-size: 12px;">{{ _('推荐使用企业微信扫码登录') }}</p>
           </div>
-          
-          <!-- 移除企业微信内部H5登录按钮 -->
         </div>
       </div>
     </div>
   </div>
   
-  <!-- 添加错误提示 -->
-  {% if session.get('email_not_set') %}
+  <!-- 添加错误提示 - 只在需要时显示 -->
+  {% if not session.get('authenticated') and session.get('email_not_set') %}
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
       <div class="alert alert-warning">
@@ -55,7 +53,7 @@
   </div>
   {% endif %}
   
-  {% if session.get('email_generated') %}
+  {% if not session.get('authenticated') and session.get('email_generated') %}
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
       <div class="alert alert-info">
@@ -65,7 +63,7 @@
   </div>
   {% endif %}
   
-  {% if session.get('user_not_found') %}
+  {% if not session.get('authenticated') and session.get('user_not_found') %}
   <div class="row">
     <div class="col-md-4 col-md-offset-4">
       <div class="alert alert-warning">

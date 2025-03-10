@@ -6,6 +6,7 @@ from flask import request, redirect, Response, session, url_for
 import logging
 import json
 import time
+from sqlalchemy import or_
 
 # 生产环境密钥 - 确保使用强密码
 SECRET_KEY = 'lyIKAEGRDGQw5RtU7pLQgPxrSaUvBiJQW1/067h1g/UkL4N8oYYh1iiF'
@@ -18,7 +19,6 @@ WECOM_CORP_ID = 'wwc2d2bc12f207d229'
 WECOM_AGENT_ID = '1000015'
 WECOM_SECRET = 'cw97sg0T1hRcxIRNr0BuWbiVs_0O1qpQQmVEv8tE8rc'
 WECOM_REDIRECT_URI = 'https://bi.fullstack-dao.com/oauth-authorized/wecom'
-WECOM_DEFAULT_EMAIL_DOMAIN = 'fullstack-dao.com'  # 设置默认邮箱域名
 
 # Flask-AppBuilder 配置
 FAB_INDEX_URL = '/superset/dashboard/list/'  # 修改登录后的默认页面
@@ -46,6 +46,10 @@ OAUTH_CALLBACK_ROUTE = '/oauth-authorized'
 # 主页重定向配置
 TALISMAN_ENABLED = False
 PREVENT_UNSAFE_DEFAULT_URLS = False
+
+# 自定义登录视图
+AUTH_USER_REGISTRATION_ROLE_JMESPATH = "Public"
+SECURITY_LOGIN_TEMPLATE = 'appbuilder/general/security/login_db.html'
 
 # OAuth 提供者配置
 OAUTH_PROVIDERS = [
@@ -155,6 +159,8 @@ def init_oauth_views(app):
     from flask import redirect, request, Response, session, url_for
     import json
     import requests
+    # 添加SQLAlchemy or_函数导入
+    from sqlalchemy import or_
 
     # 创建一个普通函数作为路由处理函数
     def oauth_callback_handler(provider):
@@ -199,33 +205,85 @@ def init_oauth_views(app):
 
                 user_id = user_data['UserId']
 
-                # 获取用户详细信息
-                user_detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token={access_token}&userid={user_id}"
-                logger.info(f"请求用户详细信息: {user_detail_url}")
+                # 检查是否有user_ticket，如果有则使用getuserdetail接口获取敏感信息
+                if 'user_ticket' in user_data:
+                    user_ticket = user_data['user_ticket']
+                    logger.info(f"获取到user_ticket: {user_ticket}")
 
-                detail_response = requests.get(user_detail_url)
-                detail_data = detail_response.json()
-                logger.info(f"用户详细信息响应: {detail_data}")
+                    # 使用getuserdetail接口获取用户敏感信息
+                    detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail?access_token={access_token}"
+                    detail_data = {"user_ticket": user_ticket}
+                    logger.info(f"请求用户敏感信息: {detail_url}, 数据: {detail_data}")
 
-                if 'name' not in detail_data:
-                    logger.error(f"获取用户名称失败: {detail_data}")
-                    return Response(json.dumps({"error": "获取用户名称失败"}), status=500, mimetype='application/json')
+                    detail_response = requests.post(detail_url, json=detail_data)
+                    sensitive_data = detail_response.json()
+                    logger.info(f"用户敏感信息响应: {sensitive_data}")
 
-                # 构建用户信息
-                username = detail_data.get('userid', '')
-                name = detail_data.get('name', '')
+                    # 如果成功获取敏感信息，直接使用
+                    if sensitive_data.get('errcode') == 0:
+                        username = sensitive_data.get('userid', user_id)
+                        name = sensitive_data.get('name', username)
 
-                # 直接使用企业邮箱(biz_mail)，如果为空则提示用户设置
-                if 'biz_mail' in detail_data and detail_data['biz_mail']:
-                    email = detail_data['biz_mail']
-                    logger.info(f"从接口获取到企业邮箱: {email}")
+                        # 优先使用企业邮箱
+                        if 'biz_mail' in sensitive_data and sensitive_data['biz_mail']:
+                            email = sensitive_data['biz_mail']
+                            logger.info(f"从敏感信息接口获取到企业邮箱: {email}")
+                        elif 'email' in sensitive_data and sensitive_data['email']:
+                            email = sensitive_data['email']
+                            logger.info(f"从敏感信息接口获取到个人邮箱: {email}")
+                        else:
+                            # 不再构造默认邮箱，直接设置为空字符串
+                            email = ""
+                            logger.info(f"未获取到邮箱，设置为空")
+                            session['email_not_set'] = True
+                            session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
+                    else:
+                        # 如果获取敏感信息失败，回退到常规方式
+                        logger.warning(f"获取用户敏感信息失败: {sensitive_data}")
+                        # 继续使用常规方式获取用户信息
+                        user_detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token={access_token}&userid={user_id}"
+                        logger.info(f"请求用户详细信息: {user_detail_url}")
+                        detail_response = requests.get(user_detail_url)
+                        detail_data = detail_response.json()
+                        logger.info(f"用户详细信息响应: {detail_data}")
+
+                        # 处理用户信息
+                        username = detail_data.get('userid', user_id)
+                        name = detail_data.get('name', username)
+
+                        # 尝试获取企业邮箱
+                        if 'biz_mail' in detail_data and detail_data['biz_mail']:
+                            email = detail_data['biz_mail']
+                            logger.info(f"从用户详情接口获取到企业邮箱: {email}")
+                        else:
+                            # 不再构造默认邮箱，直接设置为空字符串
+                            email = ""
+                            logger.info(f"未获取到企业邮箱，设置为空")
+                            session['email_not_set'] = True
+                            session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
                 else:
-                    logger.warning(f"用户 {username} 未设置企业邮箱")
-                    # 设置session变量，用于前端显示提示
-                    session['email_not_set'] = True
-                    session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
-                    # 重定向到正确的登录页面 - 修改为/login而不是/security/login
-                    return redirect('/login?error=email_not_set')
+                    # 如果没有user_ticket，使用常规方式获取用户信息
+                    logger.warning("未获取到user_ticket，使用常规方式获取用户信息")
+                    user_detail_url = f"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token={access_token}&userid={user_id}"
+                    logger.info(f"请求用户详细信息: {user_detail_url}")
+                    detail_response = requests.get(user_detail_url)
+                    detail_data = detail_response.json()
+                    logger.info(f"用户详细信息响应: {detail_data}")
+
+                    # 处理用户信息
+                    username = detail_data.get('userid', user_id)
+                    name = detail_data.get('name', username)
+
+                    # 尝试获取企业邮箱
+                    if 'biz_mail' in detail_data and detail_data['biz_mail']:
+                        email = detail_data['biz_mail']
+                        logger.info(f"从用户详情接口获取到企业邮箱: {email}")
+                    else:
+                        # 不再构造默认邮箱，直接设置为空字符串
+                        email = ""
+                        logger.info(f"未获取到企业邮箱，设置为空")
+                        session['email_not_set'] = True
+                        session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
 
                 # 将用户信息存储在session中，供后续使用
                 user_info = {
@@ -245,7 +303,7 @@ def init_oauth_views(app):
                     # 导入需要的模块
                     from flask_appbuilder.security.sqla.models import User
                     from superset import db, security_manager
-                    from sqlalchemy import or_
+                    # 注意：or_已经在函数开头导入，这里不需要再导入
 
                     # 同时根据用户名和企业邮箱查询用户
                     user = db.session.query(User).filter(
@@ -259,7 +317,7 @@ def init_oauth_views(app):
                         logger.info(f"用户 {username} 或邮箱 {email} 不存在")
 
                         # 对于企业微信H5登录，如果有企业邮箱，则自动创建用户
-                        if provider == 'wecom_h5':
+                        if provider == 'wecom_h5' and email:
                             logger.info(f"企业微信H5登录，自动创建用户 {username}")
                             # 创建新用户
                             user = security_manager.add_user(
@@ -272,10 +330,10 @@ def init_oauth_views(app):
                             )
                             logger.info(f"已创建用户 {username}")
                         else:
-                            # 对于非H5登录，仍然返回提示信息
+                            # 对于非H5登录或没有邮箱的情况，返回提示信息
                             session['user_not_found'] = True
                             session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
-                            # 修改为正确的登录页面路径 - 使用/login而不是/security/login
+                            # 修改为正确的登录页面路径
                             return redirect('/login?error=user_not_found')
                     else:
                         logger.info(f"找到用户 {user.username}，邮箱 {user.email}")
@@ -287,7 +345,8 @@ def init_oauth_views(app):
                             user.username = username
 
                         user.first_name = name
-                        user.email = email
+                        if email:  # 只有在有邮箱的情况下才更新
+                            user.email = email
                         db.session.commit()
                         logger.info(f"已更新用户信息")
 
@@ -302,8 +361,8 @@ def init_oauth_views(app):
 
                 except Exception as e:
                     logger.exception(f"注册/登录用户时发生错误: {e}")
-                    # 尝试标准OAuth流程作为备选
-                    return redirect(f'/security/oauth-authorized/{provider}?code={code}&state={state}')
+                    # 如果出错，重定向到登录页面
+                    return redirect('/login?error=login_failed')
 
                 # 重定向到首页或仪表板列表
                 # 直接使用硬编码的URL，避免依赖全局变量
@@ -353,7 +412,7 @@ def init_oauth_views(app):
     def wecom_h5_login():
         """企业微信H5登录入口点"""
         # 使用完整的URL，确保所有参数正确
-        redirect_uri = "https://bi.fullstack-dao.com/oauth-authorized/wecom_h5"
+        redirect_uri = "https://bi.fullstack-dao.com/oauth-authorized/wecom_h5"  # 注意：不要使用/security前缀
         # 确保URL编码正确
         import urllib.parse
         encoded_redirect_uri = urllib.parse.quote(redirect_uri, safe='')
@@ -362,18 +421,19 @@ def init_oauth_views(app):
         import time
         timestamp = int(time.time())
 
-        # 构建授权URL - 企业微信内部应用H5登录的标准格式
+        # 构建授权URL - 使用企业微信内部应用网页授权的正确格式
+        # 注意：这里使用的是企业微信内部应用网页授权的URL，不是扫码登录的URL
         authorize_url = (
             f'https://open.weixin.qq.com/connect/oauth2/authorize?'
             f'appid={WECOM_CORP_ID}&'
             f'redirect_uri={encoded_redirect_uri}&'
             f'response_type=code&'
-            f'scope=snsapi_privateinfo&'
-            f'agentid={WECOM_AGENT_ID}&'
-            f'state=STATE_{timestamp}#wechat_redirect'
+            f'scope=snsapi_privateinfo&'  # 使用snsapi_privateinfo获取敏感信息
+            f'agentid={WECOM_AGENT_ID}&'  # 添加agentid参数
+            f'state=wecom_h5_{timestamp}#wechat_redirect'
         )
 
-        logger.info(f"重定向到企业微信H5授权页面: {authorize_url}")
+        logger.info(f"重定向到企业微信H5授权页面(敏感信息授权): {authorize_url}")
 
         # 清除会话中的重定向标记，确保下次可以正常重定向
         session.pop('redirect_attempted', None)
@@ -398,18 +458,33 @@ def init_oauth_views(app):
         user_agent = request.headers.get('User-Agent', '').lower()
         logger.info(f"检测到User-Agent: {user_agent}")
 
-        # 更宽松的企业微信环境检测逻辑
-        is_wecom = 'wxwork' in user_agent or 'micromessenger' in user_agent
+        # 更精确的企业微信环境检测逻辑
+        is_wecom = False
+
+        # 检查是否包含企业微信特有的UA标识
+        if 'wxwork' in user_agent:
+            is_wecom = True
+            logger.info("检测到企业微信客户端标识: wxwork")
+        elif 'micromessenger' in user_agent:
+            is_wecom = True
+            logger.info("检测到微信客户端标识: micromessenger")
+
+        # 添加强制重定向参数检查
+        force_wecom = request.args.get('force_wecom') == '1'
+        if force_wecom:
+            is_wecom = True
+            logger.info("检测到强制企业微信登录参数")
 
         # 记录详细的检测结果
-        logger.info(f"企业微信环境检测结果: {is_wecom}, UA包含wxwork: {'wxwork' in user_agent}, UA包含micromessenger: {'micromessenger' in user_agent}")
+        logger.info(f"企业微信环境检测最终结果: {is_wecom}")
 
-        # 添加请求路径检查
-        is_login_page = request.path in ['/login/', '/login', '/security/login']
+        # 添加请求路径检查 - 扩展登录页面路径列表
+        login_paths = ['/login/', '/login', '/security/login', '/superset/login']
+        is_login_page = request.path in login_paths
         logger.info(f"当前请求路径: {request.path}, 是否为登录页面: {is_login_page}")
 
-        if is_wecom and is_login_page:
-            logger.info("检测到企业微信环境，准备重定向到企业微信H5登录")
+        if (is_wecom or force_wecom) and is_login_page:
+            logger.info("检测到企业微信环境或强制参数，准备重定向到企业微信H5登录")
 
             # 清除之前的会话数据，确保重新开始
             session.pop('redirect_count', None)
@@ -421,7 +496,7 @@ def init_oauth_views(app):
             # 直接调用H5登录函数
             return wecom_h5_login()
         else:
-            if not is_wecom:
+            if not is_wecom and not force_wecom:
                 logger.info("非企业微信环境，显示标准登录页面")
             elif not is_login_page:
                 logger.info(f"非登录页面请求 ({request.path})，跳过重定向")
@@ -493,6 +568,7 @@ def init_oauth_views(app):
             session.modified = True
 
     logger.info("OAuth回调路由和登录入口点已注册")
+
     return app
 
 # 使用路由处理函数

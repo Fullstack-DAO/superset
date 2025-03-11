@@ -441,7 +441,7 @@ def init_oauth_views(app):
                                 # 更新用户的userid字段
                                 try:
                                     user.userid = user_id
-                                    # user.first_name = name
+                                    user.first_name = name
                                     db.session.commit()
                                     logger.info(f"已更新用户 {user.username} 的userid为 {user_id}")
                                 except Exception as e:

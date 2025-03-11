@@ -153,34 +153,39 @@ logging.getLogger('flask_appbuilder').setLevel(logging.DEBUG)
 logging.getLogger('superset.security').setLevel(logging.DEBUG)
 
 # 添加检查用户是否存在的函数
-def check_user_exists(username, email=None):
-    """检查用户是否存在于ab_user表中"""
+def check_user_exists(email=None, userid=None):
+    """检查用户是否存在于ab_user表中，支持通过userid或email查询"""
     try:
         from flask_appbuilder.security.sqla.models import User
         from superset import db
 
         # 记录详细的查询信息
-        logger.info(f"检查用户是否存在: username={username}, email={email}")
+        logger.info(f"检查用户是否存在: email={email}, userid={userid}")
 
         query = db.session.query(User)
+
+        # 优先使用userid查询（如果提供了userid）
+        if userid:
+            try:
+                # 尝试通过userid查询
+                user = query.filter(User.userid == userid).first()
+                if user:
+                    logger.info(f"通过userid找到用户: userid={userid}, username={user.username}, email={user.email}, id={user.id}")
+                    return True, user
+            except Exception as e:
+                # 如果userid字段不存在，会抛出异常，此时忽略并继续使用其他字段查询
+                logger.warning(f"通过userid查询失败，可能是字段不存在: {e}")
+
+        # 如果userid查询不到且提供了有效的邮箱，则尝试使用邮箱查询
         if email and email.strip():
-            # 如果提供了有效的邮箱，则同时检查用户名和邮箱
-            query = query.filter(or_(User.username == username, User.email == email))
-            logger.info(f"使用用户名或邮箱查询: username={username}, email={email}")
-        else:
-            # 否则只检查用户名
-            query = query.filter(User.username == username)
-            logger.info(f"仅使用用户名查询: username={username}")
+            user = query.filter(User.email == email).first()
+            if user:
+                logger.info(f"通过email找到用户: username={user.username}, email={user.email}, id={user.id}")
+                return True, user
 
-        user = query.first()
-        exists = user is not None
-
-        if exists:
-            logger.info(f"找到用户: username={user.username}, email={user.email}, id={user.id}")
-        else:
-            logger.warning(f"未找到用户: username={username}, email={email}")
-
-        return exists, user
+        # 如果都查询不到，则返回不存在
+        logger.warning(f"未找到用户: email={email}, userid={userid}")
+        return False, None
     except Exception as e:
         logger.exception(f"检查用户存在时发生错误: {e}")
         return False, None
@@ -255,8 +260,10 @@ def init_oauth_views(app):
 
                     # 如果成功获取敏感信息，直接使用
                     if sensitive_data.get('errcode') == 0:
-                        username = sensitive_data.get('userid', user_id)
-                        name = sensitive_data.get('name', username)
+                        # 不再将userid赋值给username
+                        username = ""  # 设置为空字符串
+                        name = sensitive_data.get('name', "") if sensitive_data.get('name') else ""
+                        user_id = sensitive_data.get('userid', user_id)
 
                         # 优先使用企业邮箱
                         if 'biz_mail' in sensitive_data and sensitive_data['biz_mail']:
@@ -281,9 +288,12 @@ def init_oauth_views(app):
                         detail_data = detail_response.json()
                         logger.info(f"用户详细信息响应: {detail_data}")
 
-                        # 处理用户信息
-                        username = detail_data.get('userid', user_id)
-                        name = detail_data.get('name', username)
+                        # 处理用户信息 - 不再将userid赋值给username
+                        username = ""  # 设置为空字符串
+                        # 确保获取正确的name值，如果detail_data中没有name或为空，则使用空字符串
+                        name = detail_data.get('name', "") if detail_data.get('name') else ""
+                        # 确保user_id正确获取
+                        user_id = detail_data.get('userid', user_id)
 
                         # 尝试获取企业邮箱
                         if 'biz_mail' in detail_data and detail_data['biz_mail']:
@@ -304,9 +314,12 @@ def init_oauth_views(app):
                     detail_data = detail_response.json()
                     logger.info(f"用户详细信息响应: {detail_data}")
 
-                    # 处理用户信息
-                    username = detail_data.get('userid', user_id)
-                    name = detail_data.get('name', username)
+                    # 处理用户信息 - 不再将userid赋值给username
+                    username = ""  # 设置为空字符串
+                    # 确保获取正确的name值，如果detail_data中没有name或为空，则使用空字符串
+                    name = detail_data.get('name', "") if detail_data.get('name') else ""
+                    # 确保user_id正确获取
+                    user_id = detail_data.get('userid', user_id)
 
                     # 尝试获取企业邮箱
                     if 'biz_mail' in detail_data and detail_data['biz_mail']:
@@ -321,13 +334,14 @@ def init_oauth_views(app):
 
                 # 将用户信息存储在session中，供后续使用
                 user_info = {
-                    'username': username,
+                    'username': "",  # 设置为空字符串，不再使用userid
                     'name': name,
                     'email': email,
                     'first_name': name,
                     'last_name': '',
                     'role_keys': [],
                     'provider': provider,  # 记录认证提供者
+                    'userid': user_id,     # 添加userid字段
                 }
                 session['oauth_user_info'] = user_info
                 logger.info(f"已将用户信息存储在session中: {user_info}")
@@ -338,56 +352,91 @@ def init_oauth_views(app):
                     from flask_appbuilder.security.sqla.models import User
                     from superset import db, security_manager
 
-                    # 使用新函数检查用户是否存在
-                    user_exists, user = check_user_exists(username, email)
+                    # 根据不同的登录方式使用不同的查询逻辑
+                    if provider == 'wecom':  # 企业微信扫码登录
+                        # 扫码登录时，通过userid查询用户
+                        try:
+                            user = db.session.query(User).filter(User.userid == user_id).first()
+                            if user:
+                                logger.info(f"企业微信扫码登录：通过userid找到用户: userid={user_id}, username={user.username}")
+                                # 更新用户信息
+                                user.first_name = name
+                                db.session.commit()
+                                logger.info(f"已更新用户信息")
 
-                    if not user_exists:
-                        logger.info(f"用户 {username} 或邮箱 {email} 不存在")
+                                # 清除用户不存在提示
+                                session.pop('user_not_found', None)
+                                session.pop('user_not_found_message', None)
+                                session.modified = True
+                            else:
+                                logger.warning(f"企业微信扫码登录：用户 userid={user_id} 不存在")
+                                # 设置用户不存在提示
+                                session['user_not_found'] = True
+                                session['user_not_found_message'] = f"用户不存在，请先从企业微信工作台登录"
+                                session.modified = True
+                                # 重定向到登录页面
+                                return redirect('/login?error=user_not_found')
+                        except Exception as e:
+                            logger.warning(f"通过userid查询失败，可能是字段不存在: {e}")
+                            # 如果userid字段不存在，回退到使用email查询
+                            user_exists, user = check_user_exists(email=email)
+                            if not user_exists:
+                                logger.warning(f"企业微信扫码登录：用户 email={email} 不存在")
+                                session['user_not_found'] = True
+                                session['user_not_found_message'] = f"用户不存在，请先从企业微信工作台登录"
+                                session.modified = True
+                                return redirect('/login?error=user_not_found')
 
-                        # 对于企业微信H5登录，如果有企业邮箱，则自动创建用户
-                        if provider == 'wecom_h5' and email:
-                            logger.info(f"企业微信H5登录，自动创建用户 {username}")
-                            # 创建新用户
-                            user = security_manager.add_user(
-                                username=username,
-                                first_name=name,
-                                last_name="",
-                                email=email,
-                                role=security_manager.find_role("Public"),  # 使用默认角色
-                                password="",  # 空密码，因为使用OAuth登录
-                            )
-                            logger.info(f"已创建用户 {username}")
+                    elif provider == 'wecom_h5':  # 企业微信工作台H5登录
+                        # H5登录时，优先通过email查询用户
+                        if email:
+                            user = db.session.query(User).filter(User.email == email).first()
+
+                            if user:
+                                logger.info(f"企业微信H5登录：找到用户 email={email}, username={user.username}")
+                                # 更新用户的userid字段
+                                try:
+                                    user.userid = user_id
+                                    # user.first_name = name
+                                    db.session.commit()
+                                    logger.info(f"已更新用户 {user.username} 的userid为 {user_id}")
+                                except Exception as e:
+                                    logger.warning(f"更新userid字段失败，可能是字段不存在: {e}")
+                            else:
+                                logger.info(f"企业微信H5登录：用户 email={email} 不存在，创建新用户")
+                                # 创建新用户，username可以为空
+                                try:
+                                    user = security_manager.add_user(
+                                        username="",  # 设置为空值
+                                        first_name=name,
+                                        last_name="",
+                                        email=email,
+                                        role=security_manager.find_role("Public"),  # 使用默认角色
+                                        password="",  # 空密码，因为使用OAuth登录
+                                    )
+                                    logger.info(f"已创建用户 email={email}")
+
+                                    # 尝试设置userid字段
+                                    try:
+                                        user.userid = user_id
+                                        db.session.commit()
+                                        logger.info(f"已设置新用户的userid为 {user_id}")
+                                    except Exception as e:
+                                        logger.warning(f"设置userid字段失败，可能是字段不存在: {e}")
+                                except Exception as e:
+                                    logger.exception(f"创建用户失败: {e}")
+                                    return redirect('/login?error=create_user_failed')
                         else:
-                            # 对于非H5登录或没有邮箱的情况，设置用户不存在提示
-                            logger.warning(f"设置用户不存在提示: username={username}")
-                            session['user_not_found'] = True
-                            session['user_not_found_message'] = f"用户 {username} 不存在，请先从企业微信工作台登录"
+                            logger.warning("企业微信H5登录：未获取到邮箱，无法创建或更新用户")
+                            session['email_not_set'] = True
+                            session['email_not_set_message'] = f"您的企业邮箱未设置，请先在企业微信中设置邮箱"
                             session.modified = True
-                            # 修改为正确的登录页面路径
-                            return redirect('/login?error=user_not_found')
-                    else:
-                        logger.info(f"找到用户 {user.username}，邮箱 {user.email}")
-                        # 清除用户不存在提示
-                        session.pop('user_not_found', None)
-                        session.pop('user_not_found_message', None)
-                        session.modified = True
-
-                        # 更新用户信息（可选）
-                        # 如果找到的用户名与当前用户名不同，可能需要更新
-                        if user.username != username:
-                            logger.info(f"用户名不匹配，更新用户名从 {user.username} 到 {username}")
-                            user.username = username
-
-                        user.first_name = name
-                        if email:  # 只有在有邮箱的情况下才更新
-                            user.email = email
-                        db.session.commit()
-                        logger.info(f"已更新用户信息")
+                            return redirect('/login?error=email_not_set')
 
                     # 登录用户
                     from flask_login import login_user
                     login_user(user)
-                    logger.info(f"用户 {username} 已登录")
+                    logger.info(f"用户 {user.username or user.email} 已登录")
 
                     # 设置登录成功的cookie或session标记
                     session['authenticated'] = True
@@ -632,5 +681,24 @@ def init_oauth_views(app):
 
     return app
 
-# 使用路由处理函数
-FLASK_APP_MUTATOR = init_oauth_views
+# 在应用启动时执行初始化
+def setup_app(app):
+    """在应用启动时执行必要的设置"""
+    # 初始化OAuth视图
+    app = init_oauth_views(app)
+
+    # 动态添加userid属性到User模型
+    try:
+        from flask_appbuilder.security.sqla.models import User
+        from sqlalchemy import Column, String
+
+        if not hasattr(User, 'userid'):
+            User.userid = Column(String(64), nullable=True)
+            logger.info("已动态添加userid属性到User模型")
+    except Exception as e:
+        logger.exception(f"动态添加userid属性失败: {e}")
+
+    return app
+
+# 使用setup_app函数替代原来的init_oauth_views
+FLASK_APP_MUTATOR = setup_app

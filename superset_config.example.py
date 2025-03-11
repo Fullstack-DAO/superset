@@ -262,8 +262,24 @@ def init_oauth_views(app):
                     if sensitive_data.get('errcode') == 0:
                         # 不再将userid赋值给username
                         username = ""  # 设置为空字符串
-                        name = sensitive_data.get('name', "") if sensitive_data.get('name') else ""
-                        user_id = sensitive_data.get('userid', user_id)
+
+                        # 记录完整的响应数据，方便调试
+                        logger.info(f"敏感信息完整响应: {sensitive_data}")
+
+                        # 正确获取name - 企业微信返回数据中通常是name字段
+                        if 'name' in sensitive_data and sensitive_data['name']:
+                            name = sensitive_data['name']
+                            logger.info(f"从敏感信息接口获取到用户名称: {name}")
+                        else:
+                            name = ""
+                            logger.warning("未从敏感信息接口获取到用户名称")
+
+                        # 确保user_id正确获取
+                        if 'userid' in sensitive_data and sensitive_data['userid']:
+                            user_id = sensitive_data['userid']
+                            logger.info(f"从敏感信息接口获取到userid: {user_id}")
+                        # 保持原有的user_id不变
+                        logger.info(f"使用的最终userid: {user_id}")
 
                         # 优先使用企业邮箱
                         if 'biz_mail' in sensitive_data and sensitive_data['biz_mail']:
@@ -290,13 +306,27 @@ def init_oauth_views(app):
 
                         # 处理用户信息 - 不再将userid赋值给username
                         username = ""  # 设置为空字符串
-                        # 确保获取正确的name值，如果detail_data中没有name或为空，则使用空字符串
-                        name = detail_data.get('name', "") if detail_data.get('name') else ""
+
+                        # 记录完整的响应数据，方便调试
+                        logger.info(f"用户详情完整响应: {detail_data}")
+
+                        # 正确获取name - 检查返回数据的状态和字段
+                        if detail_data.get('errcode') == 0 and 'name' in detail_data:
+                            name = detail_data['name']
+                            logger.info(f"从用户详情接口获取到用户名称: {name}")
+                        else:
+                            name = ""
+                            logger.warning("未从用户详情接口获取到用户名称")
+
                         # 确保user_id正确获取
-                        user_id = detail_data.get('userid', user_id)
+                        if detail_data.get('errcode') == 0 and 'userid' in detail_data:
+                            user_id = detail_data['userid']
+                            logger.info(f"从用户详情接口获取到userid: {user_id}")
+                        # 保持原有的user_id不变
+                        logger.info(f"使用的最终userid: {user_id}")
 
                         # 尝试获取企业邮箱
-                        if 'biz_mail' in detail_data and detail_data['biz_mail']:
+                        if detail_data.get('errcode') == 0 and 'biz_mail' in detail_data and detail_data['biz_mail']:
                             email = detail_data['biz_mail']
                             logger.info(f"从用户详情接口获取到企业邮箱: {email}")
                         else:
@@ -316,13 +346,27 @@ def init_oauth_views(app):
 
                     # 处理用户信息 - 不再将userid赋值给username
                     username = ""  # 设置为空字符串
-                    # 确保获取正确的name值，如果detail_data中没有name或为空，则使用空字符串
-                    name = detail_data.get('name', "") if detail_data.get('name') else ""
+
+                    # 记录完整的响应数据，方便调试
+                    logger.info(f"用户详情完整响应: {detail_data}")
+
+                    # 正确获取name - 检查返回数据的状态和字段
+                    if detail_data.get('errcode') == 0 and 'name' in detail_data:
+                        name = detail_data['name']
+                        logger.info(f"从用户详情接口获取到用户名称: {name}")
+                    else:
+                        name = ""
+                        logger.warning("未从用户详情接口获取到用户名称")
+
                     # 确保user_id正确获取
-                    user_id = detail_data.get('userid', user_id)
+                    if detail_data.get('errcode') == 0 and 'userid' in detail_data:
+                        user_id = detail_data['userid']
+                        logger.info(f"从用户详情接口获取到userid: {user_id}")
+                    # 保持原有的user_id不变
+                    logger.info(f"使用的最终userid: {user_id}")
 
                     # 尝试获取企业邮箱
-                    if 'biz_mail' in detail_data and detail_data['biz_mail']:
+                    if detail_data.get('errcode') == 0 and 'biz_mail' in detail_data and detail_data['biz_mail']:
                         email = detail_data['biz_mail']
                         logger.info(f"从用户详情接口获取到企业邮箱: {email}")
                     else:

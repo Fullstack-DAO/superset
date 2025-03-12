@@ -441,7 +441,7 @@ def init_oauth_views(app):
                                 # 更新用户的userid字段
                                 try:
                                     user.userid = user_id
-                                    user.first_name = name
+                                    # user.first_name = name
                                     db.session.commit()
                                     logger.info(f"已更新用户 {user.username} 的userid为 {user_id}")
                                 except Exception as e:
@@ -746,3 +746,118 @@ def setup_app(app):
 
 # 使用setup_app函数替代原来的init_oauth_views
 FLASK_APP_MUTATOR = setup_app
+
+
+def create_or_update_user(username, first_name, last_name, email, role_name="Public", password="", user_id=None, current_user_id=None):
+    """
+    创建或更新用户
+    如果用户邮箱已存在，则更新用户信息
+    如果用户邮箱不存在，则创建新用户
+
+    使用 security_manager 提供的方法进行用户管理
+    """
+    from superset import security_manager, db
+    from flask_appbuilder.security.sqla.models import User
+    from flask import g
+    import logging
+    import traceback
+
+    logger = logging.getLogger(__name__)
+
+    # 记录方法调用
+    logger.info("=" * 50)
+    logger.info(f"create_or_update_user 方法被调用")
+    logger.info(f"参数: username={username}, first_name={first_name}, last_name={last_name}, email={email}, role_name={role_name}, user_id={user_id}")
+    logger.info("=" * 50)
+
+    try:
+        # 获取当前登录用户ID
+        if current_user_id is None:
+            # 尝试从 g 对象获取当前用户
+            if hasattr(g, 'user') and g.user and g.user.is_authenticated:
+                current_user_id = g.user.id
+                logger.info(f"从 Flask g 对象获取到当前用户 ID: {current_user_id}")
+            else:
+                # 如果没有当前用户，使用 Admin 用户 ID (通常是1)
+                admin_user = db.session.query(User).filter(User.username == 'admin').first()
+                current_user_id = admin_user.id if admin_user else 1
+                logger.info(f"未从 g 对象获取到用户，使用 admin 用户 ID: {current_user_id}")
+        else:
+            logger.info(f"使用传入的当前用户 ID: {current_user_id}")
+
+        # 查询用户是否存在 - 只通过邮箱判断
+        logger.info(f"开始查询用户是否存在，邮箱: {email}")
+        user = db.session.query(User).filter(User.email == email).first()
+
+        if user:
+            # 用户存在，更新信息
+            logger.info(f"用户邮箱 {email} 已存在，用户ID: {user.id}, 用户名: {user.username}")
+            logger.info(f"开始更新用户信息: username={username}, first_name={first_name}, last_name={last_name}")
+
+            # 使用 security_manager 提供的方法更新用户
+            logger.info("调用 security_manager.update_user 方法")
+            security_manager.update_user(
+                user,
+                username=username,
+                first_name=first_name,
+                last_name=last_name,
+                email=email
+            )
+            logger.info("security_manager.update_user 方法调用完成")
+
+            # 如果提供了user_id，则更新
+            if user_id and not user.userid:
+                logger.info(f"更新用户的 userid 字段: {user_id}")
+                user.userid = user_id
+                db.session.commit()
+                logger.info("userid 字段更新完成")
+            elif user_id:
+                logger.info(f"用户已有 userid: {user.userid}，不更新")
+            else:
+                logger.info("未提供 user_id，不更新 userid 字段")
+
+            logger.info(f"已更新用户 {username} 的信息")
+            logger.info("=" * 50)
+            return user, False
+        else:
+            # 用户不存在，直接使用 AppBuilder 的逻辑创建新用户
+            logger.info(f"用户邮箱 {email} 不存在，开始创建新用户")
+
+            # 获取角色对象
+            logger.info(f"查找角色: {role_name}")
+            role = security_manager.find_role(role_name)
+            if role:
+                logger.info(f"找到角色: {role_name}, ID: {role.id}")
+            else:
+                logger.warning(f"未找到角色: {role_name}，将使用默认角色")
+
+            # 使用 security_manager 提供的方法创建用户 - 完全复用 AppBuilder 逻辑
+            logger.info("调用 security_manager.add_user 方法创建用户")
+            user = security_manager.add_user(
+                username=username,
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                role=role,
+                password=password
+            )
+            logger.info(f"用户创建成功，ID: {user.id}, 用户名: {user.username}")
+
+            # 只添加 AppBuilder 没有的自定义字段
+            if user_id:
+                logger.info(f"设置新用户的 userid 字段: {user_id}")
+                user.userid = user_id
+                db.session.commit()
+                logger.info("userid 字段设置完成")
+            else:
+                logger.info("未提供 user_id，不设置 userid 字段")
+
+            logger.info(f"已创建新用户 {username}")
+            logger.info("=" * 50)
+            return user, True
+    except Exception as e:
+        logger.error("=" * 50)
+        logger.error(f"create_or_update_user 方法执行出错: {str(e)}")
+        logger.error(f"错误详情: {traceback.format_exc()}")
+        logger.error("=" * 50)
+        raise

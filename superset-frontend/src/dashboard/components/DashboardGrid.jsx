@@ -109,7 +109,6 @@ const GridContent = styled.div`
   `}
 `;
 
-
 const GridColumnGuide = styled.div`
   ${({ theme }) => css`
     &.grid-column-guide {
@@ -221,7 +220,7 @@ class DashboardGrid extends React.PureComponent {
   }, 250);
 
   render() {
-    const { isMobile, isResizing, mounted } = this.state;
+    const { isMobile, isResizing } = this.state;
     const {
       width,
       gridComponent,
@@ -322,7 +321,6 @@ class DashboardGrid extends React.PureComponent {
           <GridContent
             className="grid-content"
             data-test="grid-content"
-            // style={{ visibility: mounted ? 'visible' : 'hidden' }}
           >
             {editMode && (
               <DragDroppable

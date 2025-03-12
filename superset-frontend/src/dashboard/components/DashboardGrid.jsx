@@ -135,7 +135,6 @@ class DashboardGrid extends React.PureComponent {
     this.state = {
       isMobile: false,
       isResizing: false,
-      mounted: false,
     };
 
     this.handleResizeStart = this.handleResizeStart.bind(this);
@@ -194,9 +193,6 @@ class DashboardGrid extends React.PureComponent {
   componentDidMount() {
     this.checkMobileMode();
     window.addEventListener('resize', this.handleResize);
-    setTimeout(() => {
-      this.setState({ mounted: true });
-    }, 100);
   }
 
   componentWillUnmount() {
@@ -212,11 +208,6 @@ class DashboardGrid extends React.PureComponent {
 
   handleResize = _.debounce(() => {
     this.checkMobileMode();
-    this.setState({ mounted: false }, () => {
-      setTimeout(() => {
-        this.setState({ mounted: true });
-      }, 100);
-    });
   }, 250);
 
   render() {
@@ -318,10 +309,7 @@ class DashboardGrid extends React.PureComponent {
           </DashboardEmptyStateContainer>
         )}
         <div className="dashboard-grid" ref={this.setGridRef}>
-          <GridContent
-            className="grid-content"
-            data-test="grid-content"
-          >
+          <GridContent className="grid-content" data-test="grid-content">
             {editMode && (
               <DragDroppable
                 component={gridComponent}

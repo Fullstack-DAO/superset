@@ -71,19 +71,44 @@ const GRID_SETTINGS = {
 };
 
 const DashboardEmptyStateContainer = styled.div`
-  position: relative;
-  min-height: 200px;
-  padding: 32px;
-  font-size: 16px;
-  line-height: 1.5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${({ theme }) => theme.colors.grayscale.light5};
-  border-radius: 4px;
-  margin: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 `;
+
+const GridContent = styled.div`
+  ${({ theme }) => css`
+    display: flex;
+    flex-direction: column;
+
+    /* gutters between rows */
+    & > div:not(:last-child):not(.empty-droptarget) {
+      margin-bottom: ${theme.gridUnit * 4}px;
+    }
+
+    & > .empty-droptarget {
+      width: 100%;
+      height: 100%;
+    }
+
+    & > .empty-droptarget:first-child {
+      height: ${theme.gridUnit * 12}px;
+      margin-top: ${theme.gridUnit * -6}px;
+    }
+
+    & > .empty-droptarget:last-child {
+      height: ${theme.gridUnit * 12}px;
+      margin-top: ${theme.gridUnit * -6}px;
+    }
+
+    & > .empty-droptarget.empty-droptarget--full:only-child {
+      height: 80vh;
+    }
+  `}
+`;
+
 
 const GridColumnGuide = styled.div`
   ${({ theme }) => css`
@@ -103,90 +128,6 @@ const GridColumnGuide = styled.div`
         )};
     }
   `};
-`;
-
-const GridContent = styled.div`
-  position: relative;
-  width: 100%;
-  height: 100%;
-
-  @media (max-width: 768px) {
-    .dashboard-grid {
-      display: block !important;
-      width: 100% !important;
-      padding: ${({ theme }) => theme.gridUnit * 2}px;
-      margin: 0;
-
-      // 添加顶部操作按钮的样式
-      .dashboard-header-actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: ${({ theme }) => theme.gridUnit * 2}px;
-        margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
-
-        button {
-          margin: 0;
-        }
-      }
-      .dashboard-component-chart-holder {
-        position: relative !important;
-        width: 100% !important;
-        margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
-        padding: ${({ theme }) => theme.gridUnit * 2}px;
-        background-color: ${({ theme }) => theme.colors.grayscale.light5};
-        border-radius: ${({ theme }) => theme.gridUnit}px;
-        box-sizing: border-box;
-
-        .chart-container {
-          position: relative !important;
-          width: 100% !important;
-          height: 350px !important;
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-
-          .slice_container {
-            position: relative !important;
-            width: 100% !important;
-            height: 100% !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-
-            & > div {
-              width: 100% !important;
-              height: 100% !important;
-              position: relative !important;
-            }
-
-            svg,
-            canvas {
-              width: 100% !important;
-              height: 100% !important;
-              position: relative !important;
-            }
-
-            &.big_number {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 200px !important;
-              span {
-                font-size: 48px;
-                line-height: 1.2;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    .empty-droptarget {
-      display: none;
-    }
-  }
 `;
 
 class DashboardGrid extends React.PureComponent {
@@ -381,7 +322,7 @@ class DashboardGrid extends React.PureComponent {
           <GridContent
             className="grid-content"
             data-test="grid-content"
-            style={{ visibility: mounted ? 'visible' : 'hidden' }}
+            // style={{ visibility: mounted ? 'visible' : 'hidden' }}
           >
             {editMode && (
               <DragDroppable
@@ -415,9 +356,9 @@ class DashboardGrid extends React.PureComponent {
                 onResize={this.handleResize}
                 onResizeStop={this.handleResizeStop}
                 onChangeTab={this.handleChangeTab}
-                editMode={editMode}
               />
             ))}
+            {/* make the area below components droppable */}
             {editMode && gridComponent?.children?.length > 0 && (
               <DragDroppable
                 component={gridComponent}

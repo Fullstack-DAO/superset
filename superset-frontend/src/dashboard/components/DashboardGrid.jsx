@@ -117,74 +117,43 @@ const GridContent = styled.div`
       padding: ${({ theme }) => theme.gridUnit * 2}px;
       margin: 0;
 
-      // 添加顶部操作按钮的样式
-      .dashboard-header-actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: ${({ theme }) => theme.gridUnit * 2}px;
-        margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
-
-        button {
-          margin: 0;
-        }
+      /* Hide builder components on mobile */
+      .grid-column-guide,
+      .empty-droptarget,
+      .dashboard-builder-sidepane,
+      .resizable-container--resizing,
+      .hover-menu {
+        display: none !important;
       }
+
+      /* Optimize chart container for mobile */
       .dashboard-component-chart-holder {
         position: relative !important;
         width: 100% !important;
+        height: auto !important;
         margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
-        padding: ${({ theme }) => theme.gridUnit * 2}px;
-        background-color: ${({ theme }) => theme.colors.grayscale.light5};
-        border-radius: ${({ theme }) => theme.gridUnit}px;
-        box-sizing: border-box;
 
         .chart-container {
           position: relative !important;
           width: 100% !important;
           height: 350px !important;
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-
+          min-height: 200px;
+          
           .slice_container {
             position: relative !important;
             width: 100% !important;
             height: 100% !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-
-            & > div {
-              width: 100% !important;
-              height: 100% !important;
-              position: relative !important;
-            }
-
-            svg,
-            canvas {
-              width: 100% !important;
-              height: 100% !important;
-              position: relative !important;
-            }
-
-            &.big_number {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 200px !important;
-              span {
-                font-size: 48px;
-                line-height: 1.2;
-              }
-            }
           }
         }
       }
-    }
 
-    .empty-droptarget {
-      display: none;
+      /* Adjust grid layout for mobile */
+      .dragdroppable-row,
+      .dragdroppable-column {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+      }
     }
   }
 `;

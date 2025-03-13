@@ -367,6 +367,39 @@ const StyledDashboardContent = styled.div<{
           min-height: 400px;
           resize: none !important;
         }
+
+        /* Hide specific elements on mobile */
+        .navbar-right [data-test="new-dropdown"],
+        .navbar-right [href*="/chart/add"],
+        .navbar-right [href*="/dashboard/new"],
+        .navbar-right [href*="/dashboard/list"],
+        .navbar-right [href*="/chart/list"],
+        .navbar-right [data-test="new-dropdown"],
+        .navbar-right [href*="copilot"],
+        .navbar-right [href*="sqllab"],
+        .navbar-right [href*="workflow"],
+        .navbar-right .manage-collaborators,
+        .dashboard-builder-sidepane,
+        .dashboard-component-tabs {
+          display: none !important;
+        }
+
+        /* Adjust header for mobile */
+        .dashboard-header {
+          flex-direction: column;
+          padding: ${theme.gridUnit * 2}px;
+          
+          .header-large {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+        }
+
+        /* Ensure content takes full width */
+        .grid-container {
+          margin: ${theme.gridUnit * 2}px !important;
+          width: calc(100% - ${theme.gridUnit * 4}px) !important;
+        }
       }
     }
 

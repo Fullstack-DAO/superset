@@ -586,35 +586,54 @@ const HeaderButtons = styled.div`
   }
 `;
 
-// 删除 GlobalStyles 常量定义，改用 mobileStyles 对象
-const mobileStyles = {
-  '@media (max-width: 768px)': {
-    '.navbar-nav, .navbar-right, .top-nav-menu, .navbar-brand-text, .navbar-static-side, .nav-item, .sidebar, .sidebar-nav, .navbar-default, [data-test="navbar-top"], [data-test="navbar-brand-wrapper"], [data-test="navbar-right-wrapper"], .main-menu, #app-menu, .nav-item .dropdown-menu, .navbar .dropdown-menu, .navbar-nav > li, .navbar-nav > li > a, .nav-link': {
-      display: 'none !important',
-      visibility: 'hidden !important',
-      opacity: '0 !important',
-      width: '0 !important',
-      height: '0 !important',
-      padding: '0 !important',
-      margin: '0 !important',
-      border: '0 !important',
-    },
-    '.navbar-brand img': {
-      display: 'block !important',
-      visibility: 'visible !important',
-      opacity: '1 !important',
-      width: 'auto !important',
-      height: 'auto !important',
-    },
-    '.navbar-brand': {
-      display: 'block !important',
-      visibility: 'visible !important',
-      opacity: '1 !important',
-      padding: '8px !important',
-      margin: '0 !important',
+const mobileStyles = css`
+  @media (max-width: 768px) {
+    .navbar-nav,
+    .navbar-right,
+    .top-nav-menu,
+    .navbar-brand-text,
+    .navbar-static-side,
+    .nav-item,
+    .sidebar,
+    .sidebar-nav,
+    .navbar-default,
+    [data-test="navbar-top"],
+    [data-test="navbar-brand-wrapper"],
+    [data-test="navbar-right-wrapper"],
+    .main-menu,
+    #app-menu,
+    .nav-item .dropdown-menu,
+    .navbar .dropdown-menu,
+    .navbar-nav > li,
+    .navbar-nav > li > a,
+    .nav-link {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+    }
+
+    .navbar-brand img {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: auto !important;
+      height: auto !important;
+    }
+
+    .navbar-brand {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      padding: 8px !important;
+      margin: 0 !important;
     }
   }
-};
+`;
 
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const dispatch = useDispatch();

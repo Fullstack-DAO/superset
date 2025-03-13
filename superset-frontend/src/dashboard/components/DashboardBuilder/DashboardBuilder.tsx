@@ -115,6 +115,127 @@ const StyledHeader = styled.div`
   top: 0;
   z-index: 100;
   max-width: 100vw;
+
+  @media (max-width: 768px) {
+    /* 隐藏顶部导航栏按钮 */
+    .navbar-nav,
+    .navbar-right,
+    .top-nav-menu,
+    .navbar-brand-text,
+    .navbar-static-side,
+    .nav-item,
+    .sidebar,
+    .sidebar-nav,
+    .navbar-default,
+    [data-test="navbar-top"],
+    [data-test="navbar-brand-wrapper"],
+    [data-test="navbar-right-wrapper"],
+    .main-menu,
+    #app-menu,
+    .nav-item .dropdown-menu,
+    .navbar .dropdown-menu,
+    .navbar-nav > li,
+    .navbar-nav > li > a,
+    .nav-link {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+    }
+
+    /* 只保留 logo */
+    .navbar-brand img {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: auto !important;
+      height: auto !important;
+    }
+
+    /* 调整 logo 容器样式 */
+    .navbar-brand {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      padding: ${({ theme }) => theme.gridUnit * 2}px !important;
+      margin: 0 !important;
+    }
+
+    /* 隐藏编辑相关的元素 */
+    .dashboard-header {
+      .dashboard-component-header {
+        flex-direction: column;
+        padding: ${({ theme }) => theme.gridUnit * 2}px;
+      }
+
+      /* 隐藏所有操作按钮 */
+      .dashboard-header__actions,
+      .dashboard-header__actions *,
+      [data-test="dashboard-header-buttons"],
+      [data-test="dashboard-header-buttons"] *,
+      .ant-dropdown-trigger,
+      .header-with-actions button,
+      button[data-test="edit-dashboard"],
+      button[data-test="dashboard-edit-actions"],
+      .edit-button,
+      .dashboard-builder-sidepane-trigger,
+      .more-horiz,
+      .ant-btn:not(.dashboard-title),
+      .button-container,
+      .action-buttons,
+      .css-1t062t8,
+      .css-16uq7e2,
+      div[role="button"],
+      span[role="button"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+      }
+
+      /* 确保标题正常显示 */
+      .header-title,
+      .dashboard-title {
+        display: block !important;
+        width: 100% !important;
+      }
+
+      /* 移除所有按钮容器的空间 */
+      .button-container,
+      .header-with-actions {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 0 !important;
+        min-height: 0 !important;
+      }
+    }
+
+    /* 隐藏编辑模式相关的所有元素 */
+    .dashboard--editing,
+    .dashboard-builder-sidepane,
+    .grid-container.dashboard--editing {
+      display: none !important;
+    }
+
+    /* 确保标题区域样式正确 */
+    .dashboard-header {
+      padding: ${({ theme }) => theme.gridUnit * 2}px !important;
+      margin-bottom: 0 !important;
+      
+      .dashboard__title {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    }
+  }
 `;
 
 const StyledContent = styled.div<{
@@ -459,7 +580,41 @@ const HeaderButtons = styled.div`
   top: 50%;
   transform: translateY(-50%);
   z-index: 99;
+
+  @media (max-width: 768px) {
+    display: none !important;  // 在移动端完全隐藏管理协作者按钮
+  }
 `;
+
+// 删除 GlobalStyles 常量定义，改用 mobileStyles 对象
+const mobileStyles = {
+  '@media (max-width: 768px)': {
+    '.navbar-nav, .navbar-right, .top-nav-menu, .navbar-brand-text, .navbar-static-side, .nav-item, .sidebar, .sidebar-nav, .navbar-default, [data-test="navbar-top"], [data-test="navbar-brand-wrapper"], [data-test="navbar-right-wrapper"], .main-menu, #app-menu, .nav-item .dropdown-menu, .navbar .dropdown-menu, .navbar-nav > li, .navbar-nav > li > a, .nav-link': {
+      display: 'none !important',
+      visibility: 'hidden !important',
+      opacity: '0 !important',
+      width: '0 !important',
+      height: '0 !important',
+      padding: '0 !important',
+      margin: '0 !important',
+      border: '0 !important',
+    },
+    '.navbar-brand img': {
+      display: 'block !important',
+      visibility: 'visible !important',
+      opacity: '1 !important',
+      width: 'auto !important',
+      height: 'auto !important',
+    },
+    '.navbar-brand': {
+      display: 'block !important',
+      visibility: 'visible !important',
+      opacity: '1 !important',
+      padding: '8px !important',
+      margin: '0 !important',
+    }
+  }
+};
 
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const dispatch = useDispatch();
@@ -686,6 +841,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
 
   return (
     <DashboardWrapper>
+      <Global styles={mobileStyles} />
       {showFilterBar && filterBarOrientation === FilterBarOrientation.VERTICAL && (
         <>
           <ResizableSidebar

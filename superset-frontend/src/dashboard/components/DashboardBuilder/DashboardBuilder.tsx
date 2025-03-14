@@ -98,6 +98,14 @@ const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
   z-index: 11;
   width: ${({ width }) => width}px;
   ${({ hidden }) => hidden && `display: none;`}
+
+  @media (max-width: 768px) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    width: 0 !important;
+  }
 `;
 
 const StickyPanel = styled.div<{ width: number }>`
@@ -117,62 +125,97 @@ const StyledHeader = styled.div`
   max-width: 100vw;
 
   @media (max-width: 768px) {
-    /* 隐藏顶部导航栏按钮 */
-    .navbar-nav,
-    .navbar-right,
-    .top-nav-menu,
-    .navbar-brand-text,
-    .navbar-static-side,
-    .nav-item,
-    .sidebar,
-    .sidebar-nav,
-    .navbar-default,
-    [data-test="navbar-top"],
-    [data-test="navbar-brand-wrapper"],
-    [data-test="navbar-right-wrapper"],
-    .main-menu,
-    #app-menu,
-    .nav-item .dropdown-menu,
-    .navbar .dropdown-menu,
-    .navbar-nav > li,
-    .navbar-nav > li > a,
-    .nav-link {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      width: 0 !important;
-      height: 0 !important;
+    position: relative;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    
+    /* 重置所有容器样式 */
+    & > div {
+      width: 100% !important;
+      margin: 0 !important;
       padding: 0 !important;
-      margin: 0 !important;
-      border: 0 !important;
     }
 
-    /* 只保留 logo */
-    .navbar-brand img {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      width: auto !important;
-      height: auto !important;
-    }
-
-    /* 调整 logo 容器样式 */
-    .navbar-brand {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      padding: ${({ theme }) => theme.gridUnit * 2}px !important;
-      margin: 0 !important;
-    }
-
-    /* 隐藏编辑相关的元素 */
+    /* 调整标题容器布局 */
     .dashboard-header {
+      position: relative !important;
+      width: 100% !important;
+      padding: 8px 16px !important;
+      margin: 0 !important;
+      display: block !important;
+      
       .dashboard-component-header {
-        flex-direction: column;
-        padding: ${({ theme }) => theme.gridUnit * 2}px;
+        display: block !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
-      /* 隐藏所有操作按钮 */
+      .header-large {
+        display: block !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* 优化标题显示 */
+      .header-title,
+      .dashboard__title,
+      .dashboard-title,
+      span[role="button"].editable-title,
+      div.editable-title,
+      h1 {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        padding: 4px 0 !important;
+        margin: 0 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        font-size: 18px !important;
+        line-height: 1.4 !important;
+        position: static !important;
+        transform: none !important;
+        left: auto !important;
+      }
+
+      /* 移除所有可能影响布局的绝对定位元素 */
+      .header-with-actions {
+        position: static !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        
+        & > * {
+          position: static !important;
+          transform: none !important;
+        }
+      }
+
+      /* 隐藏其他按钮和元素 */
+      .navbar-nav,
+      .navbar-right,
+      .top-nav-menu,
+      .navbar-brand-text,
+      .navbar-static-side,
+      .nav-item,
+      .sidebar,
+      .sidebar-nav,
+      .navbar-default,
+      [data-test="navbar-top"],
+      [data-test="navbar-brand-wrapper"],
+      [data-test="navbar-right-wrapper"],
+      .main-menu,
+      #app-menu,
+      .nav-item .dropdown-menu,
+      .navbar .dropdown-menu,
+      .navbar-nav > li,
+      .navbar-nav > li > a,
+      .nav-link,
       .dashboard-header__actions,
       .dashboard-header__actions *,
       [data-test="dashboard-header-buttons"],
@@ -189,8 +232,8 @@ const StyledHeader = styled.div`
       .action-buttons,
       .css-1t062t8,
       .css-16uq7e2,
-      div[role="button"],
-      span[role="button"] {
+      div[role="button"]:not(.dashboard-title),
+      span[role="button"]:not(.dashboard-title) {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
@@ -199,40 +242,8 @@ const StyledHeader = styled.div`
         padding: 0 !important;
         margin: 0 !important;
         border: 0 !important;
-      }
-
-      /* 确保标题正常显示 */
-      .header-title,
-      .dashboard-title {
-        display: block !important;
-        width: 100% !important;
-      }
-
-      /* 移除所有按钮容器的空间 */
-      .button-container,
-      .header-with-actions {
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 0 !important;
-        min-height: 0 !important;
-      }
-    }
-
-    /* 隐藏编辑模式相关的所有元素 */
-    .dashboard--editing,
-    .dashboard-builder-sidepane,
-    .grid-container.dashboard--editing {
-      display: none !important;
-    }
-
-    /* 确保标题区域样式正确 */
-    .dashboard-header {
-      padding: ${({ theme }) => theme.gridUnit * 2}px !important;
-      margin-bottom: 0 !important;
-      
-      .dashboard__title {
-        margin: 0 !important;
-        padding: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
       }
     }
   }
@@ -245,154 +256,6 @@ const StyledContent = styled.div<{
   grid-row: 2;
   // @z-index-above-dashboard-header (100) + 1 = 101
   ${({ fullSizeChartId }) => fullSizeChartId && `z-index: 101;`}
-`;
-
-const DashboardContentWrapper = styled.div`
-  ${({ theme }) => css`
-    &.dashboard {
-      position: relative;
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-
-      /* drop shadow for top-level tabs only */
-      & .dashboard-component-tabs {
-        box-shadow: 0 ${theme.gridUnit}px ${theme.gridUnit}px 0
-          ${addAlpha(
-  theme.colors.grayscale.dark2,
-  parseFloat(theme.opacity.light) / 100,
-)};
-        padding-left: ${theme.gridUnit *
-2}px; /* note this is added to tab-level padding, to match header */
-      }
-
-      .dropdown-toggle.btn.btn-primary .caret {
-        color: ${theme.colors.grayscale.light5};
-      }
-
-      .background--transparent {
-        background-color: transparent;
-      }
-
-      .background--white {
-        background-color: ${theme.colors.grayscale.light5};
-      }
-    }
-    &.dashboard--editing {
-      .grid-row:after,
-      .dashboard-component-tabs > .hover-menu:hover + div:after {
-        border: 1px dashed transparent;
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
-        z-index: 1;
-        pointer-events: none;
-      }
-
-      .resizable-container {
-        & .dashboard-component-chart-holder {
-          .dashboard-chart {
-            .chart-container {
-              cursor: move;
-              opacity: 0.2;
-            }
-
-            .slice_container {
-              /* disable chart interactions in edit mode */
-              pointer-events: none;
-            }
-          }
-
-          &:hover .dashboard-chart .chart-container {
-            opacity: 0.7;
-          }
-        }
-
-        &:hover,
-        &.resizable-container--resizing:hover {
-          & > .dashboard-component-chart-holder:after {
-            border: 1px dashed ${theme.colors.primary.base};
-          }
-        }
-      }
-
-      .resizable-container--resizing:hover > .grid-row:after,
-      .hover-menu:hover + .grid-row:after,
-      .dashboard-component-tabs > .hover-menu:hover + div:after {
-        border: 1px dashed ${theme.colors.primary.base};
-        z-index: 2;
-      }
-
-      .grid-row:after,
-      .dashboard-component-tabs > .hover-menu + div:after {
-        border: 1px dashed ${theme.colors.grayscale.light2};
-      }
-
-      /* provide hit area in case row contents is edge to edge */
-      .dashboard-component-tabs-content {
-        .dragdroppable-row {
-          padding-top: ${theme.gridUnit * 4}px;
-        }
-
-        & > div:not(:last-child):not(.empty-droptarget) {
-          margin-bottom: ${theme.gridUnit * 4}px;
-        }
-      }
-
-      .dashboard-component-chart-holder {
-        &:after {
-          content: '';
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          top: 0;
-          left: 0;
-          z-index: 1;
-          pointer-events: none;
-          border: 1px solid transparent;
-        }
-
-        &:hover:after {
-          border: 1px dashed ${theme.colors.primary.base};
-          z-index: 2;
-        }
-      }
-
-      .contract-trigger:before {
-        display: none;
-      }
-    }
-
-    & .dashboard-component-tabs-content {
-      & > div:not(:last-child):not(.empty-droptarget) {
-        margin-bottom: ${theme.gridUnit * 4}px;
-      }
-
-      & > .empty-droptarget {
-        position: absolute;
-        width: 100%;
-      }
-
-      & > .empty-droptarget:first-child:not(.empty-droptarget--full) {
-        height: ${theme.gridUnit * 4}px;
-        top: -2px;
-        z-index: 10;
-      }
-
-      & > .empty-droptarget:last-child {
-        height: ${theme.gridUnit * 3}px;
-        bottom: 0;
-      }
-    }
-
-    .empty-droptarget:first-child .drop-indicator--bottom {
-      top: ${theme.gridUnit * 6}px;
-    }
-  `}
 `;
 
 const StyledDashboardContent = styled.div<{
@@ -588,6 +451,38 @@ const HeaderButtons = styled.div`
 
 const mobileStyles = css`
   @media (max-width: 768px) {
+    /* Hide filter related elements but keep layout structure */
+    [data-test="dashboard-filters-panel"],
+    .filter-bar,
+    .filter-bar-container,
+    .dashboard-filters,
+    .filter-scope-modal,
+    .filter-scope-selector,
+    .filter-field,
+    .filter-container,
+    .filter-item,
+    .filter-panel,
+    .dashboard-component-filter-panel,
+    .filter-trigger,
+    .filter-icon,
+    .filter-dropdown,
+    .dashboard__filter-bar,
+    .dashboard-filter-bar-container,
+    .filter-bar-resizable,
+    .filter-bar-wrapper,
+    .filter-bar-header,
+    .filter-bar-body,
+    .filter-bar-footer,
+    .filter-bar-toggle,
+    .filter-bar-toggle-container {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
     /* Hide navigation buttons and menus */
     .navbar-nav,
     .navbar-right,
@@ -608,13 +503,11 @@ const mobileStyles = css`
     .navbar-nav > li,
     .navbar-nav > li > a,
     .nav-link,
-    /* Hide specific buttons */
     [data-test="new-dropdown"],
     button[aria-label="Settings"],
     [data-test="language-selector"],
     .ant-dropdown-trigger,
     .more-horiz,
-    /* Hide + button and its dropdown */
     [data-test="new-dropdown"],
     [data-test="new-chart-button"],
     [data-test="new-dashboard-button"],
@@ -645,6 +538,25 @@ const mobileStyles = css`
       opacity: 1 !important;
       padding: 8px !important;
       margin: 0 !important;
+    }
+  }
+`;
+
+const DashboardContentWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  position: relative;
+  height: 100%;
+  
+  @media (max-width: 768px) {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    
+    .dashboard-content {
+      margin: 0 !important;
+      padding: 8px !important;
     }
   }
 `;

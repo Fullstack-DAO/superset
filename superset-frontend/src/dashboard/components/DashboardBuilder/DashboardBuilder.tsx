@@ -474,13 +474,39 @@ const mobileStyles = css`
     .filter-bar-body,
     .filter-bar-footer,
     .filter-bar-toggle,
-    .filter-bar-toggle-container {
+    .filter-bar-toggle-container,
+    /* 添加编辑仪表盘按钮相关的选择器 */
+    [data-test="edit-dashboard-button"],
+    [data-test="dashboard-edit-actions"],
+    .dashboard-header button:not(.navbar-brand),
+    .dashboard-header .button-container,
+    .dashboard-header .action-buttons,
+    .dashboard-header .edit-button,
+    .dashboard-header [role="button"]:not(.dashboard-title),
+    .dashboard-header .ant-btn:not(.dashboard-title),
+    .dashboard-header .header-with-actions button,
+    .dashboard-header .more-horiz,
+    .dashboard-header .css-1t062t8,
+    .dashboard-header .css-16uq7e2,
+    .dashboard-header div[role="button"]:not(.dashboard-title),
+    .dashboard-header span[role="button"]:not(.dashboard-title),
+    .dashboard-header .ant-dropdown-trigger,
+    .dashboard-header .dashboard-builder-sidepane-trigger,
+    .dashboard-header .dashboard-header__actions,
+    .dashboard-header .dashboard-header__actions *,
+    .dashboard-header [data-test="dashboard-header-buttons"],
+    .dashboard-header [data-test="dashboard-header-buttons"] * {
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
       position: absolute !important;
       width: 0 !important;
       height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+      left: -9999px !important;
+      display: none !important;
     }
 
     /* Hide navigation buttons and menus */

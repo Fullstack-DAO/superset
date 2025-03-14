@@ -588,6 +588,7 @@ const HeaderButtons = styled.div`
 
 const mobileStyles = css`
   @media (max-width: 768px) {
+    /* Hide navigation buttons and menus */
     .navbar-nav,
     .navbar-right,
     .top-nav-menu,
@@ -606,7 +607,18 @@ const mobileStyles = css`
     .navbar .dropdown-menu,
     .navbar-nav > li,
     .navbar-nav > li > a,
-    .nav-link {
+    .nav-link,
+    /* Hide specific buttons */
+    [data-test="new-dropdown"],
+    button[aria-label="Settings"],
+    [data-test="language-selector"],
+    .ant-dropdown-trigger,
+    .more-horiz,
+    /* Hide + button and its dropdown */
+    [data-test="new-dropdown"],
+    [data-test="new-chart-button"],
+    [data-test="new-dashboard-button"],
+    .navbar-right .dropdown {
       display: none !important;
       visibility: hidden !important;
       opacity: 0 !important;
@@ -617,6 +629,7 @@ const mobileStyles = css`
       border: 0 !important;
     }
 
+    /* Keep logo visible */
     .navbar-brand img {
       display: block !important;
       visibility: visible !important;
@@ -625,6 +638,7 @@ const mobileStyles = css`
       height: auto !important;
     }
 
+    /* Adjust logo container */
     .navbar-brand {
       display: block !important;
       visibility: visible !important;

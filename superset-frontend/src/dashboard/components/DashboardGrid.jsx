@@ -138,7 +138,6 @@ const GridContent = styled.div`
           width: 100% !important;
           height: 350px !important;
           min-height: 200px;
-          
           .slice_container {
             position: relative !important;
             width: 100% !important;

@@ -170,7 +170,6 @@ const GridContent = styled.div`
     }
   }
 `;
-
 class DashboardGrid extends React.PureComponent {
   constructor(props) {
     super(props);
@@ -234,17 +233,18 @@ class DashboardGrid extends React.PureComponent {
   }
 
   componentDidMount() {
+    // 直接调用箭头函数属性
     this.checkMobileMode();
     window.addEventListener('resize', this.handleResize);
     setTimeout(() => {
       this.setState({ mounted: true });
     }, 100);
+
+    // 添加移动端导航栏隐藏逻辑
+    this.hideNavigationOnMobile();
   }
 
-  componentWillUnmount() {
-    window.removeEventListener('resize', this.handleResize);
-  }
-
+  // 保持箭头函数定义
   checkMobileMode = () => {
     const isMobile = window.innerWidth <= 768;
     if (isMobile !== this.state.isMobile) {
@@ -252,8 +252,29 @@ class DashboardGrid extends React.PureComponent {
     }
   };
 
+  hideNavigationOnMobile = () => {
+    if (window.innerWidth <= 768) {
+      // 隐藏导航标签
+      const navItems = document.querySelectorAll(
+        '.navbar-nav > li, .navbar-right > *, .top-nav-menu',
+      );
+      navItems.forEach(item => {
+        if (
+          item.classList.contains('navbar-header') ||
+          item.classList.contains('navbar-brand')
+        ) {
+          return; // 保留logo
+        }
+        if (item instanceof HTMLElement) {
+          item.classList.add('hidden-element');
+        }
+      });
+    }
+  };
+
   handleResize = _.debounce(() => {
     this.checkMobileMode();
+    this.hideNavigationOnMobile(); // 在窗口大小改变时也执行隐藏逻辑
     this.setState({ mounted: false }, () => {
       setTimeout(() => {
         this.setState({ mounted: true });

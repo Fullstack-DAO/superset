@@ -111,39 +111,34 @@ const GridContent = styled.div`
   height: 100%;
 
   @media (max-width: 768px) {
-    /* 现有的移动端样式 */
-    .dashboard-grid {
-      display: block !important;
-      width: 100% !important;
-      padding: ${({ theme }) => theme.gridUnit * 2}px;
-      margin: 0;
-
-      /* Hide builder components on mobile */
-      .grid-column-guide,
-      .empty-droptarget,
-      .dashboard-builder-sidepane,
-      .resizable-container--resizing,
-      .hover-menu {
-        display: none !important;
-      }
-
-      /* 其他现有样式... */
-    }
-
-    /* 添加强制隐藏导航标签的样式 */
-    body .navbar .navbar-nav,
-    body .navbar .navbar-right,
-    body .navbar .top-nav-menu,
-    body .navbar-nav > li,
-    body .navbar-nav > li > a,
-    body .nav-item,
-    body .nav-link,
-    body .dropdown-menu,
-    body [data-test='navbar-top'] .container-fluid > div:not(.navbar-header),
-    body .navbar-collapse,
-    body .navbar-right .dropdown,
-    body .navbar-right button,
-    body .navbar-right a:not(.navbar-brand) {
+    /* 增加选择器优先级并添加 !important */
+    html body #app .navbar-default .navbar-nav,
+    html body #app .navbar-default .navbar-right,
+    html body #app .navbar-default .top-nav-menu,
+    html body #app [data-test='navbar-top'],
+    html body #app .navbar-default [href*='/dashboard'],
+    html body #app .navbar-default [href*='/chart'],
+    html body #app .navbar-default [href*='/dataset'],
+    html body #app .navbar-default [href*='/sqllab'],
+    html body #app .navbar-default [href*='/copilot'],
+    html body #app .navbar-default [href*='/workflow'],
+    html body #app .navbar-default .nav-item:not(.navbar-brand),
+    html body #app [data-test='edit-dashboard-button'],
+    html body #app [data-test='dashboard-edit-actions'],
+    html body #app .dashboard-header button:not(.navbar-brand),
+    html body #app .dashboard-header .button-container,
+    html body #app .dashboard-header .action-buttons,
+    html body #app .dashboard-header .edit-button,
+    html body #app .navbar-default .dropdown-menu,
+    html body #app .navbar-default .nav-item .dropdown,
+    html body #app .navbar-default [data-test='new-dropdown'],
+    html
+      body
+      #app
+      .navbar-default
+      [data-test='navbar-right-wrapper']
+      > *:not(.navbar-brand),
+    html body #app .navbar-default .navbar-collapse {
       display: none !important;
       visibility: hidden !important;
       opacity: 0 !important;
@@ -155,11 +150,12 @@ const GridContent = styled.div`
       position: absolute !important;
       left: -9999px !important;
       pointer-events: none !important;
+      z-index: -1 !important;
     }
 
-    /* 确保只保留logo */
-    body .navbar .navbar-header,
-    body .navbar .navbar-brand {
+    /* 确保 logo 可见 */
+    html body #app .navbar-default .navbar-brand,
+    html body #app .navbar-default .navbar-header {
       display: block !important;
       visibility: visible !important;
       opacity: 1 !important;
@@ -167,9 +163,34 @@ const GridContent = styled.div`
       height: auto !important;
       position: relative !important;
       left: auto !important;
+      padding: 8px !important;
+      margin: 0 !important;
+      pointer-events: auto !important;
+      z-index: 1 !important;
+    }
+
+    /* 移动端布局调整 */
+    .dashboard-grid {
+      display: block !important;
+      width: 100% !important;
+      padding: 8px !important;
+      margin: 0 !important;
+    }
+
+    .grid-container {
+      margin: 8px !important;
+      width: calc(100% - 16px) !important;
+    }
+
+    /* 确保内容区域正确显示 */
+    .dashboard-content {
+      margin: 0 !important;
+      padding: 8px !important;
+      width: 100% !important;
     }
   }
 `;
+
 class DashboardGrid extends React.PureComponent {
   constructor(props) {
     super(props);

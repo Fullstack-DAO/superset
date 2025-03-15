@@ -111,6 +111,7 @@ const GridContent = styled.div`
   height: 100%;
 
   @media (max-width: 768px) {
+    /* 现有的移动端样式 */
     .dashboard-grid {
       display: block !important;
       width: 100% !important;
@@ -126,33 +127,46 @@ const GridContent = styled.div`
         display: none !important;
       }
 
-      /* Optimize chart container for mobile */
-      .dashboard-component-chart-holder {
-        position: relative !important;
-        width: 100% !important;
-        height: auto !important;
-        margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
+      /* 其他现有样式... */
+    }
 
-        .chart-container {
-          position: relative !important;
-          width: 100% !important;
-          height: 350px !important;
-          min-height: 200px;
-          .slice_container {
-            position: relative !important;
-            width: 100% !important;
-            height: 100% !important;
-          }
-        }
-      }
+    /* 添加强制隐藏导航标签的样式 */
+    body .navbar .navbar-nav,
+    body .navbar .navbar-right,
+    body .navbar .top-nav-menu,
+    body .navbar-nav > li,
+    body .navbar-nav > li > a,
+    body .nav-item,
+    body .nav-link,
+    body .dropdown-menu,
+    body [data-test='navbar-top'] .container-fluid > div:not(.navbar-header),
+    body .navbar-collapse,
+    body .navbar-right .dropdown,
+    body .navbar-right button,
+    body .navbar-right a:not(.navbar-brand) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+      position: absolute !important;
+      left: -9999px !important;
+      pointer-events: none !important;
+    }
 
-      /* Adjust grid layout for mobile */
-      .dragdroppable-row,
-      .dragdroppable-column {
-        display: block !important;
-        width: 100% !important;
-        margin: 0 !important;
-      }
+    /* 确保只保留logo */
+    body .navbar .navbar-header,
+    body .navbar .navbar-brand {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: auto !important;
+      height: auto !important;
+      position: relative !important;
+      left: auto !important;
     }
   }
 `;

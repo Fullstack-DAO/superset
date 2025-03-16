@@ -473,24 +473,55 @@ const HeaderButtons = styled.div`
 
 const mobileStyles = css`
   @media (max-width: 768px) {
-    /* 保持 logo 可见 */
-    html body #app .navbar-default .navbar-brand,
-    html body #app [data-test="navbar-brand"] {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      width: auto !important;
-      height: 32px !important;
-      padding: 4px 8px !important;
-      margin: 0 !important;
-      position: relative !important;
-      z-index: 100 !important;
+    html body #app {
+      /* 只隐藏编辑按钮和更多操作按钮 */
+      button[data-test="edit-dashboard"],
+      button[data-test="dashboard-edit-actions"],
+      .dashboard-header__actions,
+      .dashboard-header__actions *,
+      .edit-dashboard-button,
+      .more-horiz,
+      .ant-dropdown-trigger,
+      [data-test="dashboard-header-buttons"],
+      [aria-label="More Options"],
+      .more-actions,
+      button[aria-label="more"],
+      .more-menu-trigger,
+      [data-test="more-actions"],
+      .header-with-actions button,
+      .header-with-actions .button-container,
+      .header-with-actions .action-buttons,
+      .manage-collaborators {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        pointer-events: none !important;
+      }
 
-      img {
-        height: 24px !important;
-        width: auto !important;
-        max-width: 120px !important;
-        object-fit: contain !important;
+      /* 确保标题容器正常显示 */
+      .dashboard-header {
+        position: relative !important;
+        width: 100% !important;
+        padding: 8px 16px !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+
+      /* 确保标题文本正常显示 */
+      .dashboard-title,
+      .header-title,
+      .dashboard__title,
+      h1.dashboard-title {
+        display: block !important;
+        font-size: 20px !important;
+        line-height: 1.4 !important;
+        padding: 8px !important;
+        margin: 0 !important;
+        text-align: left !important;
       }
     }
 
@@ -505,7 +536,7 @@ const mobileStyles = css`
       [role="navigation"] > *:not(.navbar-brand),
       [data-test="navbar-list-menu"],
       .dropdown-menu,
-      /* 特定的导航链接 */
+        /* 特定的导航链接 */
       a[href*="/dashboard"],
       a[href*="/chart"],
       a[href*="/dataset"],
@@ -513,23 +544,23 @@ const mobileStyles = css`
       a[href*="/copilot"],
       a[href*="/workflow"],
       a[href*="/docs"],
-      /* 菜单项和下拉菜单 */
+        /* 菜单项和下拉菜单 */
       .ant-menu,
       .ant-menu-item,
       .menu-item,
       .dropdown,
       .dropdown-toggle,
-      /* 其他需要隐藏的元素 */
+        /* 其他需要隐藏的元素 */
       .navbar-right:not(.navbar-brand),
       .top-menu-item:not(.navbar-brand),
       [role="menuitem"]:not(.navbar-brand),
       [role="menu"]:not(.navbar-brand),
-      /* 确保所有导航相关元素都被隐藏 */
+        /* 确保所有导航相关元素都被隐藏 */
       [data-test="menu-item"],
       [data-test="navbar-list-menu"],
       .nav-links,
       .menu-links,
-      /* 特别是这些特定的标签 */
+        /* 特别是这些特定的标签 */
       [href*="datasets"],
       [href*="sql"],
       [href*="copilot"],
@@ -547,18 +578,6 @@ const mobileStyles = css`
         position: absolute !important;
         left: -9999px !important;
       }
-    }
-
-    /* 确保导航容器本身保持可见但只显示 logo */
-    html body #app .navbar-default {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      height: auto !important;
-      min-height: 40px !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      position: relative !important;
     }
   }
 `;

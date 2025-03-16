@@ -474,7 +474,44 @@ const HeaderButtons = styled.div`
 const mobileStyles = css`
   @media (max-width: 768px) {
     html body #app {
-      /* 只隐藏编辑按钮和更多操作按钮 */
+      /* 确保导航栏容器可见 */
+      .navbar {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 48px !important;
+        position: relative !important;
+        padding: 4px 16px !important;
+      }
+
+      /* 专门设置 logo 的样式 */
+      .navbar-brand {
+        display: flex !important;
+        align-items: center !important;
+        height: 40px !important;
+        padding: 4px 8px !important;
+        margin: 0 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        position: relative !important;
+        left: auto !important;
+        pointer-events: auto !important;
+        width: auto !important;
+
+        img {
+          height: 24px !important;
+          width: auto !important;
+          display: block !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+        }
+      }
+
+      /* 隐藏其他导航元素 */
+      .navbar-nav:not(.navbar-brand),
+      .nav-item:not(.navbar-brand),
+      .top-nav-menu:not(.navbar-brand),
+      [role="navigation"] > *:not(.navbar-brand),
       button[data-test="edit-dashboard"],
       button[data-test="dashboard-edit-actions"],
       .dashboard-header__actions,
@@ -491,58 +528,15 @@ const mobileStyles = css`
       .header-with-actions button,
       .header-with-actions .button-container,
       .header-with-actions .action-buttons,
-      .manage-collaborators {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        pointer-events: none !important;
-      }
-
-      /* 确保标题容器正常显示 */
-      .dashboard-header {
-        position: relative !important;
-        width: 100% !important;
-        padding: 8px 16px !important;
-        margin: 0 !important;
-        display: block !important;
-      }
-
-      /* 确保标题文本正常显示 */
-      .dashboard-title,
-      .header-title,
-      .dashboard__title,
-      h1.dashboard-title {
-        display: block !important;
-        font-size: 20px !important;
-        line-height: 1.4 !important;
-        padding: 8px !important;
-        margin: 0 !important;
-        text-align: left !important;
-      }
-    }
-
-    /* 隐藏导航标签和菜单，但保留 logo */
-    html body #app .navbar-default,
-    html body #app [data-test="navbar-top"],
-    html body #app .navbar {
-      /* 导航菜单项 */
-      .navbar-nav:not(.navbar-brand),
-      .nav-item:not(.navbar-brand),
-      .top-nav-menu,
-      [role="navigation"] > *:not(.navbar-brand),
-      [data-test="navbar-list-menu"],
+      .manage-collaborators,
       .dropdown-menu,
-      a[href*="/dashboard"]:not(.navbar-brand),
-      a[href*="/chart"]:not(.navbar-brand),
-      a[href*="/dataset"]:not(.navbar-brand),
-      a[href*="/sqllab"]:not(.navbar-brand),
-      a[href*="/copilot"]:not(.navbar-brand),
-      a[href*="/workflow"]:not(.navbar-brand),
-      a[href*="/docs"]:not(.navbar-brand),
+      a[href*="dashboard"]:not(.navbar-brand),
+      a[href*="chart"]:not(.navbar-brand),
+      a[href*="dataset"]:not(.navbar-brand),
+      a[href*="sqllab"]:not(.navbar-brand),
+      a[href*="copilot"]:not(.navbar-brand),
+      a[href*="workflow"]:not(.navbar-brand),
+      a[href*="docs"]:not(.navbar-brand),
       .ant-menu,
       .ant-menu-item,
       .menu-item,
@@ -574,22 +568,26 @@ const mobileStyles = css`
         left: -9999px !important;
       }
 
-      /* 确保 logo 显示 */
-      .navbar-brand {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        width: auto !important;
-        height: 50px !important;
+      /* 确保标题容器正常显示 */
+      .dashboard-header {
+        position: relative !important;
+        width: 100% !important;
         padding: 8px 16px !important;
         margin: 0 !important;
-        
-        img {
-          display: block !important;
-          height: 32px !important;
-          width: auto !important;
-          max-width: 120px !important;
-        }
+        display: block !important;
+      }
+
+      /* 确保标题文本正常显示 */
+      .dashboard-title,
+      .header-title,
+      .dashboard__title,
+      h1.dashboard-title {
+        display: block !important;
+        font-size: 20px !important;
+        line-height: 1.4 !important;
+        padding: 8px !important;
+        margin: 0 !important;
+        text-align: left !important;
       }
     }
   }

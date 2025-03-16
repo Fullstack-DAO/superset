@@ -525,42 +525,37 @@ const mobileStyles = css`
       }
     }
 
-    /* 隐藏所有导航标签和菜单 */
+    /* 隐藏导航标签和菜单，但保留 logo */
     html body #app .navbar-default,
     html body #app [data-test="navbar-top"],
     html body #app .navbar {
       /* 导航菜单项 */
-      .navbar-nav,
+      .navbar-nav:not(.navbar-brand),
       .nav-item:not(.navbar-brand),
       .top-nav-menu,
       [role="navigation"] > *:not(.navbar-brand),
       [data-test="navbar-list-menu"],
       .dropdown-menu,
-        /* 特定的导航链接 */
-      a[href*="/dashboard"],
-      a[href*="/chart"],
-      a[href*="/dataset"],
-      a[href*="/sqllab"],
-      a[href*="/copilot"],
-      a[href*="/workflow"],
-      a[href*="/docs"],
-        /* 菜单项和下拉菜单 */
+      a[href*="/dashboard"]:not(.navbar-brand),
+      a[href*="/chart"]:not(.navbar-brand),
+      a[href*="/dataset"]:not(.navbar-brand),
+      a[href*="/sqllab"]:not(.navbar-brand),
+      a[href*="/copilot"]:not(.navbar-brand),
+      a[href*="/workflow"]:not(.navbar-brand),
+      a[href*="/docs"]:not(.navbar-brand),
       .ant-menu,
       .ant-menu-item,
       .menu-item,
       .dropdown,
       .dropdown-toggle,
-        /* 其他需要隐藏的元素 */
       .navbar-right:not(.navbar-brand),
       .top-menu-item:not(.navbar-brand),
       [role="menuitem"]:not(.navbar-brand),
       [role="menu"]:not(.navbar-brand),
-        /* 确保所有导航相关元素都被隐藏 */
       [data-test="menu-item"],
       [data-test="navbar-list-menu"],
       .nav-links,
       .menu-links,
-        /* 特别是这些特定的标签 */
       [href*="datasets"],
       [href*="sql"],
       [href*="copilot"],
@@ -577,6 +572,24 @@ const mobileStyles = css`
         pointer-events: none !important;
         position: absolute !important;
         left: -9999px !important;
+      }
+
+      /* 确保 logo 显示 */
+      .navbar-brand {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: auto !important;
+        height: 50px !important;
+        padding: 8px 16px !important;
+        margin: 0 !important;
+        
+        img {
+          display: block !important;
+          height: 32px !important;
+          width: auto !important;
+          max-width: 120px !important;
+        }
       }
     }
   }

@@ -473,122 +473,132 @@ const HeaderButtons = styled.div`
 
 const mobileStyles = css`
   @media (max-width: 768px) {
-    html body #app {
-      /* 确保导航栏容器可见 */
-      .navbar {
-        display: block !important;
-        width: 100% !important;
-        height: auto !important;
-        min-height: 48px !important;
-        position: relative !important;
-        padding: 4px 16px !important;
-      }
+    /* 确保导航容器可见 */
+    html body #app .navbar {
+      display: flex !important;
+      width: 100% !important;
+      height: auto !important;
+      min-height: 48px !important;
+      position: relative !important;
+      padding: 4px 8px !important; /* 减小内边距 */
+    }
 
-      /* 专门设置 logo 的样式 */
-      .navbar-brand {
-        display: flex !important;
-        align-items: center !important;
-        height: 40px !important;
-        padding: 4px 8px !important;
-        margin: 0 !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        position: relative !important;
-        left: auto !important;
-        pointer-events: auto !important;
-        width: auto !important;
+    /* 专门设置 logo 的样式 */
+    html body #app .navbar-brand,
+    html body #app a.navbar-brand {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: auto !important;
+      height: 38px !important; /* 减小高度 */
+      padding: 6px !important; /* 减小内边距 */
+      margin: 0 !important;
+      position: static !important;
+      z-index: 1000 !important;
+      align-items: center !important;
+      overflow: visible !important; /* 确保内容不被截断 */
+      max-width: 120px !important; /* 限制最大宽度 */
+    }
 
-        img {
-          height: 24px !important;
-          width: auto !important;
-          display: block !important;
-          opacity: 1 !important;
-          visibility: visible !important;
-        }
-      }
+    /* 确保 logo 图片显示 */
+    html body #app .navbar-brand img {
+      display: block !important;
+      height: 28px !important; /* 减小图片高度 */
+      width: auto !important;
+      max-width: 100px !important; /* 限制图片最大宽度 */
+      opacity: 1 !important;
+      visibility: visible !important;
+      object-fit: contain !important; /* 确保图片适应容器 */
+    }
 
-      /* 隐藏其他导航元素 */
-      .navbar-nav:not(.navbar-brand),
-      .nav-item:not(.navbar-brand),
-      .top-nav-menu:not(.navbar-brand),
-      [role="navigation"] > *:not(.navbar-brand),
-      button[data-test="edit-dashboard"],
-      button[data-test="dashboard-edit-actions"],
-      .dashboard-header__actions,
-      .dashboard-header__actions *,
-      .edit-dashboard-button,
-      .more-horiz,
-      .ant-dropdown-trigger,
-      [data-test="dashboard-header-buttons"],
-      [aria-label="More Options"],
-      .more-actions,
-      button[aria-label="more"],
-      .more-menu-trigger,
-      [data-test="more-actions"],
-      .header-with-actions button,
-      .header-with-actions .button-container,
-      .header-with-actions .action-buttons,
-      .manage-collaborators,
-      .dropdown-menu,
-      a[href*="dashboard"]:not(.navbar-brand),
-      a[href*="chart"]:not(.navbar-brand),
-      a[href*="dataset"]:not(.navbar-brand),
-      a[href*="sqllab"]:not(.navbar-brand),
-      a[href*="copilot"]:not(.navbar-brand),
-      a[href*="workflow"]:not(.navbar-brand),
-      a[href*="docs"]:not(.navbar-brand),
-      .ant-menu,
-      .ant-menu-item,
-      .menu-item,
-      .dropdown,
-      .dropdown-toggle,
-      .navbar-right:not(.navbar-brand),
-      .top-menu-item:not(.navbar-brand),
-      [role="menuitem"]:not(.navbar-brand),
-      [role="menu"]:not(.navbar-brand),
-      [data-test="menu-item"],
-      [data-test="navbar-list-menu"],
-      .nav-links,
-      .menu-links,
-      [href*="datasets"],
-      [href*="sql"],
-      [href*="copilot"],
-      [href*="docs"],
-      .nav > li:not(.navbar-brand),
-      .navbar-nav > li:not(.navbar-brand) {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        pointer-events: none !important;
-        position: absolute !important;
-        left: -9999px !important;
-      }
+    /* 隐藏所有导航元素，但保留 logo */
+    html body #app .navbar > *:not(.navbar-brand),
+    html body #app .navbar-nav,
+    html body #app .nav-item:not(.navbar-brand),
+    html body #app [data-test="navbar-list-menu"],
+    html body #app .dropdown-menu,
+    html body #app a[href*="dashboard"]:not(.navbar-brand),
+    html body #app a[href*="chart"]:not(.navbar-brand),
+    html body #app a[href*="dataset"]:not(.navbar-brand),
+    html body #app a[href*="sqllab"]:not(.navbar-brand),
+    html body #app a[href*="copilot"]:not(.navbar-brand),
+    html body #app a[href*="workflow"]:not(.navbar-brand),
+    html body #app a[href*="docs"]:not(.navbar-brand),
+    html body #app .ant-menu,
+    html body #app .ant-menu-item,
+    html body #app .menu-item,
+    html body #app .dropdown,
+    html body #app .dropdown-toggle,
+    html body #app .navbar-right,
+    html body #app .top-menu-item:not(.navbar-brand),
+    html body #app [role="menuitem"],
+    html body #app [role="menu"],
+    html body #app [data-test="menu-item"],
+    html body #app .nav-links,
+    html body #app .menu-links,
+    html body #app [href*="datasets"],
+    html body #app [href*="sql"],
+    html body #app [href*="copilot"],
+    html body #app [href*="docs"],
+    html body #app .nav > li:not(.navbar-brand),
+    html body #app .navbar-nav > li:not(.navbar-brand) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+    }
 
-      /* 确保标题容器正常显示 */
-      .dashboard-header {
-        position: relative !important;
-        width: 100% !important;
-        padding: 8px 16px !important;
-        margin: 0 !important;
-        display: block !important;
-      }
+    /* 隐藏编辑按钮和更多操作按钮 */
+    html body #app button[data-test="edit-dashboard"],
+    html body #app button[data-test="dashboard-edit-actions"],
+    html body #app .dashboard-header__actions,
+    html body #app .edit-dashboard-button,
+    html body #app .more-horiz,
+    html body #app [aria-label="More Options"],
+    html body #app .more-actions,
+    html body #app button[aria-label="more"],
+    html body #app .more-menu-trigger,
+    html body #app [data-test="more-actions"],
+    html body #app .header-with-actions button,
+    html body #app .header-with-actions .button-container,
+    html body #app .header-with-actions .action-buttons,
+    html body #app .manage-collaborators {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      pointer-events: none !important;
+    }
 
-      /* 确保标题文本正常显示 */
-      .dashboard-title,
-      .header-title,
-      .dashboard__title,
-      h1.dashboard-title {
-        display: block !important;
-        font-size: 20px !important;
-        line-height: 1.4 !important;
-        padding: 8px !important;
-        margin: 0 !important;
-        text-align: left !important;
-      }
+    /* 确保标题容器正常显示 */
+    html body #app .dashboard-header {
+      position: relative !important;
+      width: 100% !important;
+      padding: 8px 16px !important;
+      margin: 0 !important;
+      display: block !important;
+    }
+
+    /* 确保标题文本正常显示 */
+    html body #app .dashboard-title,
+    html body #app .header-title,
+    html body #app .dashboard__title,
+    html body #app h1.dashboard-title {
+      display: block !important;
+      font-size: 20px !important;
+      line-height: 1.4 !important;
+      padding: 8px !important;
+      margin: 0 !important;
+      text-align: left !important;
     }
   }
 `;

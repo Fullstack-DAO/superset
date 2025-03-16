@@ -89,6 +89,7 @@ import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
 import DashboardCollaboratorModal from "../PropertiesModal/DashboardCollaboratorModal";
 
+new Date().getTime();
 type DashboardBuilderProps = {};
 
 // @z-index-above-dashboard-charts + 1 = 11
@@ -244,6 +245,27 @@ const StyledHeader = styled.div`
         border: 0 !important;
         position: absolute !important;
         left: -9999px !important;
+      }
+
+      /* 特别针对 logo 的样式 */
+      .navbar-brand {
+        padding: 0 !important;
+        margin: 4px !important;
+        max-height: 32px !important;
+        
+        img {
+          height: 16px !important;  /* 显著减小 logo 高度 */
+          width: auto !important;
+          max-width: 80px !important;  /* 减小最大宽度 */
+          object-fit: contain !important;
+        }
+      }
+
+      /* 调整顶部导航栏高度 */
+      .dashboard-header {
+        min-height: 36px !important;
+        height: auto !important;
+        padding: 4px 8px !important;
       }
     }
   }
@@ -451,119 +473,92 @@ const HeaderButtons = styled.div`
 
 const mobileStyles = css`
   @media (max-width: 768px) {
-    /* Hide filter related elements but keep layout structure */
-    [data-test="dashboard-filters-panel"],
-    .filter-bar,
-    .filter-bar-container,
-    .dashboard-filters,
-    .filter-scope-modal,
-    .filter-scope-selector,
-    .filter-field,
-    .filter-container,
-    .filter-item,
-    .filter-panel,
-    .dashboard-component-filter-panel,
-    .filter-trigger,
-    .filter-icon,
-    .filter-dropdown,
-    .dashboard__filter-bar,
-    .dashboard-filter-bar-container,
-    .filter-bar-resizable,
-    .filter-bar-wrapper,
-    .filter-bar-header,
-    .filter-bar-body,
-    .filter-bar-footer,
-    .filter-bar-toggle,
-    .filter-bar-toggle-container,
-    /* 添加编辑仪表盘按钮相关的选择器 */
-    [data-test="edit-dashboard-button"],
-    [data-test="dashboard-edit-actions"],
-    .dashboard-header button:not(.navbar-brand),
-    .dashboard-header .button-container,
-    .dashboard-header .action-buttons,
-    .dashboard-header .edit-button,
-    .dashboard-header [role="button"]:not(.dashboard-title),
-    .dashboard-header .ant-btn:not(.dashboard-title),
-    .dashboard-header .header-with-actions button,
-    .dashboard-header .more-horiz,
-    .dashboard-header .css-1t062t8,
-    .dashboard-header .css-16uq7e2,
-    .dashboard-header div[role="button"]:not(.dashboard-title),
-    .dashboard-header span[role="button"]:not(.dashboard-title),
-    .dashboard-header .ant-dropdown-trigger,
-    .dashboard-header .dashboard-builder-sidepane-trigger,
-    .dashboard-header .dashboard-header__actions,
-    .dashboard-header .dashboard-header__actions *,
-    .dashboard-header [data-test="dashboard-header-buttons"],
-    .dashboard-header [data-test="dashboard-header-buttons"] * {
-      opacity: 0 !important;
-      visibility: hidden !important;
-      pointer-events: none !important;
-      position: absolute !important;
-      width: 0 !important;
-      height: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      border: 0 !important;
-      left: -9999px !important;
-      display: none !important;
-    }
-
-    /* Hide navigation buttons and menus */
-    .navbar-nav,
-    .navbar-right,
-    .top-nav-menu,
-    .navbar-brand-text,
-    .navbar-static-side,
-    .nav-item,
-    .sidebar,
-    .sidebar-nav,
-    .navbar-default,
-    [data-test="navbar-top"],
-    [data-test="navbar-brand-wrapper"],
-    [data-test="navbar-right-wrapper"],
-    .main-menu,
-    #app-menu,
-    .nav-item .dropdown-menu,
-    .navbar .dropdown-menu,
-    .navbar-nav > li,
-    .navbar-nav > li > a,
-    .nav-link,
-    [data-test="new-dropdown"],
-    button[aria-label="Settings"],
-    [data-test="language-selector"],
-    .ant-dropdown-trigger,
-    .more-horiz,
-    [data-test="new-dropdown"],
-    [data-test="new-chart-button"],
-    [data-test="new-dashboard-button"],
-    .navbar-right .dropdown {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      width: 0 !important;
-      height: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      border: 0 !important;
-    }
-
-    /* Keep logo visible */
-    .navbar-brand img {
+    /* 保持 logo 可见 */
+    html body #app .navbar-default .navbar-brand,
+    html body #app [data-test="navbar-brand"] {
       display: block !important;
       visibility: visible !important;
       opacity: 1 !important;
       width: auto !important;
-      height: auto !important;
+      height: 32px !important;
+      padding: 4px 8px !important;
+      margin: 0 !important;
+      position: relative !important;
+      z-index: 100 !important;
+
+      img {
+        height: 24px !important;
+        width: auto !important;
+        max-width: 120px !important;
+        object-fit: contain !important;
+      }
     }
 
-    /* Adjust logo container */
-    .navbar-brand {
+    /* 隐藏所有导航标签和菜单 */
+    html body #app .navbar-default,
+    html body #app [data-test="navbar-top"],
+    html body #app .navbar {
+      /* 导航菜单项 */
+      .navbar-nav,
+      .nav-item:not(.navbar-brand),
+      .top-nav-menu,
+      [role="navigation"] > *:not(.navbar-brand),
+      [data-test="navbar-list-menu"],
+      .dropdown-menu,
+      /* 特定的导航链接 */
+      a[href*="/dashboard"],
+      a[href*="/chart"],
+      a[href*="/dataset"],
+      a[href*="/sqllab"],
+      a[href*="/copilot"],
+      a[href*="/workflow"],
+      a[href*="/docs"],
+      /* 菜单项和下拉菜单 */
+      .ant-menu,
+      .ant-menu-item,
+      .menu-item,
+      .dropdown,
+      .dropdown-toggle,
+      /* 其他需要隐藏的元素 */
+      .navbar-right:not(.navbar-brand),
+      .top-menu-item:not(.navbar-brand),
+      [role="menuitem"]:not(.navbar-brand),
+      [role="menu"]:not(.navbar-brand),
+      /* 确保所有导航相关元素都被隐藏 */
+      [data-test="menu-item"],
+      [data-test="navbar-list-menu"],
+      .nav-links,
+      .menu-links,
+      /* 特别是这些特定的标签 */
+      [href*="datasets"],
+      [href*="sql"],
+      [href*="copilot"],
+      [href*="docs"],
+      .nav > li:not(.navbar-brand),
+      .navbar-nav > li:not(.navbar-brand) {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+      }
+    }
+
+    /* 确保导航容器本身保持可见但只显示 logo */
+    html body #app .navbar-default {
       display: block !important;
       visibility: visible !important;
       opacity: 1 !important;
-      padding: 8px !important;
+      height: auto !important;
+      min-height: 40px !important;
+      padding: 0 !important;
       margin: 0 !important;
+      position: relative !important;
     }
   }
 `;

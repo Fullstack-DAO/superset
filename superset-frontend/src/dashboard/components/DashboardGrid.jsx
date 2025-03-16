@@ -163,10 +163,17 @@ const GridContent = styled.div`
       height: auto !important;
       position: relative !important;
       left: auto !important;
-      padding: 8px !important;
-      margin: 0 !important;
-      pointer-events: auto !important;
-      z-index: 1 !important;
+      padding: 2px 4px !important;
+
+      img,
+      a img,
+      .navbar-brand img {
+        height: 20px !important; /* 进一步减小高度 */
+        width: auto !important;
+        max-width: 100px !important; /* 减小最大宽度 */
+        object-fit: contain !important;
+        margin: 0 !important;
+      }
     }
 
     /* 移动端布局调整 */
@@ -187,6 +194,22 @@ const GridContent = styled.div`
       margin: 0 !important;
       padding: 8px !important;
       width: 100% !important;
+    }
+
+    /* 调整 logo 大小 - 增加选择器优先级 */
+    html body #app .navbar-default .navbar-brand,
+    html body #app .navbar-default .navbar-header {
+      padding: 2px 4px !important;
+
+      img,
+      a img,
+      .navbar-brand img {
+        height: 20px !important; /* 进一步减小高度 */
+        width: auto !important;
+        max-width: 100px !important; /* 减小最大宽度 */
+        object-fit: contain !important;
+        margin: 0 !important;
+      }
     }
   }
 `;

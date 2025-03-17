@@ -37,7 +37,7 @@ import {
   isPhysicalColumn,
   isTimeseriesAnnotationLayer,
   t,
-  SupersetTheme,
+  TimeseriesChartDataResponseResult,
 } from '@superset-ui/core';
 import {
   extractExtraMetrics,
@@ -46,7 +46,6 @@ import {
 } from '@superset-ui/chart-controls';
 import { EChartsCoreOption, SeriesOption } from 'echarts';
 import { ZRLineType } from 'echarts/types/src/util/types';
-import { TreeSeriesOption } from 'echarts/charts';
 import {
   EchartsTimeseriesChartProps,
   EchartsTimeseriesFormData,
@@ -54,12 +53,7 @@ import {
   TimeseriesChartTransformedProps,
 } from './types';
 import { DEFAULT_FORM_DATA } from './constants';
-import {
-  ForecastSeriesEnum,
-  ForecastValue,
-  Refs,
-  DeepPartial,
-} from '../types';
+import { ForecastSeriesEnum, ForecastValue, Refs } from '../types';
 import { parseAxisBound } from '../utils/controls';
 import {
   calculateLowerLogTick,
@@ -106,95 +100,33 @@ import {
   getYAxisFormatter,
 } from '../utils/formatters';
 
-type LabelMap = {
-  [key: string]: string[];
-};
-
-interface TimeseriesChartDataResponse {
-  data: any[];
-  label_map?: {
-    [key: string]: string[];
-  };
-}
-
-interface DatasourceType {
-  verboseMap?: Record<string, string>;
-  columnFormats?: Record<string, string>;
-  currencyFormats?: Record<string, any>;
-}
-
 export default function transformProps(
   chartProps: EchartsTimeseriesChartProps,
 ): TimeseriesChartTransformedProps {
-  // 添加防御性检查
-  if (!chartProps?.queriesData?.[0]?.data) {
-    const defaultProps = {
-      width: chartProps?.width || 800,
-      height: chartProps?.height || 600,
-      formData: chartProps?.formData || {},
-      emitCrossFilters: false,
-    };
-
-    return {
-      width: defaultProps.width,
-      height: defaultProps.height,
-      echartOptions: {
-        grid: { ...defaultGrid },
-        series: [],
-        xAxis: {
-          type: AxisType.category,
-          data: []
-        },
-        yAxis: { type: AxisType.value },
-      },
-      formData: defaultProps.formData,
-      groupby: [],
-      labelMap: {},
-      selectedValues: {},
-      setDataMask: () => {},
-      setControlValue: () => {},
-      legendData: [],
-      onContextMenu: () => {},
-      onLegendStateChanged: () => {},
-      onFocusedSeries: () => {},
-      xValueFormatter: String,
-      xAxis: {
-        label: '',
-        type: AxisType.category,
-      },
-      refs: {},
-      coltypeMapping: {},
-      emitCrossFilters: defaultProps.emitCrossFilters,
-    };
-  }
-
-  // 只保留一次解构，移除重复的解构
   const {
     width,
     height,
+    filterState,
+    legendState,
     formData,
+    hooks,
     queriesData,
-    filterState = {},
-    legendState = {},
-    hooks = {},
-    datasource = {} as DatasourceType,
-    theme = {} as SupersetTheme,
-    inContextMenu = false,
-    emitCrossFilters = false,
+    datasource,
+    theme,
+    inContextMenu,
+    emitCrossFilters,
   } = chartProps;
 
   let focusedSeries: string | null = null;
 
-  // 解构 datasource
   const {
     verboseMap = {},
     columnFormats = {},
     currencyFormats = {},
   } = datasource;
-
   const [queryData] = queriesData;
-  const rawData = queryData as unknown as TimeseriesChartDataResponse;
-  const { data = [], label_map = {} } = rawData;
+  const { data = [], label_map = {} } =
+    queryData as TimeseriesChartDataResponseResult;
 
   const dataTypes = getColtypesMapping(queryData);
   const annotationData = getAnnotationData(chartProps);
@@ -252,23 +184,15 @@ export default function transformProps(
   }: EchartsTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
   const refs: Refs = {};
 
-  const labelMap = Object.entries(label_map || {}).reduce<LabelMap>((acc, entry) => {
-    const [key, value] = entry;
-    if (!Array.isArray(value)) {
-      return { ...acc, [key]: [] };
-    }
-
+  const labelMap = Object.entries(label_map).reduce((acc, entry) => {
     if (
-      value.length > groupby.length &&
+      entry[1].length > groupby.length &&
       Array.isArray(timeCompare) &&
-      timeCompare.includes(value[0])
+      timeCompare.includes(entry[1][0])
     ) {
-      const newEntry = [...value];
-      newEntry.shift();
-      return { ...acc, [key]: newEntry };
+      entry[1].shift();
     }
-
-    return { ...acc, [key]: value };
+    return { ...acc, [entry[0]]: entry[1] };
   }, {});
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
@@ -294,21 +218,16 @@ export default function transformProps(
     getMetricLabel,
   );
 
-  // 确保 groupby 和 metrics 都有值且是数组
-  const groupbyArray = Array.isArray(groupby) ? groupby : [];
-  const metricsArray = Array.isArray(metrics) ? metrics : [];
+  const isMultiSeries = groupby.length || metrics.length > 1;
 
-  // 修改 isMultiSeries 的定义
-  const isMultiSeries = groupbyArray.length > 0 || metricsArray.length > 1;
-
-  const [rawSeriesTemp, sortedTotalValuesTemp, minPositiveValueTemp] = extractSeries(
-    rebasedData || [],
+  const [rawSeries, sortedTotalValues, minPositiveValue] = extractSeries(
+    rebasedData,
     {
       fillNeighborValue: stack && !forecastEnabled ? 0 : undefined,
-      xAxis: xAxisLabel || '',
-      extraMetricLabels: extraMetricLabels || [],
+      xAxis: xAxisLabel,
+      extraMetricLabels,
       stack,
-      totalStackedValues: totalStackedValues || [],
+      totalStackedValues,
       isHorizontal,
       sortSeriesType,
       sortSeriesAscending,
@@ -317,28 +236,21 @@ export default function transformProps(
         ? xAxisSortSeriesAscending
         : undefined,
     },
-  ) || [[], [], undefined];
-
-  const rawSeries = Array.isArray(rawSeriesTemp) ? rawSeriesTemp : [];
-  const sortedTotalValues = Array.isArray(sortedTotalValuesTemp) ? sortedTotalValuesTemp : [];
-  const minPositiveValue = minPositiveValueTemp;
-
-  const showValueIndexes = extractShowValueIndexes(rawSeries || [], {
+  );
+  const showValueIndexes = extractShowValueIndexes(rawSeries, {
     stack,
     onlyTotal,
     isHorizontal,
-    legendState: legendState || {},
-  }) || [];
-
+    legendState,
+  });
   const seriesContexts = extractForecastSeriesContexts(
-    (rawSeries || []).map(series => String(series?.name || '')),
-  ) || {};
-
+    Object.values(rawSeries).map(series => series.name as string),
+  );
   const isAreaExpand = stack === StackControlsValue.Expand;
   const xAxisDataType = dataTypes?.[xAxisLabel] ?? dataTypes?.[xAxisOrig];
 
   const xAxisType = getAxisType(stack, xAxisForceCategorical, xAxisDataType);
-  const series: DeepPartial<SeriesOption | TreeSeriesOption>[] = [];
+  const series: SeriesOption[] = [];
 
   const forcePercentFormatter = Boolean(contributionMode || isAreaExpand);
   const percentFormatter = getNumberFormatter(',.0%');
@@ -356,11 +268,7 @@ export default function transformProps(
   const array = ensureIsArray(chartProps.rawFormData?.time_compare);
   const inverted = invert(verboseMap);
 
-  (rawSeries || []).forEach(entry => {
-    if (!entry || typeof entry !== 'object') {
-      return;
-    }
-
+  rawSeries.forEach(entry => {
     const lineStyle = isDerivedSeries(entry, chartProps.rawFormData)
       ? { type: 'dashed' as ZRLineType }
       : {};
@@ -368,10 +276,6 @@ export default function transformProps(
     const entryName = String(entry.name || '');
     const seriesName = inverted[entryName] || entryName;
     const colorScaleKey = getOriginalSeries(seriesName, array);
-
-    if (!entry.data || !Array.isArray(entry.data)) {
-      return;
-    }
 
     const transformedSeries = transformSeries(
       entry,
@@ -392,7 +296,7 @@ export default function transformProps(
           : getCustomFormatter(
               customFormatters,
               metrics,
-              labelMap[seriesName]?.[0] ?? '',
+              labelMap[seriesName]?.[0],
             ) ?? defaultFormatter,
         showValue,
         onlyTotal,
@@ -405,47 +309,28 @@ export default function transformProps(
         lineStyle,
       },
     );
-
     if (transformedSeries) {
       if (stack === StackControlsValue.Stream) {
-        const safeData = Array.isArray(transformedSeries.data)
-          ? transformedSeries.data.map((row: any) => {
-              if (Array.isArray(row) && row.length >= 2) {
-                return [row[0], row[1] ?? 0];
-              }
-              return [null, 0];
-            })
-          : [];
-
+        // bug in Echarts - `stackStrategy: 'all'` doesn't work with nulls, so we cast them to 0
         series.push({
           ...transformedSeries,
-          data: safeData,
-        } as DeepPartial<SeriesOption>);
+          data: (transformedSeries.data as any).map(
+            (row: [string | number, number]) => [row[0], row[1] ?? 0],
+          ),
+        });
       } else {
-        series.push(transformedSeries as DeepPartial<SeriesOption>);
+        series.push(transformedSeries);
       }
     }
   });
 
-  if (!series.length) {
-    series.push({
-      type: 'bar',
-      data: [],
-    });
-  }
+  if (stack === StackControlsValue.Stream) {
+    const baselineSeries = getBaselineSeriesForStream(
+      series.map(entry => entry.data) as [string | number, number][][],
+      seriesType,
+    );
 
-  if (stack === StackControlsValue.Stream && series.length > 0) {
-    try {
-      const baselineSeries = getBaselineSeriesForStream(
-        series.map(entry => Array.isArray(entry.data) ? entry.data : []) as [string | number, number][][],
-        seriesType,
-      );
-      if (baselineSeries) {
-        series.unshift(baselineSeries);
-      }
-    } catch (e) {
-      console.warn('Failed to create baseline series for stream chart:', e);
-    }
+    series.unshift(baselineSeries);
   }
   const selectedValues = (filterState.selectedValues || []).reduce(
     (acc: Record<string, number>, selectedValue: string) => {
@@ -479,7 +364,7 @@ export default function transformProps(
             data,
             annotationData,
             colorScale,
-            theme as SupersetTheme,
+            theme,
             sliceId,
           ),
         );
@@ -490,7 +375,7 @@ export default function transformProps(
             data,
             annotationData,
             colorScale,
-            theme as SupersetTheme,
+            theme,
             sliceId,
           ),
         );
@@ -575,8 +460,8 @@ export default function transformProps(
     },
     minorTick: { show: minorTicks },
     minInterval:
-      xAxisType === AxisType.time && timeGrainSqla && timeGrainSqla in TIMEGRAIN_TO_TIMESTAMP
-        ? TIMEGRAIN_TO_TIMESTAMP[timeGrainSqla as keyof typeof TIMEGRAIN_TO_TIMESTAMP]
+      xAxisType === AxisType.time && timeGrainSqla
+        ? TIMEGRAIN_TO_TIMESTAMP[timeGrainSqla]
         : 0,
     ...getMinAndMaxFromBounds(
       xAxisType,
@@ -649,7 +534,7 @@ export default function transformProps(
           // if there are no dimensions, key is a verbose name of a metric,
           // otherwise it is a comma separated string where the first part is metric name
           const formatterKey =
-            groupby.length === 0 ? inverted[key] : (labelMap[key]?.[0] ?? '');
+            groupby.length === 0 ? inverted[key] : labelMap[key]?.[0];
           const content = formatForecastTooltipSeries({
             ...value,
             seriesName: key,
@@ -674,13 +559,13 @@ export default function transformProps(
         legendType,
         legendOrientation,
         showLegend,
-        theme as SupersetTheme,
+        theme,
         zoomable,
         legendState,
       ),
       data: legendData as string[],
     },
-    series: dedupSeries(series as SeriesOption[]),
+    series: dedupSeries(series),
     toolbox: {
       show: zoomable,
       top: TIMESERIES_CONSTANTS.toolboxTop,

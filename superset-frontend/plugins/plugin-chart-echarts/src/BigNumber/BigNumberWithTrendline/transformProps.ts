@@ -78,7 +78,7 @@ export default function transformProps(
     datasource: { currencyFormats = {}, columnFormats = {} },
   } = chartProps;
   const {
-    colorPicker = { r: 0, g: 0, b: 0, a: 1 },  // 添加默认值
+    colorPicker,
     compareLag: compareLag_,
     compareSuffix = '',
     timeFormat,
@@ -107,7 +107,7 @@ export default function transformProps(
   const compareLag = Number(compareLag_) || 0;
   let formattedSubheader = subheader;
 
-  const { r = 0, g = 0, b = 0} = colorPicker || {};  // 添加空值判断和默认值
+  const { r, g, b } = colorPicker;
   const mainColor = `rgb(${r}, ${g}, ${b})`;
 
   const xAxisLabel = getXAxisLabel(rawFormData) as string;

@@ -71,18 +71,42 @@ const GRID_SETTINGS = {
 };
 
 const DashboardEmptyStateContainer = styled.div`
-  position: relative;
-  min-height: 200px;
-  padding: 32px;
-  font-size: 16px;
-  line-height: 1.5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${({ theme }) => theme.colors.grayscale.light5};
-  border-radius: 4px;
-  margin: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+`;
+
+const GridContent = styled.div`
+  ${({ theme }) => css`
+    display: flex;
+    flex-direction: column;
+
+    /* gutters between rows */
+    & > div:not(:last-child):not(.empty-droptarget) {
+      margin-bottom: ${theme.gridUnit * 4}px;
+    }
+
+    & > .empty-droptarget {
+      width: 100%;
+      height: 100%;
+    }
+
+    & > .empty-droptarget:first-child {
+      height: ${theme.gridUnit * 12}px;
+      margin-top: ${theme.gridUnit * -6}px;
+    }
+
+    & > .empty-droptarget:last-child {
+      height: ${theme.gridUnit * 12}px;
+      margin-top: ${theme.gridUnit * -6}px;
+    }
+
+    & > .empty-droptarget.empty-droptarget--full:only-child {
+      height: 80vh;
+    }
+  `}
 `;
 
 const GridColumnGuide = styled.div`
@@ -105,122 +129,12 @@ const GridColumnGuide = styled.div`
   `};
 `;
 
-const GridContent = styled.div`
-  position: relative;
-  width: 100%;
-  height: 100%;
-
-  @media (max-width: 768px) {
-    /* 增加选择器优先级并添加 !important */
-    html body #app .navbar-default .navbar-nav,
-    html body #app .navbar-default .navbar-right,
-    html body #app .navbar-default .top-nav-menu,
-    html body #app [data-test='navbar-top'],
-    html body #app .navbar-default [href*='/dashboard'],
-    html body #app .navbar-default [href*='/chart'],
-    html body #app .navbar-default [href*='/dataset'],
-    html body #app .navbar-default [href*='/sqllab'],
-    html body #app .navbar-default [href*='/copilot'],
-    html body #app .navbar-default [href*='/workflow'],
-    html body #app .navbar-default .nav-item:not(.navbar-brand),
-    html body #app [data-test='edit-dashboard-button'],
-    html body #app [data-test='dashboard-edit-actions'],
-    html body #app .dashboard-header button:not(.navbar-brand),
-    html body #app .dashboard-header .button-container,
-    html body #app .dashboard-header .action-buttons,
-    html body #app .dashboard-header .edit-button,
-    html body #app .navbar-default .dropdown-menu,
-    html body #app .navbar-default .nav-item .dropdown,
-    html body #app .navbar-default [data-test='new-dropdown'],
-    html
-      body
-      #app
-      .navbar-default
-      [data-test='navbar-right-wrapper']
-      > *:not(.navbar-brand),
-    html body #app .navbar-default .navbar-collapse {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      width: 0 !important;
-      height: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      border: 0 !important;
-      position: absolute !important;
-      left: -9999px !important;
-      pointer-events: none !important;
-      z-index: -1 !important;
-    }
-
-    /* 确保 logo 可见 */
-    html body #app .navbar-default .navbar-brand,
-    html body #app .navbar-default .navbar-header {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      width: auto !important;
-      height: auto !important;
-      position: relative !important;
-      left: auto !important;
-      padding: 2px 4px !important;
-
-      img,
-      a img,
-      .navbar-brand img {
-        height: 20px !important; /* 进一步减小高度 */
-        width: auto !important;
-        max-width: 100px !important; /* 减小最大宽度 */
-        object-fit: contain !important;
-        margin: 0 !important;
-      }
-    }
-
-    /* 移动端布局调整 */
-    .dashboard-grid {
-      display: block !important;
-      width: 100% !important;
-      padding: 8px !important;
-      margin: 0 !important;
-    }
-
-    .grid-container {
-      margin: 8px !important;
-      width: calc(100% - 16px) !important;
-    }
-
-    /* 确保内容区域正确显示 */
-    .dashboard-content {
-      margin: 0 !important;
-      padding: 8px !important;
-      width: 100% !important;
-    }
-
-    /* 调整 logo 大小 - 增加选择器优先级 */
-    html body #app .navbar-default .navbar-brand,
-    html body #app .navbar-default .navbar-header {
-      padding: 2px 4px !important;
-
-      img,
-      a img,
-      .navbar-brand img {
-        height: 20px !important; /* 进一步减小高度 */
-        width: auto !important;
-        max-width: 100px !important; /* 减小最大宽度 */
-        object-fit: contain !important;
-        margin: 0 !important;
-      }
-    }
-  }
-`;
-
 class DashboardGrid extends React.PureComponent {
   constructor(props) {
     super(props);
     this.state = {
       isMobile: false,
       isResizing: false,
-      mounted: false,
     };
 
     this.handleResizeStart = this.handleResizeStart.bind(this);
@@ -280,10 +194,6 @@ class DashboardGrid extends React.PureComponent {
     // 直接调用箭头函数属性
     this.checkMobileMode();
     window.addEventListener('resize', this.handleResize);
-    setTimeout(() => {
-      this.setState({ mounted: true });
-    }, 100);
-
     // 添加移动端导航栏隐藏逻辑
     this.hideNavigationOnMobile();
   }
@@ -318,16 +228,10 @@ class DashboardGrid extends React.PureComponent {
 
   handleResize = _.debounce(() => {
     this.checkMobileMode();
-    this.hideNavigationOnMobile(); // 在窗口大小改变时也执行隐藏逻辑
-    this.setState({ mounted: false }, () => {
-      setTimeout(() => {
-        this.setState({ mounted: true });
-      }, 100);
-    });
   }, 250);
 
   render() {
-    const { isMobile, isResizing, mounted } = this.state;
+    const { isMobile, isResizing } = this.state;
     const {
       width,
       gridComponent,
@@ -425,11 +329,7 @@ class DashboardGrid extends React.PureComponent {
           </DashboardEmptyStateContainer>
         )}
         <div className="dashboard-grid" ref={this.setGridRef}>
-          <GridContent
-            className="grid-content"
-            data-test="grid-content"
-            style={{ visibility: mounted ? 'visible' : 'hidden' }}
-          >
+          <GridContent className="grid-content" data-test="grid-content">
             {editMode && (
               <DragDroppable
                 component={gridComponent}
@@ -462,9 +362,9 @@ class DashboardGrid extends React.PureComponent {
                 onResize={this.handleResize}
                 onResizeStop={this.handleResizeStop}
                 onChangeTab={this.handleChangeTab}
-                editMode={editMode}
               />
             ))}
+            {/* make the area below components droppable */}
             {editMode && gridComponent?.children?.length > 0 && (
               <DragDroppable
                 component={gridComponent}

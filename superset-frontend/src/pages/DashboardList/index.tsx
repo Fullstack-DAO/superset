@@ -68,6 +68,7 @@ import { DashboardStatus } from 'src/features/dashboards/types';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
+import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
@@ -113,7 +114,7 @@ const Actions = styled.div`
 
 function DashboardList(props: DashboardListProps) {
   const { addDangerToast, addSuccessToast, user } = props;
-
+  const screens = useBreakpoint();
   const { roles } = useSelector<any, UserWithPermissionsAndRoles>(
     state => state.user,
   );
@@ -717,7 +718,10 @@ function DashboardList(props: DashboardListProps) {
   }
   return (
     <>
-      <SubMenu name={t('Dashboards')} buttons={subMenuButtons} />
+      <SubMenu
+        name={t('Dashboards')}
+        buttons={!screens.md ? [] : subMenuButtons}
+      />
       <ConfirmStatusChange
         title={t('Please confirm')}
         description={t(
@@ -788,7 +792,7 @@ function DashboardList(props: DashboardListProps) {
                 disableBulkSelect={toggleBulkSelect}
                 fetchData={fetchData}
                 refreshData={refreshData}
-                filters={filters}
+                filters={!screens.md ? [] : filters}
                 initialSort={initialSort}
                 loading={loading}
                 pageSize={PAGE_SIZE}
@@ -801,7 +805,9 @@ function DashboardList(props: DashboardListProps) {
                 }
                 renderCard={renderCard}
                 defaultViewMode={
-                  isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
+                  !screens.md
+                    ? 'card'
+                    : isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
                     ? 'card'
                     : 'table'
                 }

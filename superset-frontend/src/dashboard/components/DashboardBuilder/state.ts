@@ -38,7 +38,9 @@ export const useNativeFilters = () => {
   const filterValues = Object.values(filters);
   const expandFilters = getUrlParam(URL_PARAMS.expandFilters);
   const [dashboardFiltersOpen, setDashboardFiltersOpen] = useState(
-    expandFilters ?? !!filterValues.length,
+    document.body.clientWidth >= 768
+      ? expandFilters ?? !!filterValues.length
+      : false,
   );
 
   const nativeFiltersEnabled =
@@ -73,8 +75,10 @@ export const useNativeFilters = () => {
       (filterValues.length === 0 && nativeFiltersEnabled)
     ) {
       toggleDashboardFiltersOpen(false);
-    } else {
+    } else if (document.body.clientWidth >= 768) {
       toggleDashboardFiltersOpen(true);
+    } else {
+      toggleDashboardFiltersOpen(false);
     }
   }, [filterValues.length]);
 

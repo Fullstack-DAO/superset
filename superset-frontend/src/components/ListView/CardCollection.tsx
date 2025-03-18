@@ -41,6 +41,10 @@ const CardContainer = styled.div<{ showThumbnails?: boolean }>`
         ? `${theme.gridUnit * 8 + 3}px ${theme.gridUnit * 9}px`
         : `${theme.gridUnit * 8 + 1}px ${theme.gridUnit * 9}px`
     };
+    @media (max-width: 767px) {
+      grid-template-columns: repeat(auto-fit, 100%);
+      padding: ${theme.gridUnit * 8}px 0;
+    }
   `}
 `;
 

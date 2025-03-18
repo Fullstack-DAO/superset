@@ -44,41 +44,45 @@ const StyledButton = styled.button`
 
 const SidebarButtons: React.FC = () => {
   const handleSidebarToggle = useCallback(() => {
-    const selectors = ['.dashboard-builder-sidepane', '.dashboard-component-tabs'];
+    const selectors = [
+      '.dashboard-builder-sidepane',
+      '.dashboard-component-tabs',
+    ];
     selectors.forEach(selector => {
       const elements = document.querySelectorAll<HTMLElement>(selector);
-      Array.from(elements).find(
-        el => 
-          window.getComputedStyle(el).display !== 'none' && 
-          window.getComputedStyle(el).visibility !== 'hidden'
-      )?.click();
+      Array.from(elements)
+        .find(
+          el =>
+            window.getComputedStyle(el).display !== 'none' &&
+            window.getComputedStyle(el).visibility !== 'hidden',
+        )
+        ?.click();
     });
   }, []);
 
   const handleFilterToggle = useCallback(() => {
-    const selectors = ['.dashboard-builder-sidepane', '.dashboard-component-tabs'];
+    const selectors = [
+      '.dashboard-builder-sidepane',
+      '.dashboard-component-tabs',
+    ];
     selectors.forEach(selector => {
       const elements = document.querySelectorAll<HTMLElement>(selector);
-      Array.from(elements).find(
-        el => 
-          window.getComputedStyle(el).display !== 'none' && 
-          window.getComputedStyle(el).visibility !== 'hidden'
-      )?.click();
+      Array.from(elements)
+        .find(
+          el =>
+            window.getComputedStyle(el).display !== 'none' &&
+            window.getComputedStyle(el).visibility !== 'hidden',
+        )
+        ?.click();
     });
   }, []);
 
   return (
     <ButtonContainer>
-      <StyledButton
-        onClick={handleSidebarToggle}
-        title="折叠/展开侧边栏"
-      >
+      <StyledButton onClick={handleSidebarToggle} title="折叠/展开侧边栏">
         ≡
       </StyledButton>
-      <StyledButton
-        onClick={handleFilterToggle}
-        title="筛选器"
-      >
+      <StyledButton onClick={handleFilterToggle} title="筛选器">
         ⊞
       </StyledButton>
     </ButtonContainer>

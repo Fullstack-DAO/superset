@@ -35,6 +35,8 @@ import {
   MenuData,
 } from 'src/types/bootstrapTypes';
 import getBootstrapData from 'src/utils/getBootstrapData';
+import { CloseOutlined, MenuOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
 import RightMenu from './RightMenu';
 
 const bootstrapData = getBootstrapData();
@@ -96,6 +98,19 @@ const StyledHeader = styled.header`
           display: none;
         }
       }
+
+      @media (max-width: 767px) {
+        .main-nav {
+          transition: max-height 0.3s;
+          max-height: 0;
+          overflow: hidden;
+        }
+        .main-nav .ant-menu-item {
+          height: 44px;
+          line-height: 44px;
+        }
+      }
+
       .main-nav .ant-menu-submenu-title > svg {
         top: ${theme.gridUnit * 5.25}px;
       }
@@ -199,6 +214,7 @@ export function Menu({
   const screens = useBreakpoint();
   const uiConfig = useUiConfig();
   const theme = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     function handleResize() {
@@ -302,22 +318,37 @@ export function Menu({
       <Global styles={globalStyles(theme)} />
       <Row>
         <Col md={16} xs={24}>
-          <Tooltip
-            id="brand-tooltip"
-            placement="bottomLeft"
-            title={brand.tooltip}
-            arrowPointAtCenter
-          >
-            {isFrontendRoute(window.location.pathname) ? (
-              <GenericLink className="navbar-brand" to={brand.path}>
-                <img src={brand.icon} alt={brand.alt} />
-              </GenericLink>
-            ) : (
-              <a className="navbar-brand" href={brand.path}>
-                <img src={brand.icon} alt={brand.alt} />
-              </a>
-            )}
-          </Tooltip>
+          <Row>
+            <Col md={24} xs={22}>
+              <Tooltip
+                id="brand-tooltip"
+                placement="bottomLeft"
+                title={brand.tooltip}
+                arrowPointAtCenter
+              >
+                {isFrontendRoute(window.location.pathname) ? (
+                  <GenericLink className="navbar-brand" to={brand.path}>
+                    <img src={brand.icon} alt={brand.alt} />
+                  </GenericLink>
+                ) : (
+                  <a className="navbar-brand" href={brand.path}>
+                    <img src={brand.icon} alt={brand.alt} />
+                  </a>
+                )}
+              </Tooltip>
+            </Col>
+            <Col md={0} xs={2}>
+              <Button
+                size="large"
+                color="black"
+                type="link"
+                onClick={() => {
+                  setMenuOpen(!menuOpen);
+                }}
+                icon={menuOpen ? <CloseOutlined /> : <MenuOutlined />}
+              />
+            </Col>
+          </Row>
           {brand.text && (
             <div className="navbar-brand-text">
               <span>{brand.text}</span>
@@ -327,6 +358,9 @@ export function Menu({
             mode={showMenu}
             data-test="navbar-top"
             className="main-nav"
+            style={{
+              maxHeight: menuOpen ? '600px' : '0',
+            }}
             selectedKeys={activeTabs}
           >
             {menu.map((item, index) => {
@@ -358,9 +392,19 @@ export function Menu({
                 文档
               </a>
             </DropdownMenu.Item>
+
+            {!screens.md && (
+              <RightMenu
+                align={screens.md ? 'flex-end' : 'flex-start'}
+                settings={settings}
+                navbarRight={navbarRight}
+                isFrontendRoute={isFrontendRoute}
+                environmentTag={environmentTag}
+              />
+            )}
           </DropdownMenu>
         </Col>
-        <Col md={8} xs={24}>
+        <Col md={8} xs={0}>
           <RightMenu
             align={screens.md ? 'flex-end' : 'flex-start'}
             settings={settings}

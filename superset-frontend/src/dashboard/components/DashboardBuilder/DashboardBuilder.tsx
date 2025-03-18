@@ -42,7 +42,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import ErrorBoundary from 'src/components/ErrorBoundary';
 import BuilderComponentPane from 'src/dashboard/components/BuilderComponentPane';
 import DashboardHeader from 'src/dashboard/containers/DashboardHeader';
-import Button from 'src/components/Button';  // 添加这行
+import Button from 'src/components/Button'; // 添加这行
 import Icons from 'src/components/Icons';
 import IconButton from 'src/dashboard/components/IconButton';
 import DragDroppable from 'src/dashboard/components/dnd/DragDroppable';
@@ -83,13 +83,13 @@ import {
   OPEN_FILTER_BAR_MAX_WIDTH,
   OPEN_FILTER_BAR_WIDTH,
 } from 'src/dashboard/constants';
+import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
-import DashboardCollaboratorModal from "../PropertiesModal/DashboardCollaboratorModal";
+import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaboratorModal';
 
-new Date().getTime();
 type DashboardBuilderProps = {};
 
 // @z-index-above-dashboard-charts + 1 = 11
@@ -99,14 +99,6 @@ const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
   z-index: 11;
   width: ${({ width }) => width}px;
   ${({ hidden }) => hidden && `display: none;`}
-
-  @media (max-width: 768px) {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    position: absolute !important;
-    width: 0 !important;
-  }
 `;
 
 const StickyPanel = styled.div<{ width: number }>`
@@ -124,151 +116,6 @@ const StyledHeader = styled.div`
   top: 0;
   z-index: 100;
   max-width: 100vw;
-
-  @media (max-width: 768px) {
-    position: relative;
-    width: 100%;
-    padding: 0;
-    margin: 0;
-    
-    /* 重置所有容器样式 */
-    & > div {
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-
-    /* 调整标题容器布局 */
-    .dashboard-header {
-      position: relative !important;
-      width: 100% !important;
-      padding: 8px 16px !important;
-      margin: 0 !important;
-      display: block !important;
-      
-      .dashboard-component-header {
-        display: block !important;
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      .header-large {
-        display: block !important;
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      /* 优化标题显示 */
-      .header-title,
-      .dashboard__title,
-      .dashboard-title,
-      span[role="button"].editable-title,
-      div.editable-title,
-      h1 {
-        display: block !important;
-        width: 100% !important;
-        max-width: none !important;
-        padding: 4px 0 !important;
-        margin: 0 !important;
-        text-align: left !important;
-        white-space: normal !important;
-        word-break: break-word !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        font-size: 18px !important;
-        line-height: 1.4 !important;
-        position: static !important;
-        transform: none !important;
-        left: auto !important;
-      }
-
-      /* 移除所有可能影响布局的绝对定位元素 */
-      .header-with-actions {
-        position: static !important;
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        
-        & > * {
-          position: static !important;
-          transform: none !important;
-        }
-      }
-
-      /* 隐藏其他按钮和元素 */
-      .navbar-nav,
-      .navbar-right,
-      .top-nav-menu,
-      .navbar-brand-text,
-      .navbar-static-side,
-      .nav-item,
-      .sidebar,
-      .sidebar-nav,
-      .navbar-default,
-      [data-test="navbar-top"],
-      [data-test="navbar-brand-wrapper"],
-      [data-test="navbar-right-wrapper"],
-      .main-menu,
-      #app-menu,
-      .nav-item .dropdown-menu,
-      .navbar .dropdown-menu,
-      .navbar-nav > li,
-      .navbar-nav > li > a,
-      .nav-link,
-      .dashboard-header__actions,
-      .dashboard-header__actions *,
-      [data-test="dashboard-header-buttons"],
-      [data-test="dashboard-header-buttons"] *,
-      .ant-dropdown-trigger,
-      .header-with-actions button,
-      button[data-test="edit-dashboard"],
-      button[data-test="dashboard-edit-actions"],
-      .edit-button,
-      .dashboard-builder-sidepane-trigger,
-      .more-horiz,
-      .ant-btn:not(.dashboard-title),
-      .button-container,
-      .action-buttons,
-      .css-1t062t8,
-      .css-16uq7e2,
-      div[role="button"]:not(.dashboard-title),
-      span[role="button"]:not(.dashboard-title) {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border: 0 !important;
-        position: absolute !important;
-        left: -9999px !important;
-      }
-
-      /* 特别针对 logo 的样式 */
-      .navbar-brand {
-        padding: 0 !important;
-        margin: 4px !important;
-        max-height: 32px !important;
-        
-        img {
-          height: 16px !important;  /* 显著减小 logo 高度 */
-          width: auto !important;
-          max-width: 80px !important;  /* 减小最大宽度 */
-          object-fit: contain !important;
-        }
-      }
-
-      /* 调整顶部导航栏高度 */
-      .dashboard-header {
-        min-height: 36px !important;
-        height: auto !important;
-        padding: 4px 8px !important;
-      }
-    }
-  }
 `;
 
 const StyledContent = styled.div<{
@@ -278,6 +125,154 @@ const StyledContent = styled.div<{
   grid-row: 2;
   // @z-index-above-dashboard-header (100) + 1 = 101
   ${({ fullSizeChartId }) => fullSizeChartId && `z-index: 101;`}
+`;
+
+const DashboardContentWrapper = styled.div`
+  ${({ theme }) => css`
+    &.dashboard {
+      position: relative;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+
+      /* drop shadow for top-level tabs only */
+      & .dashboard-component-tabs {
+        box-shadow: 0 ${theme.gridUnit}px ${theme.gridUnit}px 0
+          ${addAlpha(
+            theme.colors.grayscale.dark2,
+            parseFloat(theme.opacity.light) / 100,
+          )};
+        padding-left: ${theme.gridUnit *
+        2}px; /* note this is added to tab-level padding, to match header */
+      }
+
+      .dropdown-toggle.btn.btn-primary .caret {
+        color: ${theme.colors.grayscale.light5};
+      }
+
+      .background--transparent {
+        background-color: transparent;
+      }
+
+      .background--white {
+        background-color: ${theme.colors.grayscale.light5};
+      }
+    }
+    &.dashboard--editing {
+      .grid-row:after,
+      .dashboard-component-tabs > .hover-menu:hover + div:after {
+        border: 1px dashed transparent;
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .resizable-container {
+        & .dashboard-component-chart-holder {
+          .dashboard-chart {
+            .chart-container {
+              cursor: move;
+              opacity: 0.2;
+            }
+
+            .slice_container {
+              /* disable chart interactions in edit mode */
+              pointer-events: none;
+            }
+          }
+
+          &:hover .dashboard-chart .chart-container {
+            opacity: 0.7;
+          }
+        }
+
+        &:hover,
+        &.resizable-container--resizing:hover {
+          & > .dashboard-component-chart-holder:after {
+            border: 1px dashed ${theme.colors.primary.base};
+          }
+        }
+      }
+
+      .resizable-container--resizing:hover > .grid-row:after,
+      .hover-menu:hover + .grid-row:after,
+      .dashboard-component-tabs > .hover-menu:hover + div:after {
+        border: 1px dashed ${theme.colors.primary.base};
+        z-index: 2;
+      }
+
+      .grid-row:after,
+      .dashboard-component-tabs > .hover-menu + div:after {
+        border: 1px dashed ${theme.colors.grayscale.light2};
+      }
+
+      /* provide hit area in case row contents is edge to edge */
+      .dashboard-component-tabs-content {
+        .dragdroppable-row {
+          padding-top: ${theme.gridUnit * 4}px;
+        }
+
+        & > div:not(:last-child):not(.empty-droptarget) {
+          margin-bottom: ${theme.gridUnit * 4}px;
+        }
+      }
+
+      .dashboard-component-chart-holder {
+        &:after {
+          content: '';
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          z-index: 1;
+          pointer-events: none;
+          border: 1px solid transparent;
+        }
+
+        &:hover:after {
+          border: 1px dashed ${theme.colors.primary.base};
+          z-index: 2;
+        }
+      }
+
+      .contract-trigger:before {
+        display: none;
+      }
+    }
+
+    & .dashboard-component-tabs-content {
+      & > div:not(:last-child):not(.empty-droptarget) {
+        margin-bottom: ${theme.gridUnit * 4}px;
+      }
+
+      & > .empty-droptarget {
+        position: absolute;
+        width: 100%;
+      }
+
+      & > .empty-droptarget:first-child:not(.empty-droptarget--full) {
+        height: ${theme.gridUnit * 4}px;
+        top: -2px;
+        z-index: 10;
+      }
+
+      & > .empty-droptarget:last-child {
+        height: ${theme.gridUnit * 3}px;
+        bottom: 0;
+      }
+    }
+
+    .empty-droptarget:first-child .drop-indicator--bottom {
+      top: ${theme.gridUnit * 6}px;
+    }
+  `}
 `;
 
 const StyledDashboardContent = styled.div<{
@@ -306,17 +301,18 @@ const StyledDashboardContent = styled.div<{
       margin-left: ${marginLeft}px;
 
       ${editMode &&
-        `max-width: calc(100% - ${BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16}px);`
-      }
+      `max-width: calc(100% - ${
+        BUILDER_SIDEPANEL_WIDTH + theme.gridUnit * 16
+      }px);`}
 
       @media (max-width: 768px) {
         margin: ${theme.gridUnit * 2}px;
-        
+
         .dashboard-grid {
           display: flex !important;
           flex-direction: column !important;
         }
-        
+
         .dashboard-grid > div {
           width: 100% !important;
           margin-bottom: ${theme.gridUnit * 4}px;
@@ -348,7 +344,7 @@ const StyledDashboardContent = styled.div<{
           flex-direction: column;
           padding: ${theme.gridUnit * 2}px;
         }
-        
+
         .filter-bar .filter-item {
           width: 100%;
           margin-bottom: ${theme.gridUnit * 2}px;
@@ -361,7 +357,7 @@ const StyledDashboardContent = styled.div<{
         .dragdroppable-row {
           display: block !important;
         }
-        
+
         .dragdroppable-row > div {
           width: 100% !important;
           margin-bottom: ${theme.gridUnit * 4}px;
@@ -372,39 +368,6 @@ const StyledDashboardContent = styled.div<{
           height: auto !important;
           min-height: 400px;
           resize: none !important;
-        }
-
-        /* Hide specific elements on mobile */
-        .navbar-right [data-test="new-dropdown"],
-        .navbar-right [href*="/chart/add"],
-        .navbar-right [href*="/dashboard/new"],
-        .navbar-right [href*="/dashboard/list"],
-        .navbar-right [href*="/chart/list"],
-        .navbar-right [data-test="new-dropdown"],
-        .navbar-right [href*="copilot"],
-        .navbar-right [href*="sqllab"],
-        .navbar-right [href*="workflow"],
-        .navbar-right .manage-collaborators,
-        .dashboard-builder-sidepane,
-        .dashboard-component-tabs {
-          display: none !important;
-        }
-
-        /* Adjust header for mobile */
-        .dashboard-header {
-          flex-direction: column;
-          padding: ${theme.gridUnit * 2}px;
-          
-          .header-large {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-        }
-
-        /* Ensure content takes full width */
-        .grid-container {
-          margin: ${theme.gridUnit * 2}px !important;
-          width: calc(100% - ${theme.gridUnit * 4}px) !important;
         }
       }
     }
@@ -431,7 +394,10 @@ const StyledDashboardContent = styled.div<{
         border-radius: ${theme.borderRadius}px;
         box-shadow: inset 0 0 0 2px ${theme.colors.primary.base},
           0 0 0 3px
-            ${addAlpha(theme.colors.primary.base, parseFloat(theme.opacity.light) / 100)};
+            ${addAlpha(
+              theme.colors.primary.base,
+              parseFloat(theme.opacity.light) / 100,
+            )};
       }
 
       &.fade-out {
@@ -459,175 +425,22 @@ const StyledDashboardContent = styled.div<{
 const HeaderButtons = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.gridUnit * 6}px;  // 48px 间距
+  gap: ${({ theme }) => theme.gridUnit * 6}px; // 48px 间距
   position: absolute;
   right: ${({ theme }) => theme.gridUnit * 58}px; // 将56改为58，向左平移2px
   top: 50%;
   transform: translateY(-50%);
   z-index: 99;
-
-  @media (max-width: 768px) {
-    display: none !important;  // 在移动端完全隐藏管理协作者按钮
-  }
-`;
-
-const mobileStyles = css`
-  @media (max-width: 768px) {
-    /* 确保导航容器可见 */
-    html body #app .navbar {
-      display: flex !important;
-      width: 100% !important;
-      height: auto !important;
-      min-height: 48px !important;
-      position: relative !important;
-      padding: 4px 8px !important; /* 减小内边距 */
-    }
-
-    /* 专门设置 logo 的样式 */
-    html body #app .navbar-brand,
-    html body #app a.navbar-brand {
-      display: flex !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      width: auto !important;
-      height: 38px !important; /* 减小高度 */
-      padding: 6px !important; /* 减小内边距 */
-      margin: 0 !important;
-      position: static !important;
-      z-index: 1000 !important;
-      align-items: center !important;
-      overflow: visible !important; /* 确保内容不被截断 */
-      max-width: 120px !important; /* 限制最大宽度 */
-    }
-
-    /* 确保 logo 图片显示 */
-    html body #app .navbar-brand img {
-      display: block !important;
-      height: 28px !important; /* 减小图片高度 */
-      width: auto !important;
-      max-width: 100px !important; /* 限制图片最大宽度 */
-      opacity: 1 !important;
-      visibility: visible !important;
-      object-fit: contain !important; /* 确保图片适应容器 */
-    }
-
-    /* 隐藏所有导航元素，但保留 logo */
-    html body #app .navbar > *:not(.navbar-brand),
-    html body #app .navbar-nav,
-    html body #app .nav-item:not(.navbar-brand),
-    html body #app [data-test="navbar-list-menu"],
-    html body #app .dropdown-menu,
-    html body #app a[href*="dashboard"]:not(.navbar-brand),
-    html body #app a[href*="chart"]:not(.navbar-brand),
-    html body #app a[href*="dataset"]:not(.navbar-brand),
-    html body #app a[href*="sqllab"]:not(.navbar-brand),
-    html body #app a[href*="copilot"]:not(.navbar-brand),
-    html body #app a[href*="workflow"]:not(.navbar-brand),
-    html body #app a[href*="docs"]:not(.navbar-brand),
-    html body #app .ant-menu,
-    html body #app .ant-menu-item,
-    html body #app .menu-item,
-    html body #app .dropdown,
-    html body #app .dropdown-toggle,
-    html body #app .navbar-right,
-    html body #app .top-menu-item:not(.navbar-brand),
-    html body #app [role="menuitem"],
-    html body #app [role="menu"],
-    html body #app [data-test="menu-item"],
-    html body #app .nav-links,
-    html body #app .menu-links,
-    html body #app [href*="datasets"],
-    html body #app [href*="sql"],
-    html body #app [href*="copilot"],
-    html body #app [href*="docs"],
-    html body #app .nav > li:not(.navbar-brand),
-    html body #app .navbar-nav > li:not(.navbar-brand) {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      width: 0 !important;
-      height: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      pointer-events: none !important;
-      position: absolute !important;
-      left: -9999px !important;
-    }
-
-    /* 隐藏编辑按钮和更多操作按钮 */
-    html body #app button[data-test="edit-dashboard"],
-    html body #app button[data-test="dashboard-edit-actions"],
-    html body #app .dashboard-header__actions,
-    html body #app .edit-dashboard-button,
-    html body #app .more-horiz,
-    html body #app [aria-label="More Options"],
-    html body #app .more-actions,
-    html body #app button[aria-label="more"],
-    html body #app .more-menu-trigger,
-    html body #app [data-test="more-actions"],
-    html body #app .header-with-actions button,
-    html body #app .header-with-actions .button-container,
-    html body #app .header-with-actions .action-buttons,
-    html body #app .manage-collaborators {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      width: 0 !important;
-      height: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      pointer-events: none !important;
-    }
-
-    /* 确保标题容器正常显示 */
-    html body #app .dashboard-header {
-      position: relative !important;
-      width: 100% !important;
-      padding: 8px 16px !important;
-      margin: 0 !important;
-      display: block !important;
-    }
-
-    /* 确保标题文本正常显示 */
-    html body #app .dashboard-title,
-    html body #app .header-title,
-    html body #app .dashboard__title,
-    html body #app h1.dashboard-title {
-      display: block !important;
-      font-size: 20px !important;
-      line-height: 1.4 !important;
-      padding: 8px !important;
-      margin: 0 !important;
-      text-align: left !important;
-    }
-  }
-`;
-
-const DashboardContentWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  position: relative;
-  height: 100%;
-  
-  @media (max-width: 768px) {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    
-    .dashboard-content {
-      margin: 0 !important;
-      padding: 8px !important;
-    }
-  }
 `;
 
 const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const dispatch = useDispatch();
   const uiConfig = useUiConfig();
   const theme = useTheme();
+  const screens = useBreakpoint();
 
-  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] = useState(false);
+  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] =
+    useState(false);
   const dashboardId = useSelector<RootState, number>(
     ({ dashboardInfo }) => dashboardInfo.id,
   );
@@ -779,15 +592,17 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
         {!hideDashboardHeader && (
           <div style={{ position: 'relative' }}>
             <DashboardHeader />
-            <HeaderButtons>
-              <Button
-                buttonStyle="secondary"
-                onClick={() => setCollaboratorsModalVisible(true)}
-                className="manage-collaborators"
-              >
-                {t('管理协作者')}
-              </Button>
-            </HeaderButtons>
+            {screens.md && (
+              <HeaderButtons>
+                <Button
+                  buttonStyle="secondary"
+                  onClick={() => setCollaboratorsModalVisible(true)}
+                  className="manage-collaborators"
+                >
+                  {t('管理协作者')}
+                </Button>
+              </HeaderButtons>
+            )}
           </div>
         )}
         {showFilterBar &&
@@ -847,7 +662,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
 
   return (
     <DashboardWrapper>
-      <Global styles={mobileStyles} />
       {showFilterBar && filterBarOrientation === FilterBarOrientation.VERTICAL && (
         <>
           <ResizableSidebar
@@ -910,7 +724,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           styles={css`
             // @z-index-above-dashboard-header (100) + 1 = 101
             ${fullSizeChartId &&
-          `div > .filterStatusPopover.ant-popover{z-index: 101}`}
+            `div > .filterStatusPopover.ant-popover{z-index: 101}`}
           `}
         />
         {!editMode &&

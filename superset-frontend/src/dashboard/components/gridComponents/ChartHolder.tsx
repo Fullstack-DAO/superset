@@ -125,7 +125,9 @@ const ChartContainer = styled.div`
 
 const isMobileDevice = () => {
   const ua = navigator.userAgent;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    ua,
+  );
 };
 
 const ChartHolder: React.FC<ChartHolderProps> = ({
@@ -257,7 +259,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
       chartWidth = window.innerWidth - CHART_MARGIN;
       chartHeight = window.innerHeight - CHART_MARGIN;
     } else if (isMobile) {
-      chartWidth = window.innerWidth - (theme.gridUnit * 4); // 减去左右padding
+      chartWidth = window.innerWidth - theme.gridUnit * 4; // 减去左右padding
       chartHeight = 400; // 使用固定高度
     } else {
       chartWidth = Math.floor(
@@ -274,7 +276,14 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
       chartWidth,
       chartHeight,
     };
-  }, [columnWidth, component, isFullSize, isMobile, widthMultiple, theme.gridUnit]);
+  }, [
+    columnWidth,
+    component,
+    isFullSize,
+    isMobile,
+    widthMultiple,
+    theme.gridUnit,
+  ]);
 
   const handleDeleteComponent = useCallback(() => {
     deleteComponent(id, parentId);
@@ -395,4 +404,3 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
 };
 
 export default ChartHolder;
-

@@ -191,38 +191,18 @@ class DashboardGrid extends React.PureComponent {
   }
 
   componentDidMount() {
-    // 直接调用箭头函数属性
     this.checkMobileMode();
     window.addEventListener('resize', this.handleResize);
-    // 添加移动端导航栏隐藏逻辑
-    this.hideNavigationOnMobile();
   }
 
-  // 保持箭头函数定义
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+  }
+
   checkMobileMode = () => {
     const isMobile = window.innerWidth <= 768;
     if (isMobile !== this.state.isMobile) {
       this.setState({ isMobile });
-    }
-  };
-
-  hideNavigationOnMobile = () => {
-    if (window.innerWidth <= 768) {
-      // 隐藏导航标签
-      const navItems = document.querySelectorAll(
-        '.navbar-nav > li, .navbar-right > *, .top-nav-menu',
-      );
-      navItems.forEach(item => {
-        if (
-          item.classList.contains('navbar-header') ||
-          item.classList.contains('navbar-brand')
-        ) {
-          return; // 保留logo
-        }
-        if (item instanceof HTMLElement) {
-          item.classList.add('hidden-element');
-        }
-      });
     }
   };
 

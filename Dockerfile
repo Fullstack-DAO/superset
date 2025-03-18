@@ -74,6 +74,18 @@ RUN mkdir -p ${PYTHONPATH} superset/static superset-frontend apache_superset.egg
         libpq-dev \
         libecpg-dev \
         libldap2-dev \
+        libnss3 \
+        libdbus-glib-1-2 \
+        libgtk-3-0 \
+        libx11-xcb1 \
+        libasound2 \
+        libxtst6 \
+        wget \
+    # Install GeckoDriver WebDriver
+    && wget -q https://fsd-dev-assets.oss-cn-beijing.aliyuncs.com/geckodriver-v0.33.0-linux64.tar.gz -O - | tar xfz - -C /usr/local/bin \
+    # Install Firefox
+    && wget -q https://fsd-dev-assets.oss-cn-beijing.aliyuncs.com/firefox-117.0.1.tar.bz2 -O - | tar xfj - -C /opt \
+    && ln -s /opt/firefox/firefox /usr/local/bin/firefox \
     && touch superset/static/version_info.json \
     && chown -R superset:superset ./* \
     && rm -rf /var/lib/apt/lists/*

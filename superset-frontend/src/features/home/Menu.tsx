@@ -319,7 +319,7 @@ export function Menu({
       <Row>
         <Col md={16} xs={24}>
           <Row>
-            <Col md={24} xs={22}>
+            <Col md={4} xs={22}>
               <Tooltip
                 id="brand-tooltip"
                 placement="bottomLeft"
@@ -348,61 +348,63 @@ export function Menu({
                 icon={menuOpen ? <CloseOutlined /> : <MenuOutlined />}
               />
             </Col>
+            <Col md={20} xs={24}>
+              <DropdownMenu
+                mode={showMenu}
+                data-test="navbar-top"
+                className="main-nav"
+                style={{
+                  maxHeight: menuOpen ? '600px' : '0',
+                }}
+                selectedKeys={activeTabs}
+              >
+                {menu.map((item, index) => {
+                  const props = {
+                    index,
+                    ...item,
+                    isFrontendRoute: isFrontendRoute(item.url),
+                    childs: item.childs?.map(c => {
+                      if (typeof c === 'string') {
+                        return c;
+                      }
+
+                      return {
+                        ...c,
+                        isFrontendRoute: isFrontendRoute(c.url),
+                      };
+                    }),
+                  };
+
+                  return renderSubMenu(props);
+                })}
+                <DropdownMenu.Item role="presentation">
+                  <a
+                    role="button"
+                    href={bootstrapData.common.docs_url}
+                    rel="noreferrer noopener"
+                    target="_blank"
+                  >
+                    文档
+                  </a>
+                </DropdownMenu.Item>
+
+                {!screens.md && (
+                  <RightMenu
+                    align={screens.md ? 'flex-end' : 'flex-start'}
+                    settings={settings}
+                    navbarRight={navbarRight}
+                    isFrontendRoute={isFrontendRoute}
+                    environmentTag={environmentTag}
+                  />
+                )}
+              </DropdownMenu>
+            </Col>
           </Row>
-          {brand.text && (
+          {/* {brand.text && (
             <div className="navbar-brand-text">
               <span>{brand.text}</span>
             </div>
-          )}
-          <DropdownMenu
-            mode={showMenu}
-            data-test="navbar-top"
-            className="main-nav"
-            style={{
-              maxHeight: menuOpen ? '600px' : '0',
-            }}
-            selectedKeys={activeTabs}
-          >
-            {menu.map((item, index) => {
-              const props = {
-                index,
-                ...item,
-                isFrontendRoute: isFrontendRoute(item.url),
-                childs: item.childs?.map(c => {
-                  if (typeof c === 'string') {
-                    return c;
-                  }
-
-                  return {
-                    ...c,
-                    isFrontendRoute: isFrontendRoute(c.url),
-                  };
-                }),
-              };
-
-              return renderSubMenu(props);
-            })}
-            <DropdownMenu.Item role="presentation">
-              <a
-                role="button"
-                href={bootstrapData.common.docs_url}
-                rel="noreferrer noopener"
-                target="_blank"
-              >
-                文档
-              </a>
-            </DropdownMenu.Item>
-
-            {!screens.md && (
-              <RightMenu
-                align={screens.md ? 'flex-end' : 'flex-start'}
-                settings={settings}
-                navbarRight={navbarRight}
-                isFrontendRoute={isFrontendRoute}
-                environmentTag={environmentTag}
-              />
-            )}
-          </DropdownMenu>
+          )} */}
         </Col>
         <Col md={8} xs={0}>
           <RightMenu

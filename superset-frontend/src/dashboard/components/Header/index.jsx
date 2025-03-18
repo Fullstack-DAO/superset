@@ -117,6 +117,11 @@ const defaultProps = {
 
 const headerContainerStyle = theme => css`
   border-bottom: 1px solid ${theme.colors.grayscale.light2};
+  @media (max-width: 768px) {
+    .right-button-panel {
+      display: none !important;
+    }
+  }
 `;
 
 const editButtonStyle = theme => css`

@@ -250,85 +250,92 @@ const SubMenuComponent: React.FunctionComponent<SubMenuProps> = props => {
     <StyledHeader>
       <Row className="menu" role="navigation">
         {props.name && <div className="header">{props.name}</div>}
-        <Menu mode={showMenu} style={{ backgroundColor: 'transparent' }}>
-          {props.tabs?.map(tab => {
-            if ((props.usesRouter || hasHistory) && !!tab.usesRouter) {
+        {props.tabs && (
+          <Menu mode={showMenu} style={{ backgroundColor: 'transparent' }}>
+            {props.tabs?.map(tab => {
+              if ((props.usesRouter || hasHistory) && !!tab.usesRouter) {
+                return (
+                  <Menu.Item key={tab.label}>
+                    <div
+                      role="tab"
+                      data-test={tab['data-test']}
+                      className={tab.name === props.activeChild ? 'active' : ''}
+                    >
+                      <div>
+                        <Link to={tab.url || ''}>{tab.label}</Link>
+                      </div>
+                    </div>
+                  </Menu.Item>
+                );
+              }
+
               return (
                 <Menu.Item key={tab.label}>
                   <div
+                    className={cx('no-router', {
+                      active: tab.name === props.activeChild,
+                    })}
                     role="tab"
-                    data-test={tab['data-test']}
-                    className={tab.name === props.activeChild ? 'active' : ''}
                   >
-                    <div>
-                      <Link to={tab.url || ''}>{tab.label}</Link>
-                    </div>
+                    <a href={tab.url} onClick={tab.onClick}>
+                      {tab.label}
+                    </a>
                   </div>
                 </Menu.Item>
               );
-            }
-
-            return (
-              <Menu.Item key={tab.label}>
-                <div
-                  className={cx('no-router', {
-                    active: tab.name === props.activeChild,
-                  })}
-                  role="tab"
-                >
-                  <a href={tab.url} onClick={tab.onClick}>
-                    {tab.label}
-                  </a>
-                </div>
-              </Menu.Item>
-            );
-          })}
-        </Menu>
-        <div className={navRightStyle}>
-          <Menu mode="horizontal" triggerSubMenuAction="click">
-            {props.dropDownLinks?.map((link, i) => (
-              <SubMenu
-                key={i}
-                title={link.label}
-                icon={<Icons.TriangleDown />}
-                popupOffset={[10, 20]}
-                className="dropdown-menu-links"
-              >
-                {link.childs?.map(item => {
-                  if (typeof item === 'object') {
-                    return item.disable ? (
-                      <DropdownMenu.Item key={item.label} css={styledDisabled}>
-                        <Tooltip
-                          placement="top"
-                          title={t(
-                            "Enable 'Allow file uploads to database' in any database's settings",
-                          )}
-                        >
-                          {item.label}
-                        </Tooltip>
-                      </DropdownMenu.Item>
-                    ) : (
-                      <DropdownMenu.Item key={item.label}>
-                        <a href={item.url}>{item.label}</a>
-                      </DropdownMenu.Item>
-                    );
-                  }
-                  return null;
-                })}
-              </SubMenu>
-            ))}
+            })}
           </Menu>
-          {props.buttons?.map((btn, i) => (
-            <Button
-              key={i}
-              buttonStyle={btn.buttonStyle}
-              onClick={btn.onClick}
-              data-test={btn['data-test']}
-            >
-              {btn.name}
-            </Button>
-          ))}
-        </div>
+        )}
+        {props.dropDownLinks && props.buttons && (
+          <div className={navRightStyle}>
+            <Menu mode="horizontal" triggerSubMenuAction="click">
+              {props.dropDownLinks?.map((link, i) => (
+                <SubMenu
+                  key={i}
+                  title={link.label}
+                  icon={<Icons.TriangleDown />}
+                  popupOffset={[10, 20]}
+                  className="dropdown-menu-links"
+                >
+                  {link.childs?.map(item => {
+                    if (typeof item === 'object') {
+                      return item.disable ? (
+                        <DropdownMenu.Item
+                          key={item.label}
+                          css={styledDisabled}
+                        >
+                          <Tooltip
+                            placement="top"
+                            title={t(
+                              "Enable 'Allow file uploads to database' in any database's settings",
+                            )}
+                          >
+                            {item.label}
+                          </Tooltip>
+                        </DropdownMenu.Item>
+                      ) : (
+                        <DropdownMenu.Item key={item.label}>
+                          <a href={item.url}>{item.label}</a>
+                        </DropdownMenu.Item>
+                      );
+                    }
+                    return null;
+                  })}
+                </SubMenu>
+              ))}
+            </Menu>
+            {props.buttons?.map((btn, i) => (
+              <Button
+                key={i}
+                buttonStyle={btn.buttonStyle}
+                onClick={btn.onClick}
+                data-test={btn['data-test']}
+              >
+                {btn.name}
+              </Button>
+            ))}
+          </div>
+        )}
       </Row>
       {props.children}
     </StyledHeader>

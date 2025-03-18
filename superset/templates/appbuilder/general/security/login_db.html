@@ -1,73 +1,73 @@
 {% extends "appbuilder/base.html" %}
 
 {% block content %}
+{% block login %}
 <div class="container">
-    <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
-        <div class="panel panel-primary">
-            <div class="panel-heading">
-                <div class="panel-title">{{ title }}</div>
-            </div>
-            <div style="padding-top:30px" class="panel-body">
-                <form class="form" action="" method="post" name="login">
-                    {{ form.hidden_tag() }}
-                    <div class="help-block">{{ _("Enter your login and password below:") }}</div>
-                    <div class="control-group">
-                        <label class="control-label" for="username">{{ _("USERNAME:") }}</label>
-                        <div class="controls">
-                            <input class="form-control" id="username" name="username" type="text" />
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <label class="control-label" for="password">{{ _("PASSWORD:") }}</label>
-                        <div class="controls">
-                            <input class="form-control" id="password" name="password" type="password" />
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <div class="controls">
-                            <div>
-                                <input class="btn btn-block" type="submit" value="{{ _('Sign In') }}" style="background-color: #00A699; color: white; border: none; padding: 8px;"/>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-                <hr>
-                <div style="text-align: center;">
-                    {% if 'wxwork' not in request.user_agent.string|lower %}
-                    <a href="https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid={{ config.WECOM_CORP_ID }}&agentid={{ config.WECOM_AGENT_ID }}&redirect_uri={{ config.WECOM_REDIRECT_URI|urlencode }}&response_type=code&scope=snsapi_userinfo&state=wecom" 
-                       class="btn btn-block" 
-                       style="background-color: #1890ff; color: white; border: none; padding: 8px; margin-bottom: 10px;">
-                        <i class="fa fa-wechat"></i> {{ _('企业微信登录') }}
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="panel panel-primary">
+        <div class="panel-heading">
+          <h3 class="panel-title">{{ _('登录') }}</h3>
         </div>
+        <div class="panel-body">
+          <!-- 用户名密码登录表单 -->
+          <h4>{{ _('用户名密码登录') }}</h4>
+          <form method="post" action="">
+            {{ form.hidden_tag() if form.hidden_tag }}
+            <div class="form-group">
+              {{ form.username.label }}
+              {{ form.username(size=80, class_="form-control", autofocus=true) }}
+            </div>
+            <div class="form-group">
+              {{ form.password.label }}
+              {{ form.password(size=80, class_="form-control") }}
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">{{ _('登录') }}</button>
+          </form>
+          
+          <hr>
+          
+          <!-- 企业微信登录选项 -->
+          <h4>{{ _('企业微信登录') }}</h4>
+          
+          <!-- 企业微信扫码登录 -->
+          <div style="margin-bottom: 10px;">
+            <a href="/login/wecom" class="btn btn-primary btn-block">
+              <i class="fa fa-weixin"></i> {{ _('企业微信扫码登录') }}
+            </a>
+            <p class="text-center" style="margin-top: 5px; font-size: 12px;">{{ _('使用企业微信扫码登录') }}</p>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
+  
+  <!-- 添加错误提示 - 只显示一条提示 -->
+  {% if request.args.get('error') == 'user_not_found' or session.get('user_not_found') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-warning">
+        {{ session.get('user_not_found_message', '用户userid不存在，首次扫码登录请先从企业微信工作台登录') }}
+      </div>
+    </div>
+  </div>
+  {% elif session.get('email_not_set') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-warning">
+        {{ session.get('email_not_set_message', '您的企业邮箱未设置，请先在企业微信中设置邮箱') }}
+      </div>
+    </div>
+  </div>
+  {% elif session.get('email_generated') %}
+  <div class="row">
+    <div class="col-md-4 col-md-offset-4">
+      <div class="alert alert-info">
+        {{ session.get('email_generated_message', '系统已为您生成临时邮箱') }}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function isWeCom() {
-        const ua = navigator.userAgent.toLowerCase();
-        return /wxwork/i.test(ua);
-    }
-
-    if (isWeCom()) {
-        console.log('检测到企业微信环境');
-        const loginUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize?' +
-            'appid={{ config.WECOM_CORP_ID }}' +
-            '&redirect_uri={{ config.WECOM_REDIRECT_URI|urlencode }}' +
-            '&response_type=code' +
-            '&scope=snsapi_base' +
-            '&state=wecom_h5' +
-            '&agentid={{ config.WECOM_AGENT_ID }}' +
-            '#wechat_redirect';
-        
-        if (!window.location.href.includes('/oauth-authorized/wecom')) {
-            window.location.href = loginUrl;
-        }
-    }
-});
-</script>
+{% endblock %}
 {% endblock %}

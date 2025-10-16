@@ -72,6 +72,26 @@ CACHE_CONFIG = {
 DATA_CACHE_CONFIG = CACHE_CONFIG
 
 
+# 动态数据集刷新调度配置，控制每个时间窗口的批次大小与时间跨度
+DYNAMIC_TABLE_REFRESH_SCHEDULE = {
+    "default": {
+        "batch_size": 2,
+        "window_minutes": 360,
+        "start_delay_minutes": 0,
+    },
+    "evening": {
+        "batch_size": 2,
+        "window_minutes": 360,
+        "start_delay_minutes": 0,
+    },
+    "morning": {
+        "batch_size": 1,
+        "window_minutes": 10,
+        "start_delay_minutes": 0,
+    },
+}
+
+
 class CeleryConfig:
     broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"
     imports = ("superset.sql_lab",)

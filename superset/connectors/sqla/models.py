@@ -1863,6 +1863,71 @@ class SqlaTable(
             cls.down_single_dataset_datas(dataset)
 
     @classmethod
+    def get_refreshable_dataset_ids(cls, refresh_window: str) -> list[int]:
+        dataset_ids = (
+            db.session.query(cls.id)
+            .filter(
+                cls.sql.isnot(None),
+                cls.sql != '',
+                cls.dynamic_ready,
+                cls.dynamic_refresh_time_type == refresh_window,
+            )
+            .all()
+        )
+        return [dataset_id for dataset_id, in dataset_ids]
+
+    @classmethod
+    def refresh_dataset_by_id(
+        cls,
+        dataset_id: int,
+        expected_time_type: str | None = None,
+    ) -> None:
+        dataset: SqlaTable | None = db.session.get(cls, dataset_id)
+        if not dataset:
+            logger.warning("Dynamic dataset %s no longer exists, skipping refresh", dataset_id)
+            return
+
+        if expected_time_type and dataset.dynamic_refresh_time_type != expected_time_type:
+            logger.info(
+                "Dataset %s refresh window changed from %s to %s, skipping scheduled refresh.",
+                dataset_id,
+                expected_time_type,
+                dataset.dynamic_refresh_time_type,
+            )
+            return
+
+        if not dataset.dynamic_ready:
+            logger.info(
+                "Dataset %s is currently not ready for refresh (dynamic_ready=False), skipping.",
+                dataset_id,
+            )
+            return
+
+        if not dataset.sql:
+            logger.info("Dataset %s has no SQL definition, skipping refresh.", dataset_id)
+            return
+
+        dataset.dynamic_ready = False
+        db.session.commit()
+
+        try:
+            if dataset.dynamic_refresh_type == 'full':
+                cls.down_single_dataset_datas(dataset)
+            else:
+                cls.refresh_single_dataset_datas(dataset)
+        except Exception:
+            logger.exception("Refreshing dynamic dataset %s failed.", dataset_id)
+            db.session.rollback()
+            refreshed_dataset = db.session.get(cls, dataset_id)
+            if refreshed_dataset:
+                refreshed_dataset.dynamic_ready = True
+                db.session.commit()
+            raise
+
+        dataset.dynamic_ready = True
+        db.session.commit()
+
+    @classmethod
     def refresh_dataset_datas(cls):
         datasets = db.session.query(cls).filter(cls.sql.isnot(None), cls.sql != '',
                                                 cls.dynamic_ready,

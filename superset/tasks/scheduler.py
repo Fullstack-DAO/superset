@@ -17,7 +17,7 @@
 import logging
 import math
 from datetime import datetime, timedelta
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from celery import Celery
 from celery.exceptions import SoftTimeLimitExceeded
@@ -216,7 +216,11 @@ def refresh_datas2() -> None:
 
 
 @celery_app.task(name="dynamic_table.refresh_dataset", bind=True)
-def refresh_dataset(self: Celery.task, dataset_id: int, refresh_window: str | None = None) -> None:
+def refresh_dataset(
+    self: Celery.task,
+    dataset_id: int,
+    refresh_window: Optional[str] = None,
+) -> None:
     stats_logger: BaseStatsLogger = app.config["STATS_LOGGER"]
     stats_logger.incr("dynamic_table.refresh_dataset")
     start_time = datetime.utcnow()

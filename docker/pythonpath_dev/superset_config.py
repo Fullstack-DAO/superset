@@ -98,6 +98,9 @@ class CeleryConfig:
     result_backend = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_RESULTS_DB}"
     worker_prefetch_multiplier = 1
     task_acks_late = False
+    broker_transport_options = {
+        "visibility_timeout": int(os.getenv("CELERY_VISIBILITY_TIMEOUT", "7200")),
+    }
     beat_schedule = {
         "reports.scheduler": {
             "task": "reports.scheduler",

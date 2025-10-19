@@ -50,6 +50,19 @@ _COMPLETED_KEY_PREFIX = "dynamic_refresh:completed"
 _MARKER_TTL_FALLBACK_SECONDS = 12 * 60 * 60  # 12 hours keeps flags for the nightly window
 
 
+def _cache_add(key: str, value: str, timeout: int) -> bool:
+    """Attempt to add a value only if the key does not exist."""
+    cache = cache_manager.cache
+    add_fn = getattr(cache, "add", None)
+    if callable(add_fn):
+        return bool(add_fn(key, value, timeout=timeout))
+
+    if cache.get(key) is not None:
+        return False
+    cache.set(key, value, timeout=timeout)
+    return True
+
+
 def _marker_timeout_seconds(refresh_config: dict[str, int]) -> int:
     window_minutes = max(0, int(refresh_config.get("window_minutes", 0)))
     start_delay_minutes = max(0, int(refresh_config.get("start_delay_minutes", 0)))
@@ -132,7 +145,12 @@ def _schedule_dataset_refresh_jobs(refresh_window: str) -> None:
         eta = start_eta + timedelta(seconds=batch_index * interval_seconds)
         for dataset_id in chunk:
             queued_key = _queued_cache_key(dataset_id, window_marker)
-            if cache_manager.cache.get(queued_key):
+            queued_acquired = _cache_add(
+                queued_key,
+                "queued",
+                timeout=marker_timeout,
+            )
+            if not queued_acquired:
                 logger.info(
                     "Dataset %s already queued for refresh marker %s, skipping duplicate scheduling.",
                     dataset_id,
@@ -141,7 +159,6 @@ def _schedule_dataset_refresh_jobs(refresh_window: str) -> None:
                 skipped_count += 1
                 continue
 
-            cache_manager.cache.set(queued_key, "queued", timeout=marker_timeout)
             refresh_dataset.apply_async((dataset_id, refresh_window, window_marker), eta=eta)
             scheduled_count += 1
 
@@ -294,21 +311,37 @@ def refresh_dataset(
             existing_completed,
             self.request.id,
         )
+        cache_manager.cache.delete(queued_key)
         return
 
-    existing_running = cache_manager.cache.get(running_key)
-    if existing_running and existing_running != self.request.id:
-        logger.info(
-            "Dataset %s already running under task %s for window %s marker %s, skipping duplicate task %s.",
-            dataset_id,
-            existing_running,
-            target_window,
-            marker,
-            self.request.id,
-        )
-        return
+    running_claimed = _cache_add(
+        running_key,
+        str(self.request.id),
+        timeout=marker_timeout,
+    )
+    if not running_claimed:
+        existing_running = cache_manager.cache.get(running_key)
+        if existing_running == self.request.id:
+            logger.info(
+                "Dataset %s task %s was re-delivered while already claimed, skipping duplicate execution.",
+                dataset_id,
+                self.request.id,
+            )
+            cache_manager.cache.delete(queued_key)
+            return
 
-    cache_manager.cache.set(running_key, self.request.id, timeout=marker_timeout)
+        if existing_running:
+            logger.info(
+                "Dataset %s already running under task %s for window %s marker %s, skipping duplicate task %s.",
+                dataset_id,
+                existing_running,
+                target_window,
+                marker,
+                self.request.id,
+            )
+            cache_manager.cache.delete(queued_key)
+            return
+
     logger.info(
         "Refreshing dynamic dataset %s for window %s, marker %s, task id %s",
         dataset_id,
@@ -327,7 +360,6 @@ def refresh_dataset(
             elapsed_seconds,
             ex,
         )
-        cache_manager.cache.delete(queued_key)
         self.update_state(state="FAILURE")
         raise
     except Exception as ex:  # pylint: disable=broad-except
@@ -338,7 +370,6 @@ def refresh_dataset(
             elapsed_seconds,
             ex,
         )
-        cache_manager.cache.delete(queued_key)
         self.update_state(state="FAILURE")
         raise
     else:
@@ -353,3 +384,4 @@ def refresh_dataset(
         )
     finally:
         cache_manager.cache.delete(running_key)
+        cache_manager.cache.delete(queued_key)

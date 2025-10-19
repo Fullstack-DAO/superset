@@ -76,12 +76,12 @@ DATA_CACHE_CONFIG = CACHE_CONFIG
 DYNAMIC_TABLE_REFRESH_SCHEDULE = {
     "default": {
         "batch_size": 2,
-        "window_minutes": 360,
+        "window_minutes": 450,
         "start_delay_minutes": 0,
     },
     "evening": {
         "batch_size": 2,
-        "window_minutes": 360,
+        "window_minutes": 450,
         "start_delay_minutes": 0,
     },
     "morning": {
@@ -99,7 +99,9 @@ class CeleryConfig:
     worker_prefetch_multiplier = 1
     task_acks_late = False
     broker_transport_options = {
-        "visibility_timeout": int(os.getenv("CELERY_VISIBILITY_TIMEOUT", "7200")),
+        "visibility_timeout": int(
+            os.getenv("CELERY_VISIBILITY_TIMEOUT", str(12 * 60 * 60))
+        ),
     }
     beat_schedule = {
         "reports.scheduler": {
@@ -112,7 +114,7 @@ class CeleryConfig:
         },
          "dynamic_table.refresh_datas": {
             "task": "dynamic_table.refresh_datas",
-            "schedule": crontab(minute=50, hour=23),
+            "schedule": crontab(minute=30, hour=23),
         },
 
         "dynamic_table.refresh_datas2": {

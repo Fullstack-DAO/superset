@@ -56,6 +56,14 @@ type SliceHeaderProps = SliceHeaderControlsProps & {
 
 const annotationsLoading = t('Annotation layers are still loading.');
 const annotationsError = t('One ore more annotation layers failed loading.');
+
+const isMobileDevice = () => {
+  const ua = navigator.userAgent;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    ua,
+  );
+};
+
 const CrossFilterIcon = styled(Icons.ApartmentOutlined)`
   ${({ theme }) => `
     cursor: default;
@@ -82,6 +90,9 @@ const ChartHeaderStyles = styled.div`
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
+      @media (max-width: 768px) {
+        font-size: 20px;
+      }
 
       & > span.ant-tooltip-open {
         display: inline;
@@ -92,6 +103,9 @@ const ChartHeaderStyles = styled.div`
       display: flex;
       align-items: center;
       height: 24px;
+      @media (max-width: 768px) {
+        height: 32px;
+      }
 
       & > * {
         margin-left: ${theme.gridUnit * 2}px;
@@ -198,7 +212,7 @@ const SliceHeader: FC<SliceHeaderProps> = ({
   return (
     <ChartHeaderStyles data-test="slice-header" ref={innerRef}>
       <div className="header-title" ref={headerRef}>
-        <Tooltip title={headerTooltip}>
+        <Tooltip title={!isMobileDevice() ? headerTooltip : null}>
           <EditableTitle
             title={
               sliceName ||
@@ -206,10 +220,10 @@ const SliceHeader: FC<SliceHeaderProps> = ({
                 ? '---' // this makes an empty title clickable
                 : '')
             }
-            canEdit={editMode}
+            canEdit={editMode && !isMobileDevice()}
             onSaveTitle={updateSliceName}
             showTooltip={false}
-            url={canExplore ? exploreUrl : undefined}
+            url={canExplore && !isMobileDevice() ? exploreUrl : undefined}
           />
         </Tooltip>
         {!!Object.values(annotationQuery).length && (

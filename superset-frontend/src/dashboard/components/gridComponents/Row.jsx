@@ -77,6 +77,12 @@ const GridRow = styled.div`
     & > :not(:last-child):not(.hover-menu) {
       margin-right: ${theme.gridUnit * 4}px;
     }
+    
+    @media (max-width: 768px) {
+      & > :not(:last-child):not(.hover-menu) {
+        margin-right: 0;
+      }
+    }
 
     &.grid-row--empty {
       min-height: ${theme.gridUnit * 25}px;

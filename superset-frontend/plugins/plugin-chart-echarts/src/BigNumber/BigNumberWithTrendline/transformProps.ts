@@ -29,6 +29,7 @@ import {
   Metric,
   ValueFormatter,
   getValueFormatter,
+  getCategoricalSchemeRegistry,
 } from '@superset-ui/core';
 import { EChartsCoreOption, graphic } from 'echarts';
 import {
@@ -108,7 +109,14 @@ export default function transformProps(
   let formattedSubheader = subheader;
 
   const { r, g, b } = colorPicker;
-  const mainColor = `rgb(${r}, ${g}, ${b})`;
+  let mainColor = `rgb(${r}, ${g}, ${b})`;
+
+  // Use global theme color
+  const registry = getCategoricalSchemeRegistry();
+  const defaultScheme = registry.get();
+  if (defaultScheme && defaultScheme.colors.length > 0) {
+    mainColor = defaultScheme.colors[0];
+  }
 
   const xAxisLabel = getXAxisLabel(rawFormData) as string;
   let trendLineData: TimeSeriesDatum[] | undefined;

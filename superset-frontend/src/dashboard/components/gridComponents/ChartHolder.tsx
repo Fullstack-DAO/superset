@@ -98,15 +98,15 @@ const ChartContainer = styled.div`
   /* Mobile styles */
   @media screen and (max-width: 768px) {
     height: auto !important;
-    min-height: 300px;
+    // min-height: 300px;
 
     .chart-container {
       height: auto !important;
-      min-height: 300px;
+      // min-height: 300px;
 
       .slice_container {
         height: auto !important;
-        min-height: 300px;
+        // min-height: 300px;
         transform: none !important;
       }
     }
@@ -156,6 +156,9 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
   const theme = useTheme();
   const { chartId } = component.meta;
   const isFullSize = fullSizeChartId === chartId;
+
+  const chart = useSelector((state: RootState) => state.charts?.[chartId]);
+  const isBigNumber = chart?.form_data?.viz_type === 'big_number_total';
 
   const focusHighlightStyles = useFilterFocusHighlightStyles(chartId);
   const dashboardState = useSelector(
@@ -259,8 +262,8 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
       chartWidth = window.innerWidth - CHART_MARGIN;
       chartHeight = window.innerHeight - CHART_MARGIN;
     } else if (isMobile) {
-      chartWidth = window.innerWidth - theme.gridUnit * 4; // 减去左右padding
-      chartHeight = 400; // 使用固定高度
+      chartWidth = window.innerWidth - theme.gridUnit * 16; // 减去左右padding
+      chartHeight = isBigNumber ? 150 : 400; // 使用固定高度
     } else {
       chartWidth = Math.floor(
         widthMultiple * columnWidth +
@@ -283,6 +286,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
     isMobile,
     widthMultiple,
     theme.gridUnit,
+    isBigNumber,
   ]);
 
   const handleDeleteComponent = useCallback(() => {

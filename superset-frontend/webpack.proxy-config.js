@@ -22,7 +22,7 @@ const zlib = require('zlib');
 const parsedArgs = require('yargs').argv;
 
 const { supersetPort = 8088, superset: supersetUrl = null } = parsedArgs;
-const backend = (supersetUrl || `http://localhost:${supersetPort}`).replace(
+const backend = (supersetUrl || `http://127.0.0.1:${supersetPort}`).replace(
   '//+$/',
   '',
 ); // strip ending backslash

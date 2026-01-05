@@ -814,6 +814,23 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
             ),
         )
 
+    @expose("/app/dashboard/")
+    def app_dashboard(self) -> FlaskResponse:
+        self.logger.info("Serving app_dashboard")
+        return self.render_template(
+            "superset/spa.html",
+            entry="spa",
+            title="App Dashboard",
+            bootstrap_data=json.dumps(
+                {
+                    "user": bootstrap_user_data(g.user, include_perms=True),
+                    "common": common_bootstrap_payload(),
+                },
+                default=utils.pessimistic_json_iso_dttm_ser,
+            ),
+            standalone_mode=ReservedUrlParameters.is_standalone_mode(),
+        )
+
     @has_access
     @expose("/dashboard/<dashboard_id_or_slug>/")
     @event_logger.log_this_with_extra_payload

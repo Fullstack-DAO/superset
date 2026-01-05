@@ -68,16 +68,26 @@ const LocationPathnameLogger = () => {
   return <></>;
 };
 
+const MenuWrapper = () => {
+  const location = useLocation();
+  if (location.pathname === '/superset/app/dashboard' || location.pathname === '/superset/app/dashboard/') {
+    return null;
+  }
+  return (
+    <Menu
+      data={bootstrapData.common.menu_data}
+      isFrontendRoute={isFrontendRoute}
+    />
+  );
+};
+
 const App = () => (
   <Router>
     <ScrollToTop />
     <LocationPathnameLogger />
     <RootContextProviders>
       <GlobalStyles />
-      <Menu
-        data={bootstrapData.common.menu_data}
-        isFrontendRoute={isFrontendRoute}
-      />
+      <MenuWrapper />
       <Switch>
         {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
           <Route path={path} key={path}>

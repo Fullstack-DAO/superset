@@ -142,6 +142,10 @@ const Profile = lazy(
   () => import(/* webpackChunkName: "Profile" */ 'src/pages/Profile'),
 );
 
+const AppDashboard = lazy(
+  () => import(/* webpackChunkName: "AppDashboard" */ 'src/pages/AppDashboard'),
+);
+
 type Routes = {
   path: string;
   Component: React.ComponentType;
@@ -153,6 +157,10 @@ export const routes: Routes = [
   {
     path: '/superset/welcome/',
     Component: Home,
+  },
+  {
+    path: '/superset/app/dashboard',
+    Component: AppDashboard,
   },
   {
     path: '/copilot',

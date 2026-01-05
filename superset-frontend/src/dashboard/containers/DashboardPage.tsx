@@ -74,9 +74,13 @@ const originalDocumentTitle = document.title;
 
 type PageProps = {
   idOrSlug: string;
+  isAppDashboard?: boolean;
 };
 
-export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
+export const DashboardPage: FC<PageProps> = ({
+  idOrSlug,
+  isAppDashboard = false,
+}: PageProps) => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const history = useHistory();
@@ -223,7 +227,7 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
       <SyncDashboardState dashboardPageId={dashboardPageId} />
       <DashboardPageIdContext.Provider value={dashboardPageId}>
         <DashboardContainer>
-          <DashboardBuilder />
+          <DashboardBuilder isAppDashboard={isAppDashboard} />
         </DashboardContainer>
       </DashboardPageIdContext.Provider>
     </>

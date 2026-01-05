@@ -75,6 +75,13 @@ const MENU_KEYS = {
   CROSS_FILTER_SCOPING: 'cross_filter_scoping',
 };
 
+const isMobileDevice = () => {
+  const ua = navigator.userAgent;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    ua,
+  );
+};
+
 // TODO: replace 3 dots with an icon
 const VerticalDotsContainer = styled.div`
   padding: ${({ theme }) => theme.gridUnit / 4}px
@@ -534,6 +541,30 @@ const SliceHeaderControls = (props: SliceHeaderControlsPropsWithRouter) => {
       )}
     </Menu>
   );
+
+  if (isMobileDevice()) {
+    return (
+      <>
+        <Icons.ReloadOutlined
+          style={{ fontSize: 22, marginRight: 8 }}
+          onClick={() =>
+            props.forceRefresh(props.slice.slice_id, props.dashboardId)
+          }
+        />
+        {isFullSize ? (
+          <Icons.FullscreenExitOutlined
+            style={{ fontSize: 22 }}
+            onClick={props.handleToggleFullSize}
+          />
+        ) : (
+          <Icons.FullscreenOutlined
+            style={{ fontSize: 22 }}
+            onClick={props.handleToggleFullSize}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>

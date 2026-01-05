@@ -90,7 +90,9 @@ import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
 import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaboratorModal';
 
-type DashboardBuilderProps = {};
+type DashboardBuilderProps = {
+  isAppDashboard?: boolean;
+};
 
 // @z-index-above-dashboard-charts + 1 = 11
 const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
@@ -306,7 +308,7 @@ const StyledDashboardContent = styled.div<{
       }px);`}
 
       @media (max-width: 768px) {
-        margin: ${theme.gridUnit * 2}px;
+        margin: ${theme.gridUnit * 2}px ${theme.gridUnit * 4}px;
 
         .dashboard-grid {
           display: flex !important;
@@ -321,7 +323,9 @@ const StyledDashboardContent = styled.div<{
         .dashboard-component-chart-holder {
           width: 100% !important;
           height: auto !important;
-          margin-bottom: ${theme.gridUnit * 4}px !important;
+          padding: 16px;
+          border-radius: 12px !important;
+          background-color: #fff;
         }
 
         .grid-column,
@@ -332,7 +336,7 @@ const StyledDashboardContent = styled.div<{
 
         .chart-container {
           width: 100% !important;
-          min-height: 400px !important;
+          // min-height: 365px !important;
         }
 
         .slice_container {
@@ -351,7 +355,8 @@ const StyledDashboardContent = styled.div<{
         }
 
         .dashboard-component {
-          margin-bottom: ${theme.gridUnit * 4}px !important;
+          box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.1) !important;
+          margin-bottom: ${theme.gridUnit * 6}px !important;
         }
 
         .dragdroppable-row {
@@ -360,13 +365,12 @@ const StyledDashboardContent = styled.div<{
 
         .dragdroppable-row > div {
           width: 100% !important;
-          margin-bottom: ${theme.gridUnit * 4}px;
         }
 
         .resizable-container {
           width: 100% !important;
           height: auto !important;
-          min-height: 400px;
+          // min-height: 400px;
           resize: none !important;
         }
       }
@@ -433,7 +437,9 @@ const HeaderButtons = styled.div`
   z-index: 99;
 `;
 
-const DashboardBuilder: FC<DashboardBuilderProps> = () => {
+const DashboardBuilder: FC<DashboardBuilderProps> = ({
+  isAppDashboard = false,
+}) => {
   const dispatch = useDispatch();
   const uiConfig = useUiConfig();
   const theme = useTheme();
@@ -503,7 +509,8 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   const hideDashboardHeader =
     uiConfig.hideTitle ||
     standaloneMode === DashboardStandaloneMode.HIDE_NAV_AND_TITLE ||
-    isReport;
+    isReport ||
+    isAppDashboard;
 
   const [barTopOffset, setBarTopOffset] = useState(0);
 
@@ -538,7 +545,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
   });
 
   const showFilterBar =
-    (crossFiltersEnabled || nativeFiltersEnabled) && !editMode;
+    (crossFiltersEnabled || nativeFiltersEnabled) && !editMode && !isAppDashboard;
 
   const offset =
     FILTER_BAR_HEADER_HEIGHT +
@@ -613,7 +620,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
             />
           )}
         {dropIndicatorProps && <div {...dropIndicatorProps} />}
-        {!isReport && topLevelTabs && !uiConfig.hideNav && (
+        {!isReport && !isAppDashboard && topLevelTabs && !uiConfig.hideNav && (
           <WithPopoverMenu
             shouldFocus={shouldFocusTabs}
             menuItems={[

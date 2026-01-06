@@ -68,7 +68,7 @@ const ColumnStyles = styled.div`
       & > :not(.hover-menu):not(:last-child) {
         margin-bottom: ${theme.gridUnit * 4}px;
       }
-      
+
       @media (max-width: 768px) {
         & > :not(.hover-menu):not(:last-child) {
           margin-bottom: 0;

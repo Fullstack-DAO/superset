@@ -96,7 +96,7 @@ const AppDashboard = () => {
     SupersetClient.get({
       endpoint: '/api/v1/dashboard/?q=(order_column:changed_on_delta_humanized,order_direction:desc,page:0,page_size:100)',
     }).then(({ json }) => {
-      const result = json.result;
+      const { result } = json;
       setDashboards(result);
       if (result.length > 0) {
         setSelectedId(String(result[0].id));

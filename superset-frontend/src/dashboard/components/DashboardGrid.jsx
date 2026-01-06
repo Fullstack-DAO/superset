@@ -87,7 +87,7 @@ const GridContent = styled.div`
     & > div:not(:last-child):not(.empty-droptarget) {
       margin-bottom: ${theme.gridUnit * 4}px;
     }
-      
+
     @media (max-width: 768px) {
       & > div:not(:last-child):not(.empty-droptarget) {
         margin-bottom: 0;

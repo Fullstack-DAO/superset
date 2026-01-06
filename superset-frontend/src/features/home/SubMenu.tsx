@@ -286,44 +286,46 @@ const SubMenuComponent: React.FunctionComponent<SubMenuProps> = props => {
             })}
           </Menu>
         )}
-        {props.dropDownLinks && props.buttons && (
+        {(props.dropDownLinks || props.buttons) && (
           <div className={navRightStyle}>
-            <Menu mode="horizontal" triggerSubMenuAction="click">
-              {props.dropDownLinks?.map((link, i) => (
-                <SubMenu
-                  key={i}
-                  title={link.label}
-                  icon={<Icons.TriangleDown />}
-                  popupOffset={[10, 20]}
-                  className="dropdown-menu-links"
-                >
-                  {link.childs?.map(item => {
-                    if (typeof item === 'object') {
-                      return item.disable ? (
-                        <DropdownMenu.Item
-                          key={item.label}
-                          css={styledDisabled}
-                        >
-                          <Tooltip
-                            placement="top"
-                            title={t(
-                              "Enable 'Allow file uploads to database' in any database's settings",
-                            )}
+            {props.dropDownLinks && (
+              <Menu mode="horizontal" triggerSubMenuAction="click">
+                {props.dropDownLinks.map((link, i) => (
+                  <SubMenu
+                    key={i}
+                    title={link.label}
+                    icon={<Icons.TriangleDown />}
+                    popupOffset={[10, 20]}
+                    className="dropdown-menu-links"
+                  >
+                    {link.childs?.map(item => {
+                      if (typeof item === 'object') {
+                        return item.disable ? (
+                          <DropdownMenu.Item
+                            key={item.label}
+                            css={styledDisabled}
                           >
-                            {item.label}
-                          </Tooltip>
-                        </DropdownMenu.Item>
-                      ) : (
-                        <DropdownMenu.Item key={item.label}>
-                          <a href={item.url}>{item.label}</a>
-                        </DropdownMenu.Item>
-                      );
-                    }
-                    return null;
-                  })}
-                </SubMenu>
-              ))}
-            </Menu>
+                            <Tooltip
+                              placement="top"
+                              title={t(
+                                "Enable 'Allow file uploads to database' in any database's settings",
+                              )}
+                            >
+                              {item.label}
+                            </Tooltip>
+                          </DropdownMenu.Item>
+                        ) : (
+                          <DropdownMenu.Item key={item.label}>
+                            <a href={item.url}>{item.label}</a>
+                          </DropdownMenu.Item>
+                        );
+                      }
+                      return null;
+                    })}
+                  </SubMenu>
+                ))}
+              </Menu>
+            )}
             {props.buttons?.map((btn, i) => (
               <Button
                 key={i}

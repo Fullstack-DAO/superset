@@ -66,21 +66,25 @@ const AppDashboard = () => {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const userIdParam = urlParams.get('user');
+    const emailParam = urlParams.get('email');
 
-    if (!userId && userIdParam) {
+    if (!userId && emailParam) {
       setIsLoggingIn(true);
-      // TODO: 调用新的登录接口
-      // SupersetClient.post({ endpoint: '/api/v1/auth/login_by_userid', body: { userId: userIdParam } })
-      //   .then(() => window.location.reload())
-      //   .catch(err => console.error(err));
-      
-      // 占位处理：模拟登录请求
-      console.log(`Attempting to login with userId: ${userIdParam}`);
-      setTimeout(() => {
-        console.log('Login placeholder finished');
-        // window.location.reload(); // 实际接口完成后取消注释
-      }, 1000);
+      SupersetClient.get({ 
+        endpoint: `/custom/login_by_email?email=${encodeURIComponent(emailParam)}` 
+      })
+        .then(({ json }) => {
+          if (json.status === 'success') {
+             window.location.reload();
+          } else {
+             console.error('Login failed:', json.message);
+             setIsLoggingIn(false);
+          }
+        })
+        .catch(err => {
+          console.error('Login error:', err);
+          setIsLoggingIn(false);
+        });
       return;
     }
 

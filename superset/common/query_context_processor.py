@@ -135,6 +135,14 @@ class QueryContextProcessor:
             force_query=force_query,
             force_cached=force_cached,
         )
+        slice_id = self._query_context.slice_.id if self._query_context.slice_ else None
+        logger.info(
+            "Cache %s for chart_id=%s, cache_key=%s, force_query=%s",
+            "HIT" if cache.is_loaded else "MISS",
+            slice_id,
+            cache_key,
+            force_query,
+        )
         ##改造缓存更新
         if query_obj and cache_key and (not cache.is_loaded or cache_level == 1):
             try:

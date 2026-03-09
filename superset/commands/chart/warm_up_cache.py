@@ -90,7 +90,7 @@ class ChartWarmUpCacheCommand(BaseCommand):
     @staticmethod
     def _build_queries_from_form_data(
         form_data: dict[str, Any],
-    ) -> list[dict[str, Any]] | None:
+    ) -> Optional[list[dict[str, Any]]]:
         """
         Build query dicts from the chart's current form_data,
         replicating the frontend's plugin-specific buildQuery logic.

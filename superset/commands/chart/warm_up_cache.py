@@ -126,6 +126,17 @@ class ChartWarmUpCacheCommand(BaseCommand):
                 query_context.force = True
                 query_context.warm_up = self._warm_up
 
+                # Log the saved query_context details for debugging
+                for idx, q in enumerate(query_context.queries):
+                    logger.info(
+                        "Warmup chart %d query[%d]: columns=%s, "
+                        "metrics=%s, filters=%s, orderby=%s, "
+                        "post_processing=%s, row_limit=%s",
+                        chart.id, idx,
+                        q.columns, q.metrics, q.filter,
+                        q.orderby, q.post_processing, q.row_limit,
+                    )
+
                 # Inject dashboard native filter defaults into query filters.
                 # The frontend builds filters as (in buildQueryObject.ts):
                 #   processFilters merges:

@@ -218,7 +218,8 @@ class QueryContextProcessor:
             if query_obj
             else None
         )
-        logger.info("Cache key: %s, filter: %s", cache_key, query_obj.filter if query_obj else None)
+        slice_id = self._query_context.slice_.id if self._query_context.slice_ else None
+        logger.info("Cache key: %s, chart_id: %s, filter: %s", cache_key, slice_id, query_obj.filter if query_obj else None)
         return cache_key
 
     def get_query_result(self, query_object: QueryObject) -> QueryResult:

@@ -294,3 +294,78 @@ def cache_warmup(
             results["errors"].append(payload)
 
     return results
+
+
+@celery_app.task(name="dashboard-cache-warmup")
+def dashboard_cache_warmup(
+    dashboard_ids: Optional[list[int]] = None,
+) -> dict[str, Any]:
+    """
+    Warm up cache for all charts in specified dashboards, including
+    dashboard native filter defaults so that cache keys match real usage.
+
+    Calls ChartWarmUpCacheCommand directly (no HTTP round-trip needed).
+
+    Args:
+        dashboard_ids: List of dashboard IDs to warm up. If None, warms up
+                       all dashboards.
+    """
+    # pylint: disable=import-outside-toplevel
+    from flask import g as flask_g
+
+    from superset.commands.chart.warm_up_cache import ChartWarmUpCacheCommand
+
+    # Set up user context for query execution
+    user = security_manager.get_user_by_username(
+        app.config["THUMBNAIL_SELENIUM_USER"]
+    )
+    flask_g.user = user
+
+    if dashboard_ids:
+        dashboards = (
+            db.session.query(Dashboard)
+            .filter(Dashboard.id.in_(dashboard_ids))
+            .all()
+        )
+    else:
+        dashboards = db.session.query(Dashboard).all()
+
+    results: dict[str, list[dict[str, Any]]] = {"success": [], "errors": []}
+
+    for dashboard in dashboards:
+        logger.info(
+            "Warming up cache for dashboard %d (%s)",
+            dashboard.id,
+            dashboard.dashboard_title,
+        )
+        for chart in dashboard.slices:
+            try:
+                result = ChartWarmUpCacheCommand(
+                    chart_or_id=chart,
+                    dashboard_id=dashboard.id,
+                    extra_filters=None,
+                    warm_up=True,
+                ).run()
+                logger.info(
+                    "Chart %d warmup result: %s", chart.id, result.get("viz_status")
+                )
+                if result.get("viz_error"):
+                    results["errors"].append(result)
+                else:
+                    results["success"].append(result)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "Error warming up chart %d in dashboard %d",
+                    chart.id,
+                    dashboard.id,
+                )
+                results["errors"].append(
+                    {"chart_id": chart.id, "dashboard_id": dashboard.id}
+                )
+
+    logger.info(
+        "Dashboard cache warmup complete: %d success, %d errors",
+        len(results["success"]),
+        len(results["errors"]),
+    )
+    return results

@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-
+import logging
 from typing import Any, Optional, Union
 
 import simplejson as json
@@ -28,10 +28,13 @@ from superset.commands.chart.exceptions import (
     WarmUpCacheChartNotFoundError,
 )
 from superset.extensions import db
+from superset.models.dashboard import Dashboard
 from superset.models.slice import Slice
 from superset.utils.core import error_msg_from_exception
 from superset.views.utils import get_dashboard_extra_filters, get_form_data, get_viz
 from superset.viz import viz_types
+
+logger = logging.getLogger(__name__)
 
 
 class ChartWarmUpCacheCommand(BaseCommand):
@@ -46,6 +49,43 @@ class ChartWarmUpCacheCommand(BaseCommand):
         self._dashboard_id = dashboard_id
         self._extra_filters = extra_filters
         self._warm_up = warm_up
+
+    @staticmethod
+    def _get_native_filter_extras(
+        chart_id: int, dashboard_id: int
+    ) -> list[dict[str, Any]]:
+        """
+        Extract native filter default values from a dashboard
+        that apply to the given chart.
+
+        Returns a list of filter clauses like:
+            [{"col": "年", "op": "IN", "val": [2025]}, ...]
+        """
+        dashboard = db.session.query(Dashboard).filter_by(id=dashboard_id).first()
+        if not dashboard or not dashboard.json_metadata:
+            return []
+
+        try:
+            metadata = json.loads(dashboard.json_metadata)
+        except json.JSONDecodeError:
+            return []
+
+        native_filters = metadata.get("native_filter_configuration", [])
+        extra_filters: list[dict[str, Any]] = []
+
+        for native_filter in native_filters:
+            # Check if this filter applies to the chart via chartsInScope
+            charts_in_scope = native_filter.get("chartsInScope")
+            if charts_in_scope is not None and chart_id not in charts_in_scope:
+                continue
+
+            # Extract default filter values
+            default_data_mask = native_filter.get("defaultDataMask", {})
+            extra_form_data = default_data_mask.get("extraFormData", {})
+            filters = extra_form_data.get("filters", [])
+            extra_filters.extend(filters)
+
+        return extra_filters
 
     def run(self) -> dict[str, Any]:
         self.validate()
@@ -85,6 +125,23 @@ class ChartWarmUpCacheCommand(BaseCommand):
 
                 query_context.force = True
                 query_context.warm_up = self._warm_up
+
+                # Inject dashboard native filter defaults into query filters
+                if self._dashboard_id:
+                    native_extras = self._get_native_filter_extras(
+                        chart.id, self._dashboard_id
+                    )
+                    if native_extras:
+                        logger.info(
+                            "Injecting %d native filter defaults for chart %d "
+                            "from dashboard %d",
+                            len(native_extras),
+                            chart.id,
+                            self._dashboard_id,
+                        )
+                        for query_obj in query_context.queries:
+                            query_obj.filter.extend(native_extras)
+
                 command = ChartDataCommand(query_context)
                 command.validate()
                 payload = command.run()

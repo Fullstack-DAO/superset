@@ -415,6 +415,11 @@ class QueryObject:  # pylint: disable=too-many-instance-attributes
             # datasource or database do not exist
             pass
 
+        import json as _json
+        logger.info(
+            "cache_dict for cache_key: %s",
+            _json.dumps(cache_dict, default=str, ensure_ascii=False, sort_keys=True),
+        )
         return md5_sha_from_dict(cache_dict, default=json_int_dttm_ser, ignore_nan=True)
 
     def exec_post_processing(self, df: DataFrame) -> DataFrame:

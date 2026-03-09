@@ -126,7 +126,18 @@ class ChartWarmUpCacheCommand(BaseCommand):
                 query_context.force = True
                 query_context.warm_up = self._warm_up
 
-                # Inject dashboard native filter defaults into query filters
+                # Inject dashboard native filter defaults into query filters.
+                # The frontend builds filters as (in buildQueryObject.ts):
+                #   processFilters merges:
+                #     [...extraFilters (from extra_filters, usually empty for
+                #       native-filter dashboards),
+                #      ...appendFilters (from extra_form_data.filters = native
+                #       filter values),
+                #      ...adhoc_simple_WHERE (from adhoc_filters, including
+                #       TEMPORAL_RANGE and custom WHERE clauses)]
+                # The saved query_context has only adhoc results (no native
+                # filters).  We must prepend native filters to match the
+                # frontend's ordering so cache keys are identical.
                 if self._dashboard_id:
                     native_extras = self._get_native_filter_extras(
                         chart.id, self._dashboard_id
@@ -140,7 +151,9 @@ class ChartWarmUpCacheCommand(BaseCommand):
                             self._dashboard_id,
                         )
                         for query_obj in query_context.queries:
-                            query_obj.filter.extend(native_extras)
+                            # Prepend native filters before existing adhoc
+                            # filters to match the frontend's ordering
+                            query_obj.filter = native_extras + query_obj.filter
 
                 command = ChartDataCommand(query_context)
                 command.validate()

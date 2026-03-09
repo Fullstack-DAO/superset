@@ -218,6 +218,7 @@ class QueryContextProcessor:
             if query_obj
             else None
         )
+        logger.info("Cache key: %s, filter: %s", cache_key, query_obj.filter if query_obj else None)
         return cache_key
 
     def get_query_result(self, query_object: QueryObject) -> QueryResult:

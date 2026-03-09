@@ -40,10 +40,12 @@ class ChartWarmUpCacheCommand(BaseCommand):
         chart_or_id: Union[int, Slice],
         dashboard_id: Optional[int],
         extra_filters: Optional[str],
+        warm_up: bool = True,
     ):
         self._chart_or_id = chart_or_id
         self._dashboard_id = dashboard_id
         self._extra_filters = extra_filters
+        self._warm_up = warm_up
 
     def run(self) -> dict[str, Any]:
         self.validate()
@@ -82,6 +84,7 @@ class ChartWarmUpCacheCommand(BaseCommand):
                     raise ChartInvalidError("Chart's query context does not exist")
 
                 query_context.force = True
+                query_context.warm_up = self._warm_up
                 command = ChartDataCommand(query_context)
                 command.validate()
                 payload = command.run()

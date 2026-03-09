@@ -127,7 +127,7 @@ class QueryContextProcessor:
         """Handles caching around the df payload retrieval"""
         cache_key = self.query_cache_key(query_obj)
         timeout = self.get_cache_timeout()
-        force_query = self._query_context.force or timeout == -1
+        force_query = self._query_context.force or self._query_context.warm_up or timeout == -1
         cache_level = self._query_context.cache_level
         cache = QueryCacheManager.get(
             key=cache_key,
@@ -232,7 +232,7 @@ class QueryContextProcessor:
             # todo(hugh): add logic to manage all sip68 models here
             result = query_context.datasource.exc_query(query_object.to_dict())
         else:
-            result = query_context.datasource.query(query_object.to_dict(), self._query_context.force)
+            result = query_context.datasource.query(query_object.to_dict(), self._query_context.force and not self._query_context.warm_up)
             query = result.query + ";\n\n"
 
         df = result.df

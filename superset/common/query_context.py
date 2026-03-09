@@ -53,6 +53,7 @@ class QueryContext:
     result_type: ChartDataResultType
     result_format: ChartDataResultFormat
     force: bool
+    warm_up: bool
     custom_cache_timeout: int | None
 
     cache_values: dict[str, Any]
@@ -71,6 +72,7 @@ class QueryContext:
         result_type: ChartDataResultType,
         result_format: ChartDataResultFormat,
         force: bool = False,
+        warm_up: bool = False,
         custom_cache_timeout: int | None = None,
         cache_values: dict[str, Any],
     ) -> None:
@@ -81,6 +83,7 @@ class QueryContext:
         self.queries = queries
         self.form_data = form_data
         self.force = force
+        self.warm_up = warm_up
         self.custom_cache_timeout = custom_cache_timeout
         self.cache_values = cache_values
         self._processor = QueryContextProcessor(self)

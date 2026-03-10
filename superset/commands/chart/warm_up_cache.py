@@ -71,18 +71,85 @@ class ChartWarmUpCacheCommand(BaseCommand):
             return []
 
         native_filters = metadata.get("native_filter_configuration", [])
+        # dataMask at the dashboard level stores the last-applied filter
+        # values (persisted when the dashboard is saved). This is the
+        # fallback when defaultDataMask.extraFormData.filters is empty.
+        dashboard_data_mask = metadata.get("dataMask", {})
         extra_filters: list[dict[str, Any]] = []
 
-        for native_filter in native_filters:
-            # Check if this filter applies to the chart via chartsInScope
-            charts_in_scope = native_filter.get("chartsInScope")
-            if charts_in_scope is not None and chart_id not in charts_in_scope:
-                continue
+        logger.info(
+            "Native filter extraction for chart %d, dashboard %d: "
+            "%d native filters found, dataMask keys: %s",
+            chart_id, dashboard_id,
+            len(native_filters),
+            list(dashboard_data_mask.keys()) if dashboard_data_mask else "none",
+        )
 
-            # Extract default filter values
-            default_data_mask = native_filter.get("defaultDataMask", {})
-            extra_form_data = default_data_mask.get("extraFormData", {})
-            filters = extra_form_data.get("filters", [])
+        for native_filter in native_filters:
+            filter_id = native_filter.get("id", "unknown")
+            filter_name = native_filter.get("name", "unknown")
+
+            # Determine if this filter applies to the chart.
+            # The `scope` field (rootPath + excluded) is the source of
+            # truth; `chartsInScope` is a pre-computed cache that can
+            # become stale when charts are added/removed.
+            scope = native_filter.get("scope", {})
+            root_path = scope.get("rootPath", [])
+            excluded = scope.get("excluded", [])
+
+            if "ROOT_ID" in root_path:
+                # Global scope — applies to all charts except excluded
+                if chart_id in excluded:
+                    logger.info(
+                        "  Filter '%s' (id=%s): chart %d excluded by scope",
+                        filter_name, filter_id, chart_id,
+                    )
+                    continue
+            else:
+                # Tab-level scope — fall back to chartsInScope
+                charts_in_scope = native_filter.get("chartsInScope")
+                if charts_in_scope is not None and chart_id not in charts_in_scope:
+                    logger.info(
+                        "  Filter '%s' (id=%s): chart %d NOT in "
+                        "chartsInScope %s",
+                        filter_name, filter_id, chart_id, charts_in_scope,
+                    )
+                    continue
+
+            # Try 1: dashboard-level dataMask (last-applied/saved values)
+            # — this reflects what users actually see when opening the
+            #   dashboard, so it takes priority over defaultDataMask.
+            filters: list[dict[str, Any]] = []
+            if dashboard_data_mask:
+                dm_entry = dashboard_data_mask.get(filter_id, {})
+                dm_extra = dm_entry.get("extraFormData", {})
+                filters = dm_extra.get("filters", [])
+                if filters:
+                    logger.info(
+                        "  Filter '%s' (id=%s): using dashboard dataMask, "
+                        "got %d filters: %s",
+                        filter_name, filter_id, len(filters), filters,
+                    )
+
+            # Try 2: defaultDataMask.extraFormData.filters (configured default)
+            if not filters:
+                default_data_mask = native_filter.get("defaultDataMask", {})
+                extra_form_data = default_data_mask.get("extraFormData", {})
+                filters = extra_form_data.get("filters", [])
+                if filters:
+                    logger.info(
+                        "  Filter '%s' (id=%s): using defaultDataMask, "
+                        "got %d filters: %s",
+                        filter_name, filter_id, len(filters), filters,
+                    )
+
+            if not filters:
+                logger.info(
+                    "  Filter '%s' (id=%s): in_scope=True but NO filters "
+                    "found in dataMask or defaultDataMask",
+                    filter_name, filter_id,
+                )
+
             extra_filters.extend(filters)
 
         return extra_filters

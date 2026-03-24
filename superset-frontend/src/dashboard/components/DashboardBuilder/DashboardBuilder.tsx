@@ -88,7 +88,6 @@ import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
 import DashboardWrapper from './DashboardWrapper';
-import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaboratorModal';
 
 type DashboardBuilderProps = {
   isAppDashboard?: boolean;
@@ -297,10 +296,9 @@ const StyledDashboardContent = styled.div<{
       width: 0;
       flex: 1;
       position: relative;
-      margin-top: ${theme.gridUnit * 6}px;
-      margin-right: ${theme.gridUnit * 8}px;
-      margin-bottom: ${theme.gridUnit * 6}px;
-      margin-left: ${marginLeft}px;
+      margin: 0 ${theme.gridUnit * 4}px ${theme.gridUnit * 4}px;
+      background-color: #fff;
+      padding: ${theme.gridUnit * 4}px;
 
       ${editMode &&
       `max-width: calc(100% - ${
@@ -309,6 +307,8 @@ const StyledDashboardContent = styled.div<{
 
       @media (max-width: 768px) {
         margin: ${theme.gridUnit * 2}px ${theme.gridUnit * 4}px;
+        background-color: transparent;
+        padding: 0;
 
         .dashboard-grid {
           display: flex !important;
@@ -326,6 +326,12 @@ const StyledDashboardContent = styled.div<{
           padding: 16px;
           border-radius: 12px !important;
           background-color: #fff;
+          box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.1) !important;
+          margin-bottom: ${theme.gridUnit * 6}px !important;
+        }
+
+        .ant-tabs-content-holder {
+          background: transparent;
         }
 
         .grid-column,
@@ -355,8 +361,8 @@ const StyledDashboardContent = styled.div<{
         }
 
         .dashboard-component {
-          box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.1) !important;
-          margin-bottom: ${theme.gridUnit * 6}px !important;
+          // box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.1) !important;
+          // margin-bottom: ${theme.gridUnit * 6}px !important;
         }
 
         .dragdroppable-row {
@@ -388,6 +394,10 @@ const StyledDashboardContent = styled.div<{
       position: relative;
       padding: ${theme.gridUnit * 4}px;
       overflow-y: visible;
+      border: 1px solid #E8EBF1;
+      @media (max-width: 768px) {
+        border: none;
+      }
 
       // transitionable traits to show filter relevance
       transition: opacity ${theme.transitionTiming}s ease-in-out,
@@ -445,8 +455,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
   const theme = useTheme();
   const screens = useBreakpoint();
 
-  const [isCollaboratorsModalVisible, setCollaboratorsModalVisible] =
-    useState(false);
   const dashboardId = useSelector<RootState, number>(
     ({ dashboardInfo }) => dashboardInfo.id,
   );
@@ -468,12 +476,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
   const crossFiltersEnabled = isFeatureEnabled(
     FeatureFlag.DASHBOARD_CROSS_FILTERS,
   );
-  const filterBarOrientation = useSelector<RootState, FilterBarOrientation>(
-    ({ dashboardInfo }) =>
-      isFeatureEnabled(FeatureFlag.HORIZONTAL_FILTER_BAR)
-        ? dashboardInfo.filterBarOrientation
-        : FilterBarOrientation.VERTICAL,
-  );
+  const filterBarOrientation = FilterBarOrientation.HORIZONTAL;
 
   const handleChangeTab = useCallback(
     ({ pathToTabIndex }: { pathToTabIndex: string[] }) => {
@@ -599,50 +602,43 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
         {!hideDashboardHeader && (
           <div style={{ position: 'relative' }}>
             <DashboardHeader />
-            {screens.md && (
-              <HeaderButtons>
-                <Button
-                  buttonStyle="secondary"
-                  onClick={() => setCollaboratorsModalVisible(true)}
-                  className="manage-collaborators"
-                >
-                  {t('管理协作者')}
-                </Button>
-              </HeaderButtons>
-            )}
           </div>
         )}
         {showFilterBar &&
           filterBarOrientation === FilterBarOrientation.HORIZONTAL && (
-            <FilterBar
-              orientation={FilterBarOrientation.HORIZONTAL}
-              hidden={isReport}
-            />
+            <div style={{margin: '0 16px'}}>
+              <FilterBar
+                orientation={FilterBarOrientation.HORIZONTAL}
+                hidden={isReport}
+              />
+            </div>
           )}
         {dropIndicatorProps && <div {...dropIndicatorProps} />}
         {!isReport && !isAppDashboard && topLevelTabs && !uiConfig.hideNav && (
-          <WithPopoverMenu
-            shouldFocus={shouldFocusTabs}
-            menuItems={[
-              <IconButton
-                icon={<Icons.FallOutlined iconSize="xl" />}
-                label={t('Collapse tab content')}
-                onClick={handleDeleteTopLevelTabs}
-              />,
-            ]}
-            editMode={editMode}
-          >
-            {/* @ts-ignore */}
-            <DashboardComponent
-              id={topLevelTabs?.id}
-              parentId={DASHBOARD_ROOT_ID}
-              depth={DASHBOARD_ROOT_DEPTH + 1}
-              index={0}
-              renderTabContent={false}
-              renderHoverMenu={false}
-              onChangeTab={handleChangeTab}
-            />
-          </WithPopoverMenu>
+          <div style={{margin: '0 16px'}}>
+            <WithPopoverMenu
+              shouldFocus={shouldFocusTabs}
+              menuItems={[
+                <IconButton
+                  icon={<Icons.FallOutlined iconSize="xl" />}
+                  label={t('Collapse tab content')}
+                  onClick={handleDeleteTopLevelTabs}
+                />,
+              ]}
+              editMode={editMode}
+            >
+              {/* @ts-ignore */}
+              <DashboardComponent
+                id={topLevelTabs?.id}
+                parentId={DASHBOARD_ROOT_ID}
+                depth={DASHBOARD_ROOT_DEPTH + 1}
+                index={0}
+                renderTabContent={false}
+                renderHoverMenu={false}
+                onChangeTab={handleChangeTab}
+              />
+            </WithPopoverMenu>
+          </div>
         )}
       </div>
     ),
@@ -669,7 +665,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
 
   return (
     <DashboardWrapper>
-      {showFilterBar && filterBarOrientation === FilterBarOrientation.VERTICAL && (
+      {/* {showFilterBar && filterBarOrientation === FilterBarOrientation.VERTICAL && (
         <>
           <ResizableSidebar
             id={`dashboard:${dashboardId}`}
@@ -707,7 +703,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
             }}
           </ResizableSidebar>
         </>
-      )}
+      )} */}
       <StyledHeader ref={headerRef}>
         {/* @ts-ignore */}
         <DragDroppable
@@ -760,7 +756,10 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
             marginLeft={dashboardContentMarginLeft}
           >
             {showDashboard ? (
-              <DashboardContainer topLevelTabs={topLevelTabs} />
+              <DashboardContainer
+                topLevelTabs={topLevelTabs}
+                isAppDashboard={isAppDashboard}
+              />
             ) : (
               <Loading />
             )}
@@ -777,11 +776,6 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
           `}
         />
       )}
-      <DashboardCollaboratorModal
-        visible={isCollaboratorsModalVisible}
-        onClose={() => setCollaboratorsModalVisible(false)}
-        dashboardId={dashboardId}
-      />
     </DashboardWrapper>
   );
 };

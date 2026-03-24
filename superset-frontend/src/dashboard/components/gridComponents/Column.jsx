@@ -55,6 +55,7 @@ const propTypes = {
   deleteComponent: PropTypes.func.isRequired,
   handleComponentDrop: PropTypes.func.isRequired,
   updateComponents: PropTypes.func.isRequired,
+  isAppDashboard: PropTypes.bool,
 };
 
 const defaultProps = {};
@@ -239,6 +240,7 @@ class Column extends React.PureComponent {
                       onResizeStop={onResizeStop}
                       isComponentVisible={isComponentVisible}
                       onChangeTab={onChangeTab}
+                      isAppDashboard={this.props.isAppDashboard}
                     />
                   ))
                 )}

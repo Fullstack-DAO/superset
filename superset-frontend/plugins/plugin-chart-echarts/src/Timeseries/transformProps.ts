@@ -49,6 +49,7 @@ import { ZRLineType } from 'echarts/types/src/util/types';
 import {
   EchartsTimeseriesChartProps,
   EchartsTimeseriesFormData,
+  EchartsTimeseriesSeriesType,
   OrientationType,
   TimeseriesChartTransformedProps,
 } from './types';
@@ -183,17 +184,21 @@ export default function transformProps(
     zoomable,
   }: EchartsTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
   const refs: Refs = {};
+  const isMobile = width <= 768;
 
-  const labelMap = Object.entries(label_map).reduce((acc, entry) => {
-    if (
-      entry[1].length > groupby.length &&
-      Array.isArray(timeCompare) &&
-      timeCompare.includes(entry[1][0])
-    ) {
-      entry[1].shift();
-    }
-    return { ...acc, [entry[0]]: entry[1] };
-  }, {});
+  const labelMap = Object.entries(label_map).reduce<Record<string, string[]>>(
+    (acc, entry) => {
+      if (
+        entry[1].length > groupby.length &&
+        Array.isArray(timeCompare) &&
+        timeCompare.includes(entry[1][0])
+      ) {
+        entry[1].shift();
+      }
+      return { ...acc, [entry[0]]: entry[1] };
+    },
+    {},
+  );
 
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
   const rebasedData = rebaseForecastDatum(data, verboseMap);
@@ -267,6 +272,17 @@ export default function transformProps(
 
   const array = ensureIsArray(chartProps.rawFormData?.time_compare);
   const inverted = invert(verboseMap);
+  const hideMobilePointLabels =
+    isMobile &&
+    showValue &&
+    [
+      EchartsTimeseriesSeriesType.Bar,
+      EchartsTimeseriesSeriesType.Line,
+      EchartsTimeseriesSeriesType.Smooth,
+      EchartsTimeseriesSeriesType.Start,
+      EchartsTimeseriesSeriesType.Middle,
+      EchartsTimeseriesSeriesType.End,
+    ].includes(seriesType);
 
   rawSeries.forEach(entry => {
     const lineStyle = isDerivedSeries(entry, chartProps.rawFormData)
@@ -298,7 +314,7 @@ export default function transformProps(
               metrics,
               labelMap[seriesName]?.[0],
             ) ?? defaultFormatter,
-        showValue,
+        showValue: hideMobilePointLabels ? false : showValue,
         onlyTotal,
         totalStackedValues: sortedTotalValues,
         showValueIndexes,
@@ -460,8 +476,12 @@ export default function transformProps(
     },
     minorTick: { show: minorTicks },
     minInterval:
-      xAxisType === AxisType.time && timeGrainSqla
-        ? TIMEGRAIN_TO_TIMESTAMP[timeGrainSqla]
+      xAxisType === AxisType.time &&
+      timeGrainSqla &&
+      timeGrainSqla in TIMEGRAIN_TO_TIMESTAMP
+        ? TIMEGRAIN_TO_TIMESTAMP[
+            timeGrainSqla as keyof typeof TIMEGRAIN_TO_TIMESTAMP
+          ]
         : 0,
     ...getMinAndMaxFromBounds(
       xAxisType,

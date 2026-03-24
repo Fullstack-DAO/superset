@@ -51,6 +51,7 @@ export default function EchartsMixedTimeseries({
   refs,
   coltypeMapping,
 }: EchartsMixedTimeseriesChartTransformedProps) {
+  const isMobile = width <= 768;
   const isFirstQuery = useCallback(
     (seriesIndex: number) => seriesIndex < seriesBreakdown,
     [seriesBreakdown],
@@ -121,6 +122,9 @@ export default function EchartsMixedTimeseries({
 
   const eventHandlers: EventHandlers = {
     click: props => {
+      if (isMobile) {
+        return;
+      }
       const { seriesName, seriesIndex } = props;
       handleChange(seriesName, seriesIndex);
     },
@@ -131,6 +135,9 @@ export default function EchartsMixedTimeseries({
       onFocusedSeries(params.seriesName);
     },
     contextmenu: async eventParams => {
+      if (isMobile) {
+        return;
+      }
       if (onContextMenu) {
         eventParams.event.stop();
         const { data, seriesName, seriesIndex } = eventParams;

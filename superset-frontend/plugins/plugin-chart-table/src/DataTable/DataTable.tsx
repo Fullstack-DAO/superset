@@ -70,7 +70,7 @@ export interface DataTableProps<D extends object> extends TableOptions<D> {
   rowCount: number;
   wrapperRef?: MutableRefObject<HTMLDivElement>;
   onColumnOrderChange: () => void;
-  totals?: Map<string, number>;
+  totals?: Record<string, number>;
   columnMetas: DataColumnMeta[];
 }
 
@@ -81,6 +81,117 @@ export interface RenderHTMLCellProps extends HTMLProps<HTMLTableCellElement> {
 const sortTypes = {
   alphanumeric: sortAlphanumericCaseInsensitive,
 };
+
+const MOBILE_CONTROLS_STYLE = `
+  .dt-table-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .dt-table-content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+
+  .dt-controls .dt-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .dt-controls .dt-controls-col {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+
+  .dt-select-page-size,
+  .dt-global-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .dt-select-page-size select {
+    width: auto;
+    min-width: 72px;
+    max-width: 88px;
+    flex: 0 0 auto;
+  }
+
+  .dt-global-filter {
+    float: none;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .dt-global-filter input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  @media (max-width: 767px) {
+    .dt-table-content {
+      border: 1px solid #d9d9d9;
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .dt-controls .dt-controls-row {
+      margin-left: 0;
+      margin-right: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .dt-controls .dt-controls-col {
+      flex: 1 1 0;
+      width: auto;
+      padding-left: 0;
+      padding-right: 0;
+      max-width: calc(50% - 4px);
+    }
+
+    .dt-select-page-size,
+    .dt-global-filter {
+      width: 100%;
+    }
+
+    .dt-select-page-size,
+    .dt-global-filter {
+      justify-content: flex-start;
+    }
+
+    .dt-select-page-size {
+      gap: 4px;
+    }
+
+    .dt-global-filter {
+      gap: 4px;
+    }
+
+    .dt-global-filter input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .dt-select-page-size select {
+      min-width: 64px;
+      max-width: 72px;
+    }
+  }
+`;
 
 // Be sure to pass our updateMyData and the skipReset option
 export default typedMemo(function DataTable<D extends object>({
@@ -225,13 +336,15 @@ export default typedMemo(function DataTable<D extends object>({
       const meta = columnMetas.find(c => c.key === key);
       if (meta) {
         const columnTotal = rows.reduce((acc, row) => {
-          const value = row.original[meta.key];
-          return +acc + (Number.isNaN(+value) ? 0 : +value);
+          const value = Number(
+            (row.original as Record<string, unknown>)[meta.key],
+          );
+          return acc + (Number.isNaN(value) ? 0 : value);
         }, 0);
         acc[meta.key] = columnTotal;
       }
       return acc;
-    }, {} as Map<string, number>);
+    }, {} as Record<string, number>);
 
     return newTotals;
   }, [totals, filterValue, rows]);
@@ -405,11 +518,13 @@ export default typedMemo(function DataTable<D extends object>({
     <div
       ref={wrapperRef}
       style={{ width: initialWidth, height: initialHeight }}
+      className="dt-table-wrapper"
     >
+      <style>{MOBILE_CONTROLS_STYLE}</style>
       {hasGlobalControl ? (
         <div ref={globalControlRef} className="form-inline dt-controls">
-          <div className="row">
-            <div className="col-sm-6">
+          <div className="row dt-controls-row">
+            <div className="col-sm-6 dt-controls-col">
               {hasPagination ? (
                 <SelectPageSize
                   total={resultsSize}
@@ -425,7 +540,7 @@ export default typedMemo(function DataTable<D extends object>({
               ) : null}
             </div>
             {searchInput ? (
-              <div className="col-sm-6">
+              <div className="col-sm-6 dt-controls-col">
                 <GlobalFilter<D>
                   searchInput={
                     typeof searchInput === 'boolean' ? undefined : searchInput
@@ -439,7 +554,9 @@ export default typedMemo(function DataTable<D extends object>({
           </div>
         </div>
       ) : null}
-      {wrapStickyTable ? wrapStickyTable(renderTable) : renderTable()}
+      <div className="dt-table-content">
+        {wrapStickyTable ? wrapStickyTable(renderTable) : renderTable()}
+      </div>
       {hasPagination && resultPageCount > 1 ? (
         <SimplePagination
           ref={paginationRef}

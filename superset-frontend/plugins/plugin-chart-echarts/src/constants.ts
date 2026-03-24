@@ -31,10 +31,10 @@ import {
 export const NULL_STRING = '<NULL>';
 
 export const TIMESERIES_CONSTANTS = {
-  gridOffsetRight: 20,
-  gridOffsetLeft: 20,
-  gridOffsetTop: 20,
-  gridOffsetBottom: 20,
+  gridOffsetRight: 0,
+  gridOffsetLeft: -10,
+  gridOffsetTop: 30,
+  gridOffsetBottom: 0,
   gridOffsetBottomZoomable: 80,
   legendRightTopOffset: 30,
   legendTopRightOffset: 55,

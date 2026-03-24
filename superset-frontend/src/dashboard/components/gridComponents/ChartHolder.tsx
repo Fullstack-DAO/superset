@@ -47,6 +47,7 @@ interface ChartHolderProps {
   dashboardId: number;
   component: LayoutItem;
   parentComponent: LayoutItem;
+  isAppDashboard?: boolean;
   getComponentById?: (id?: string) => LayoutItem | undefined;
   index: number;
   depth: number;
@@ -145,6 +146,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
   editMode,
   isComponentVisible,
   dashboardId,
+  isAppDashboard = false,
   fullSizeChartId,
   getComponentById = () => undefined,
   deleteComponent,
@@ -377,6 +379,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
               componentId={component.id}
               id={component.meta.chartId}
               dashboardId={dashboardId}
+              isAppDashboard={isAppDashboard}
               width={chartWidth}
               height={chartHeight}
               sliceName={

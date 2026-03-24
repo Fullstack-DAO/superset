@@ -157,6 +157,11 @@ export default function PivotTableChart(props: PivotTableProps) {
   } = props;
 
   const theme = useTheme();
+  const chartWidth = useMemo(
+    () => (typeof width === 'string' ? parseInt(width, 10) : width),
+    [width],
+  );
+  const margin = chartWidth <= 768 ? 0 : theme.gridUnit * 4;
   const defaultFormatter = useMemo(
     () =>
       currencyFormat?.symbol
@@ -537,7 +542,7 @@ export default function PivotTableChart(props: PivotTableProps) {
   );
 
   return (
-    <Styles height={height} width={width} margin={theme.gridUnit * 4}>
+    <Styles height={height} width={width} margin={margin}>
       <PivotTableWrapper>
         <PivotTable
           data={unpivotedData}

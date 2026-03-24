@@ -400,6 +400,7 @@ export class Tabs extends React.PureComponent {
                       isHighlighted={
                         activeKey !== tabId && tabsToHighlight?.includes(tabId)
                       }
+                      isAppDashboard={isAppDashboard}
                     />
                   }
                 >
@@ -419,6 +420,7 @@ export class Tabs extends React.PureComponent {
                       isComponentVisible={
                         selectedTabIndex === tabIndex && isCurrentTabVisible
                       }
+                      isAppDashboard={isAppDashboard}
                     />
                   )}
                 </LineEditableTabs.TabPane>

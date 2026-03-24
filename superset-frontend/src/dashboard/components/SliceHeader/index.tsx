@@ -44,6 +44,7 @@ type SliceHeaderProps = SliceHeaderControlsProps & {
   innerRef?: string;
   updateSliceName?: (arg0: string) => void;
   editMode?: boolean;
+  isAppDashboard?: boolean;
   annotationQuery?: object;
   annotationError?: object;
   sliceName?: string;
@@ -153,6 +154,7 @@ const SliceHeader: FC<SliceHeaderProps> = ({
   exportCSV = () => ({}),
   exportXLSX = () => ({}),
   editMode = false,
+  isAppDashboard = false,
   annotationQuery = {},
   annotationError = {},
   cachedDttm = null,
@@ -191,6 +193,7 @@ const SliceHeader: FC<SliceHeaderProps> = ({
   );
 
   const canExplore = !editMode && supersetCanExplore;
+  const hideMobileAppDashboardExtras = isAppDashboard && isMobileDevice();
 
   useEffect(() => {
     const headerElement = headerRef.current;
@@ -256,13 +259,13 @@ const SliceHeader: FC<SliceHeaderProps> = ({
       <div className="header-controls">
         {!editMode && (
           <>
-            {SliceHeaderExtension && (
+            {!hideMobileAppDashboardExtras && SliceHeaderExtension && (
               <SliceHeaderExtension
                 sliceId={slice.slice_id}
                 dashboardId={dashboardId}
               />
             )}
-            {crossFilterValue && (
+            {crossFilterValue && !hideMobileAppDashboardExtras && (
               <Tooltip
                 placement="top"
                 title={t(
@@ -272,7 +275,7 @@ const SliceHeader: FC<SliceHeaderProps> = ({
                 <CrossFilterIcon iconSize="m" />
               </Tooltip>
             )}
-            {!uiConfig.hideChartControls && (
+            {!uiConfig.hideChartControls && !hideMobileAppDashboardExtras && (
               <FiltersBadge chartId={slice.slice_id} />
             )}
             {!uiConfig.hideChartControls && (

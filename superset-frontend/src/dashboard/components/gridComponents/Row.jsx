@@ -62,6 +62,7 @@ const propTypes = {
   handleComponentDrop: PropTypes.func.isRequired,
   deleteComponent: PropTypes.func.isRequired,
   updateComponents: PropTypes.func.isRequired,
+  isAppDashboard: PropTypes.bool,
 };
 
 const GridRow = styled.div`
@@ -271,6 +272,7 @@ class Row extends React.PureComponent {
                     onResizeStop={onResizeStop}
                     isComponentVisible={isComponentVisible}
                     onChangeTab={onChangeTab}
+                    isAppDashboard={this.props.isAppDashboard}
                     isInView={this.state.isInView}
                   />
                 ))

@@ -22,6 +22,16 @@ import { TOOLTIP_OVERFLOW_MARGIN, TOOLTIP_POINTER_MARGIN } from '../constants';
 import { Refs } from '../types';
 
 export function getDefaultTooltip(refs: Refs) {
+  const isMobile =
+    typeof window !== 'undefined' && window.innerWidth <= 768;
+
+  if (isMobile) {
+    return {
+      appendToBody: false,
+      confine: true,
+    };
+  }
+
   return {
     appendToBody: true,
     position: (

@@ -69,6 +69,8 @@ import {
   TIMESERIES_CONSTANTS,
 } from '../constants';
 
+const DEFAULT_BAR_MAX_WIDTH = 64;
+
 // based on weighted wiggle algorithm
 // source: https://ieeexplore.ieee.org/document/4658136
 export const getBaselineSeriesForStream = (
@@ -272,6 +274,7 @@ export function transformSeries(
     itemStyle,
     // @ts-ignore
     type: plotType,
+    ...(plotType === 'bar' ? { barMaxWidth: DEFAULT_BAR_MAX_WIDTH } : {}),
     smooth: seriesType === 'smooth',
     triggerLineEvent: true,
     // @ts-ignore

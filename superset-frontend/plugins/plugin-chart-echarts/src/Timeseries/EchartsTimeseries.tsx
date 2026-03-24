@@ -58,6 +58,7 @@ export default function EchartsTimeseries({
   coltypeMapping,
 }: TimeseriesChartTransformedProps) {
   const { stack } = formData;
+  const isMobile = width <= 768;
   const echartRef = useRef<EchartsHandler | null>(null);
   // eslint-disable-next-line no-param-reassign
   refs.echartRef = echartRef;
@@ -138,6 +139,9 @@ export default function EchartsTimeseries({
 
   const eventHandlers: EventHandlers = {
     click: props => {
+      if (isMobile) {
+        return;
+      }
       if (clickTimer.current) {
         clearTimeout(clickTimer.current);
       }
@@ -163,6 +167,9 @@ export default function EchartsTimeseries({
       onLegendStateChanged?.(payload.selected);
     },
     contextmenu: async eventParams => {
+      if (isMobile) {
+        return;
+      }
       if (onContextMenu) {
         eventParams.event.stop();
         const { data, seriesName } = eventParams;
@@ -222,6 +229,9 @@ export default function EchartsTimeseries({
 
   const zrEventHandlers: EventHandlers = {
     dblclick: params => {
+      if (isMobile) {
+        return;
+      }
       // clear single click timer
       if (clickTimer.current) {
         clearTimeout(clickTimer.current);

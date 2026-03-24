@@ -55,6 +55,7 @@ import { getRootLevelTabsComponent } from './utils';
 
 type DashboardContainerProps = {
   topLevelTabs?: LayoutItem;
+  isAppDashboard?: boolean;
 };
 
 const useNativeFilterScopes = () => {
@@ -72,7 +73,10 @@ const useNativeFilterScopes = () => {
   );
 };
 
-const DashboardContainer: FC<DashboardContainerProps> = ({ topLevelTabs }) => {
+const DashboardContainer: FC<DashboardContainerProps> = ({
+  topLevelTabs,
+  isAppDashboard = false,
+}) => {
   const nativeFilterScopes = useNativeFilterScopes();
   const dispatch = useDispatch();
 
@@ -252,6 +256,7 @@ const DashboardContainer: FC<DashboardContainerProps> = ({ topLevelTabs }) => {
                   depth={DASHBOARD_ROOT_DEPTH + 1} // (topLevelTabs ? 0 : 1)}
                   width={width}
                   isComponentVisible={index === tabIndex}
+                  isAppDashboard={isAppDashboard}
                 />
               </Tabs.TabPane>
             ))}

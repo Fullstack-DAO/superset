@@ -47,6 +47,7 @@ const propTypes = {
   id: PropTypes.number.isRequired,
   componentId: PropTypes.string.isRequired,
   dashboardId: PropTypes.number.isRequired,
+  isAppDashboard: PropTypes.bool,
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   updateSliceName: PropTypes.func.isRequired,
@@ -91,6 +92,7 @@ const propTypes = {
 const defaultProps = {
   isCached: false,
   isComponentVisible: true,
+  isAppDashboard: false,
 };
 
 // we use state + shouldComponentUpdate() logic to prevent perf-wrecking
@@ -377,6 +379,7 @@ class Chart extends React.Component {
       id,
       componentId,
       dashboardId,
+      isAppDashboard,
       chart,
       slice,
       datasource,
@@ -462,6 +465,7 @@ class Chart extends React.Component {
           supersetCanCSV={supersetCanCSV}
           componentId={componentId}
           dashboardId={dashboardId}
+          isAppDashboard={isAppDashboard}
           filters={filters}
           addSuccessToast={addSuccessToast}
           addDangerToast={addDangerToast}

@@ -60,6 +60,7 @@ const propTypes = {
   updateComponents: PropTypes.func.isRequired,
   setDirectPathToChild: PropTypes.func.isRequired,
   setEditMode: PropTypes.func.isRequired,
+  isAppDashboard: PropTypes.bool,
 };
 
 const defaultProps = {
@@ -70,6 +71,7 @@ const defaultProps = {
   onResizeStart() {},
   onResize() {},
   onResizeStop() {},
+  isAppDashboard: false,
 };
 
 const TabTitleContainer = styled.div`
@@ -235,6 +237,7 @@ class Tab extends React.PureComponent {
             onResizeStop={onResizeStop}
             isComponentVisible={isComponentVisible}
             onChangeTab={this.handleChangeTab}
+            isAppDashboard={this.props.isAppDashboard}
           />
         ))}
         {/* Make bottom of tab droppable */}

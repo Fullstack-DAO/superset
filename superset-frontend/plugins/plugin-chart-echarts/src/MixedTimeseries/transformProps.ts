@@ -203,6 +203,7 @@ export default function transformProps(
   }: EchartsMixedTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
 
   const refs: Refs = {};
+  const isMobile = width <= 768;
   const colorScale = CategoricalColorNamespace.getScale(colorScheme as string);
 
   let xAxisLabel = getXAxisLabel(
@@ -356,6 +357,29 @@ export default function transformProps(
     parseAxisBound,
   );
 
+  const hideMobileLabelsA =
+    isMobile &&
+    showValue &&
+    [
+      EchartsTimeseriesSeriesType.Bar,
+      EchartsTimeseriesSeriesType.Line,
+      EchartsTimeseriesSeriesType.Smooth,
+      EchartsTimeseriesSeriesType.Start,
+      EchartsTimeseriesSeriesType.Middle,
+      EchartsTimeseriesSeriesType.End,
+    ].includes(seriesType);
+  const hideMobileLabelsB =
+    isMobile &&
+    showValueB &&
+    [
+      EchartsTimeseriesSeriesType.Bar,
+      EchartsTimeseriesSeriesType.Line,
+      EchartsTimeseriesSeriesType.Smooth,
+      EchartsTimeseriesSeriesType.Start,
+      EchartsTimeseriesSeriesType.Middle,
+      EchartsTimeseriesSeriesType.End,
+    ].includes(seriesTypeB);
+
   const array = ensureIsArray(chartProps.rawFormData?.time_compare);
   const inverted = invert(verboseMap);
 
@@ -382,7 +406,7 @@ export default function transformProps(
         markerSize,
         areaOpacity: opacity,
         seriesType,
-        showValue,
+        showValue: hideMobileLabelsA ? false : showValue,
         stack: Boolean(stack),
         yAxisIndex,
         filterState,
@@ -427,7 +451,7 @@ export default function transformProps(
         markerSize: markerSizeB,
         areaOpacity: opacityB,
         seriesType: seriesTypeB,
-        showValue: showValueB,
+        showValue: hideMobileLabelsB ? false : showValueB,
         stack: Boolean(stackB),
         yAxisIndex: yAxisIndexB,
         filterState,
@@ -503,8 +527,12 @@ export default function transformProps(
       },
       minorTick: { show: minorTicks },
       minInterval:
-        xAxisType === 'time' && timeGrainSqla
-          ? TIMEGRAIN_TO_TIMESTAMP[timeGrainSqla]
+        xAxisType === 'time' &&
+        timeGrainSqla &&
+        timeGrainSqla in TIMEGRAIN_TO_TIMESTAMP
+          ? TIMEGRAIN_TO_TIMESTAMP[
+              timeGrainSqla as keyof typeof TIMEGRAIN_TO_TIMESTAMP
+            ]
           : 0,
       ...getMinAndMaxFromBounds(
         xAxisType,

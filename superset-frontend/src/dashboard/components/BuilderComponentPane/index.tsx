@@ -31,7 +31,7 @@ import NewTabs from '../gridComponents/new/NewTabs';
 import NewMarkdown from '../gridComponents/new/NewMarkdown';
 import NewDynamicComponent from '../gridComponents/new/NewDynamicComponent';
 
-const BUILDER_PANE_WIDTH = 374;
+const BUILDER_PANE_WIDTH = 390;
 
 const BuilderComponentPane = ({ topOffset = 0 }) => (
   <div

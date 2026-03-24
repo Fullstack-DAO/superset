@@ -76,7 +76,7 @@ const FiltersLinkContainer = styled.div<{ hasFilters: boolean }>`
     height: 24px;
     display: flex;
     align-items: center;
-    padding: 0 ${theme.gridUnit * 4}px 0 ${theme.gridUnit * 4}px;
+    padding: 0 ${theme.gridUnit * 4}px 0 ${theme.gridUnit * 2}px;
     border-right: ${
       hasFilters ? `1px solid ${theme.colors.grayscale.light2}` : 0
     };
@@ -149,7 +149,7 @@ const HorizontalFilterBar: React.FC<HorizontalBarProps> = ({
                   dashboardId={dashboardId}
                   createNewOnOpen={filterValues.length === 0}
                 >
-                  <Icons.PlusSmall /> {t('Add/Edit Filters')}
+                  <Icons.PlusSmall />过滤条件
                 </FilterConfigurationLink>
               </FiltersLinkContainer>
             )}

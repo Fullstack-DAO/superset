@@ -41,7 +41,7 @@ function Workflow() {
           src={`${bootstrapData.common.report_url}/reports?token=${token}`}
           style={{
             width: '100%',
-            height: 'calc(100vh - 53px)',
+            height: '100vh',
           }}
         />
       )}

@@ -57,6 +57,7 @@ import setPeriodicRunner, {
 import { PageHeaderWithActions } from 'src/components/PageHeaderWithActions';
 import { DashboardEmbedModal } from '../DashboardEmbedControls';
 import OverwriteConfirm from '../OverwriteConfirm';
+import DashboardCollaboratorModal from '../PropertiesModal/DashboardCollaboratorModal';
 
 const extensionsRegistry = getExtensionsRegistry();
 
@@ -117,6 +118,7 @@ const defaultProps = {
 
 const headerContainerStyle = theme => css`
   border-bottom: 1px solid ${theme.colors.grayscale.light2};
+  margin-bottom: ${theme.gridUnit * 4}px;
   @media (max-width: 768px) {
     .right-button-panel {
       display: none !important;
@@ -209,6 +211,7 @@ class Header extends React.PureComponent {
       emphasizeUndo: false,
       emphasizeRedo: false,
       showingPropertiesModal: false,
+      isCollaboratorsModalVisible: false,
       isDropdownVisible: false,
     };
 
@@ -221,6 +224,8 @@ class Header extends React.PureComponent {
     this.overwriteDashboard = this.overwriteDashboard.bind(this);
     this.showPropertiesModal = this.showPropertiesModal.bind(this);
     this.hidePropertiesModal = this.hidePropertiesModal.bind(this);
+    this.showCollaboratorsModal = this.showCollaboratorsModal.bind(this);
+    this.hideCollaboratorsModal = this.hideCollaboratorsModal.bind(this);
     this.setIsDropdownVisible = this.setIsDropdownVisible.bind(this);
   }
 
@@ -475,6 +480,14 @@ class Header extends React.PureComponent {
     this.setState({ showingPropertiesModal: false });
   }
 
+  showCollaboratorsModal() {
+    this.setState({ isCollaboratorsModalVisible: true });
+  }
+
+  hideCollaboratorsModal() {
+    this.setState({ isCollaboratorsModalVisible: false });
+  }
+
   showEmbedModal = () => {
     this.setState({ showingEmbedModal: true });
   };
@@ -669,16 +682,27 @@ class Header extends React.PureComponent {
                 <div css={actionButtonsStyle}>
                   {NavExtension && <NavExtension />}
                   {userCanEdit && (
-                    <Button
-                      buttonStyle="secondary"
-                      onClick={this.toggleEditMode}
-                      data-test="edit-dashboard-button"
-                      className="action-button"
-                      css={editButtonStyle}
-                      aria-label={t('Edit dashboard')}
-                    >
-                      {t('Edit dashboard')}
-                    </Button>
+                    <>
+                      <Button
+                        buttonStyle="secondary"
+                        onClick={this.toggleEditMode}
+                        data-test="edit-dashboard-button"
+                        className="action-button"
+                        css={editButtonStyle}
+                        aria-label={t('Edit dashboard')}
+                      >
+                        {t('Edit dashboard')}
+                      </Button>
+                      <Button
+                        buttonStyle="secondary"
+                        onClick={this.showCollaboratorsModal}
+                        data-test="manage-collaborators-button"
+                        className="action-button"
+                        aria-label={t('管理协作者')}
+                      >
+                        {t('管理协作者')}
+                      </Button>
+                    </>
                   )}
                 </div>
               )}
@@ -743,6 +767,11 @@ class Header extends React.PureComponent {
             onlyApply
           />
         )}
+        <DashboardCollaboratorModal
+          visible={this.state.isCollaboratorsModalVisible}
+          onClose={this.hideCollaboratorsModal}
+          dashboardId={dashboardInfo.id}
+        />
 
         <OverwriteConfirm />
 

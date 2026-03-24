@@ -30,12 +30,12 @@ import {
   SupersetTheme,
   SupersetClient,
   getExtensionsRegistry,
-  useTheme,
+  // useTheme,
 } from '@superset-ui/core';
 import { MainNav as Menu } from 'src/components/Menu';
 import { Tooltip } from 'src/components/Tooltip';
-import Icons from 'src/components/Icons';
-import Label from 'src/components/Label';
+// import Label from 'src/components/Label';
+import { PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import { findPermission } from 'src/utils/findPermission';
 import { isUserAdmin } from 'src/dashboard/util/permissionUtils';
 import {
@@ -63,9 +63,6 @@ const versionInfoStyles = (theme: SupersetTheme) => css`
   font-size: ${theme.typography.sizes.xs}px;
   white-space: nowrap;
 `;
-const StyledI = styled.div`
-  color: ${({ theme }) => theme.colors.primary.dark1};
-`;
 
 const styledDisabled = (theme: SupersetTheme) => css`
   color: ${theme.colors.grayscale.light1};
@@ -77,12 +74,19 @@ const styledDisabled = (theme: SupersetTheme) => css`
 
 const StyledDiv = styled.div<{ align: string }>`
   display: flex;
-  flex-direction: row;
-  justify-content: ${({ align }) => align};
-  align-items: center;
-  margin-right: ${({ theme }) => theme.gridUnit}px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
   .ant-menu-submenu-title > svg {
     top: ${({ theme }) => theme.gridUnit * 5.25}px;
+  }
+  .ant-menu-root.ant-menu-inline,
+  .ant-menu-root.ant-menu-vertical {
+    > .ant-menu-item,
+    > .ant-menu-submenu > .ant-menu-submenu-title {
+      padding-left: 24px !important;
+    }
   }
 `;
 
@@ -98,9 +102,9 @@ const StyledAnchor = styled.a`
   padding-left: ${({ theme }) => theme.gridUnit}px;
 `;
 
-const tagStyles = (theme: SupersetTheme) => css`
-  color: ${theme.colors.grayscale.light5};
-`;
+// const tagStyles = (theme: SupersetTheme) => css`
+//   color: ${theme.colors.grayscale.light5};
+// `;
 
 const styledChildMenu = (theme: SupersetTheme) => css`
   &:hover {
@@ -296,7 +300,7 @@ const RightMenu = ({
 
   const menuIconAndLabel = (menu: MenuObjectProps) => (
     <>
-      <i data-test={`menu-item-${menu.label}`} className={`fa ${menu.icon}`} />
+      <i data-test={`menu-item-${menu.label}`} style={{marginRight: '4px'}} className={`fa fa-fw ${menu.icon}`} />
       {menu.label}
     </>
   );
@@ -356,7 +360,7 @@ const RightMenu = ({
 
   const handleDatabaseAdd = () => setQuery({ databaseAdded: true });
 
-  const theme = useTheme();
+  // const theme = useTheme();
 
   return (
     <StyledDiv align={align}>
@@ -368,9 +372,14 @@ const RightMenu = ({
           onDatabaseAdd={handleDatabaseAdd}
         />
       )}
-      {environmentTag?.text && (
+      {/* {environmentTag?.text && (
         <Label
-          css={{ borderRadius: `${theme.gridUnit * 125}px` }}
+          css={{
+            borderRadius: `${theme.gridUnit * 125}px`,
+            marginLeft: `${theme.gridUnit * 6}px`,
+            marginTop: `${theme.gridUnit * 2}px`,
+            alignSelf: 'flex-start',
+          }}
           color={
             /^#(?:[0-9a-f]{3}){1,2}$/i.test(environmentTag.color)
               ? environmentTag.color
@@ -381,10 +390,10 @@ const RightMenu = ({
         >
           <span css={tagStyles}>{environmentTag.text}</span>
         </Label>
-      )}
+      )} */}
       <Menu
         selectable={false}
-        mode="horizontal"
+        mode="vertical"
         onClick={handleMenuSelection}
         onOpenChange={onMenuOpen}
       >
@@ -392,10 +401,8 @@ const RightMenu = ({
         {!navbarRight.user_is_anonymous && showActionDropdown && (
           <SubMenu
             data-test="new-dropdown"
-            title={
-              <StyledI data-test="new-dropdown-icon" className="fa fa-plus" />
-            }
-            icon={<Icons.TriangleDown />}
+            title="新建"
+            icon={<PlusOutlined />}
           >
             {dropdownItems?.map?.(menu => {
               const canShowChild = menu.childs?.some(
@@ -456,7 +463,7 @@ const RightMenu = ({
         )}
         <SubMenu
           title={t('Settings')}
-          icon={<Icons.TriangleDown iconSize="xl" />}
+          icon={<SettingOutlined />}
         >
           {settings?.map?.((section, index) => [
             <Menu.ItemGroup key={`${section.label}`} title={section.label}>
@@ -493,7 +500,11 @@ const RightMenu = ({
             <Menu.ItemGroup key="user-section" title={t('User')}>
               {navbarRight.user_profile_url && (
                 <Menu.Item key="profile">
-                  <Link to={navbarRight.user_profile_url}>{t('Profile')}</Link>
+                  {isFrontendRoute(navbarRight.user_profile_url) ? (
+                    <Link to={navbarRight.user_profile_url}>{t('Profile')}</Link>
+                  ) : (
+                    <a href={navbarRight.user_profile_url}>{t('Profile')}</a>
+                  )}
                 </Menu.Item>
               )}
               {navbarRight.user_info_url && (

@@ -31,13 +31,13 @@ const ActionsWrapper = styled.div`
 
 const StyledCard = styled(AntdCard)`
   ${({ theme }) => `
-    border: 1px solid ${theme.colors.grayscale.light2};
+    // border: 1px solid ${theme.colors.grayscale.light2};
     border-radius: ${theme.gridUnit}px;
+    box-shadow: 0px 4px 12px 0px rgba(57, 47, 113, 0.1);
     overflow: hidden;
 
     .ant-card-body {
-      padding: ${theme.gridUnit * 4}px
-        ${theme.gridUnit * 2}px;
+      padding: ${theme.gridUnit * 4}px;
     }
     .ant-card-meta-detail > div:not(:last-child) {
       margin-bottom: 0;
@@ -47,7 +47,7 @@ const StyledCard = styled(AntdCard)`
       height: 100%;
     }
     &:hover {
-      box-shadow: 8px 8px 28px 0px ${theme.colors.grayscale.light1};
+      box-shadow: 2px 2px 12px 0px ${theme.colors.grayscale.light1};
       transition: box-shadow ${theme.transitionTiming}s ease-in-out;
 
       .cover-footer {
@@ -58,9 +58,29 @@ const StyledCard = styled(AntdCard)`
 `;
 
 const Cover = styled.div`
-  height: 264px;
-  border-bottom: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+  height: 80px;
+  // border-bottom: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
   overflow: hidden;
+  .gradient-container {
+    position: relative;
+    padding: 16px;
+    img {
+      width: 56px;
+      height: 56px;
+    }
+    .card-actions {
+      margin-left: auto;
+      position: absolute;
+      right: ${({ theme }) => theme.gridUnit * 2}px;
+      top: ${({ theme }) => theme.gridUnit * 4}px;
+      align-self: flex-end;
+      padding-left: ${({ theme }) => theme.gridUnit}px;
+      span[role='img'] {
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
 
   .cover-footer {
     transform: translateY(${({ theme }) => theme.gridUnit * 9}px);
@@ -72,16 +92,6 @@ const TitleContainer = styled.div`
   display: flex;
   justify-content: flex-start;
   flex-direction: column;
-
-  .card-actions {
-    margin-left: auto;
-    align-self: flex-end;
-    padding-left: ${({ theme }) => theme.gridUnit}px;
-    span[role='img'] {
-      display: flex;
-      align-items: center;
-    }
-  }
 
   .titleRow {
     display: flex;
@@ -100,7 +110,7 @@ const TitleLink = styled.span`
 
 const TitleRight = styled.span`
   position: absolute;
-  right: -1px;
+  right: ${({ theme }) => theme.gridUnit * 2}px;
   bottom: ${({ theme }) => theme.gridUnit}px;
 `;
 
@@ -195,12 +205,16 @@ function ListViewCard({
           <Cover>
             <Link to={url!}>
               <div className="gradient-container">
-                <ImageLoader
+                {/* <ImageLoader
                   src={imgURL || ''}
                   fallback={imgFallbackURL || ''}
                   isLoading={loading}
                   position={imgPosition}
-                />
+                /> */}
+                <img src={imgFallbackURL || ''} alt="" />
+                <div className="card-actions" data-test="card-actions">
+                  {actions}
+                </div>
               </div>
             </Link>
             <CoverFooter className="cover-footer">
@@ -269,9 +283,6 @@ function ListViewCard({
                   </TitleLink>
                 </Tooltip>
                 {titleRight && <TitleRight>{titleRight}</TitleRight>}
-                <div className="card-actions" data-test="card-actions">
-                  {actions}
-                </div>
               </div>
             </TitleContainer>
           }

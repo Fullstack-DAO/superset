@@ -77,7 +77,7 @@ const FilterControls: FC<FilterControlsProps> = ({
     ({ dashboardInfo }) =>
       isFeatureEnabled(FeatureFlag.HORIZONTAL_FILTER_BAR)
         ? dashboardInfo.filterBarOrientation
-        : FilterBarOrientation.VERTICAL,
+        : FilterBarOrientation.HORIZONTAL,
   );
 
   const { outlinedFilterId, lastUpdated } = useFilterOutlined();

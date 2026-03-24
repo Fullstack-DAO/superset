@@ -55,6 +55,14 @@ import { DatabaseObject } from 'src/features/databases/types';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const extensionsRegistry = getExtensionsRegistry();
 const DatabaseDeleteRelatedExtension = extensionsRegistry.get(
   'database.delete.related',
@@ -590,22 +598,22 @@ function DatabaseList({
           title={t('Delete Database?')}
         />
       )}
-
-      <ListView<DatabaseObject>
-        className="database-list-view"
-        columns={columns}
-        count={databaseCount}
-        data={databases}
-        fetchData={fetchData}
-        filters={filters}
-        initialSort={initialSort}
-        loading={loading}
-        addDangerToast={addDangerToast}
-        addSuccessToast={addSuccessToast}
-        refreshData={() => {}}
-        pageSize={PAGE_SIZE}
-      />
-
+      <ListViewContainer>
+        <ListView<DatabaseObject>
+          className="database-list-view"
+          columns={columns}
+          count={databaseCount}
+          data={databases}
+          fetchData={fetchData}
+          filters={filters}
+          initialSort={initialSort}
+          loading={loading}
+          addDangerToast={addDangerToast}
+          addSuccessToast={addSuccessToast}
+          refreshData={() => {}}
+          pageSize={PAGE_SIZE}
+        />
+      </ListViewContainer>
       {preparingExport && <Loading />}
     </>
   );

@@ -70,6 +70,14 @@ import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
   'The passwords for the databases below are needed in order to ' +
@@ -566,62 +574,62 @@ function DashboardList(props: DashboardListProps) {
             },
           ]
         : []),
-      {
-        Header: t('Owner'),
-        key: 'owner',
-        id: 'owners',
-        input: 'select',
-        operator: FilterOperator.relationManyMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'dashboard',
-          'owners',
-          createErrorHandler(errMsg =>
-            addDangerToast(
-              t(
-                'An error occurred while fetching dashboard owner values: %s',
-                errMsg,
-              ),
-            ),
-          ),
-          props.user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Owner'),
+      //   key: 'owner',
+      //   id: 'owners',
+      //   input: 'select',
+      //   operator: FilterOperator.relationManyMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'dashboard',
+      //     'owners',
+      //     createErrorHandler(errMsg =>
+      //       addDangerToast(
+      //         t(
+      //           'An error occurred while fetching dashboard owner values: %s',
+      //           errMsg,
+      //         ),
+      //       ),
+      //     ),
+      //     props.user,
+      //   ),
+      //   paginate: true,
+      // },
       ...(user?.userId ? [favoritesFilter] : []),
-      {
-        Header: t('Certified'),
-        key: 'certified',
-        id: 'id',
-        urlDisplay: 'certified',
-        input: 'select',
-        operator: FilterOperator.dashboardIsCertified,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Yes'), value: true },
-          { label: t('No'), value: false },
-        ],
-      },
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.relationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'dashboard',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Certified'),
+      //   key: 'certified',
+      //   id: 'id',
+      //   urlDisplay: 'certified',
+      //   input: 'select',
+      //   operator: FilterOperator.dashboardIsCertified,
+      //   unfilteredLabel: t('Any'),
+      //   selects: [
+      //     { label: t('Yes'), value: true },
+      //     { label: t('No'), value: false },
+      //   ],
+      // },
+      // {
+      //   Header: t('Modified by'),
+      //   key: 'changed_by',
+      //   id: 'changed_by',
+      //   input: 'select',
+      //   operator: FilterOperator.relationOneMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'dashboard',
+      //     'changed_by',
+      //     createErrorHandler(errMsg =>
+      //       t(
+      //         'An error occurred while fetching dataset datasource values: %s',
+      //         errMsg,
+      //       ),
+      //     ),
+      //     user,
+      //   ),
+      //   paginate: true,
+      // },
     ] as Filters;
     return filters_list;
   }, [addDangerToast, favoritesFilter, props.user]);
@@ -781,39 +789,41 @@ function DashboardList(props: DashboardListProps) {
                   title={t('Please confirm')}
                 />
               )}
-              <ListView<Dashboard>
-                bulkActions={bulkActions}
-                bulkSelectEnabled={bulkSelectEnabled}
-                cardSortSelectOptions={sortTypes}
-                className="dashboard-list-view"
-                columns={columns}
-                count={dashboardCount}
-                data={dashboards}
-                disableBulkSelect={toggleBulkSelect}
-                fetchData={fetchData}
-                refreshData={refreshData}
-                filters={!screens.md ? [] : filters}
-                initialSort={initialSort}
-                loading={loading}
-                pageSize={PAGE_SIZE}
-                addSuccessToast={addSuccessToast}
-                addDangerToast={addDangerToast}
-                showThumbnails={
-                  userKey
-                    ? userKey.thumbnails
-                    : isFeatureEnabled(FeatureFlag.THUMBNAILS)
-                }
-                renderCard={renderCard}
-                defaultViewMode={
-                  !screens.md
-                    ? 'card'
-                    : isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
-                    ? 'card'
-                    : 'table'
-                }
-                enableBulkTag
-                bulkTagResourceName="dashboard"
-              />
+              <ListViewContainer>
+                <ListView<Dashboard>
+                  bulkActions={bulkActions}
+                  bulkSelectEnabled={bulkSelectEnabled}
+                  // cardSortSelectOptions={sortTypes}
+                  className="dashboard-list-view"
+                  columns={columns}
+                  count={dashboardCount}
+                  data={dashboards}
+                  disableBulkSelect={toggleBulkSelect}
+                  fetchData={fetchData}
+                  refreshData={refreshData}
+                  filters={!screens.md ? [] : filters}
+                  initialSort={initialSort}
+                  loading={loading}
+                  pageSize={PAGE_SIZE}
+                  addSuccessToast={addSuccessToast}
+                  addDangerToast={addDangerToast}
+                  showThumbnails={
+                    userKey
+                      ? userKey.thumbnails
+                      : isFeatureEnabled(FeatureFlag.THUMBNAILS)
+                  }
+                  renderCard={renderCard}
+                  defaultViewMode={
+                    !screens.md
+                      ? 'card'
+                      : isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
+                      ? 'card'
+                      : 'table'
+                  }
+                  enableBulkTag
+                  bulkTagResourceName="dashboard"
+                />
+              </ListViewContainer>
             </>
           );
         }}

@@ -19,7 +19,7 @@
 
 import React, { useMemo, useState } from 'react';
 import rison from 'rison';
-import { t, SupersetClient } from '@superset-ui/core';
+import { t, SupersetClient, styled } from '@superset-ui/core';
 import { Link, useHistory } from 'react-router-dom';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import { createFetchRelated, createErrorHandler } from 'src/views/CRUD/utils';
@@ -37,6 +37,14 @@ import AnnotationLayerModal from 'src/features/annotationLayers/AnnotationLayerM
 import { AnnotationLayerObject } from 'src/features/annotationLayers/types';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
+
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
 
 const PAGE_SIZE = 25;
 
@@ -326,24 +334,26 @@ function AnnotationLayersList({
             : [];
 
           return (
-            <ListView<AnnotationLayerObject>
-              className="annotation-layers-list-view"
-              columns={columns}
-              count={layersCount}
-              data={layers}
-              fetchData={fetchData}
-              filters={filters}
-              initialSort={initialSort}
-              loading={loading}
-              pageSize={PAGE_SIZE}
-              bulkActions={bulkActions}
-              bulkSelectEnabled={bulkSelectEnabled}
-              disableBulkSelect={toggleBulkSelect}
-              addDangerToast={addDangerToast}
-              addSuccessToast={addSuccessToast}
-              emptyState={emptyState}
-              refreshData={refreshData}
-            />
+            <ListViewContainer>
+              <ListView<AnnotationLayerObject>
+                className="annotation-layers-list-view"
+                columns={columns}
+                count={layersCount}
+                data={layers}
+                fetchData={fetchData}
+                filters={filters}
+                initialSort={initialSort}
+                loading={loading}
+                pageSize={PAGE_SIZE}
+                bulkActions={bulkActions}
+                bulkSelectEnabled={bulkSelectEnabled}
+                disableBulkSelect={toggleBulkSelect}
+                addDangerToast={addDangerToast}
+                addSuccessToast={addSuccessToast}
+                emptyState={emptyState}
+                refreshData={refreshData}
+              />
+            </ListViewContainer>
           );
         }}
       </ConfirmStatusChange>

@@ -55,6 +55,14 @@ import QueryPreviewModal from 'src/features/queries/QueryPreviewModal';
 import { addSuccessToast } from 'src/components/MessageToasts/actions';
 import getOwnerName from 'src/utils/getOwnerName';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const PAGE_SIZE = 25;
 const SQL_PREVIEW_MAX_LINES = 4;
 
@@ -446,21 +454,23 @@ function QueryList({ addDangerToast }: QueryListProps) {
           show
         />
       )}
-      <TopAlignedListView
-        className="query-history-list-view"
-        columns={columns}
-        count={queryCount}
-        data={queries}
-        fetchData={fetchData}
-        filters={filters}
-        initialSort={initialSort}
-        loading={loading}
-        pageSize={PAGE_SIZE}
-        highlightRowId={queryCurrentlyPreviewing?.id}
-        refreshData={() => {}}
-        addDangerToast={addDangerToast}
-        addSuccessToast={addSuccessToast}
-      />
+      <ListViewContainer>
+        <TopAlignedListView
+          className="query-history-list-view"
+          columns={columns}
+          count={queryCount}
+          data={queries}
+          fetchData={fetchData}
+          filters={filters}
+          initialSort={initialSort}
+          loading={loading}
+          pageSize={PAGE_SIZE}
+          highlightRowId={queryCurrentlyPreviewing?.id}
+          refreshData={() => {}}
+          addDangerToast={addDangerToast}
+          addSuccessToast={addSuccessToast}
+        />
+      </ListViewContainer>
     </>
   );
 }

@@ -48,6 +48,7 @@ const propTypes = {
   renderHoverMenu: PropTypes.bool,
   directPathToChild: PropTypes.arrayOf(PropTypes.string),
   activeTabs: PropTypes.arrayOf(PropTypes.string),
+  isAppDashboard: PropTypes.bool,
 
   // actions (from DashboardComponent.jsx)
   logEvent: PropTypes.func.isRequired,
@@ -79,11 +80,15 @@ const defaultProps = {
   onResizeStart() {},
   onResize() {},
   onResizeStop() {},
+  isAppDashboard: false,
 };
 
 const StyledTabsContainer = styled.div`
   width: 100%;
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
+  @media (max-width: 768px) {
+    background-color: transparent;
+  }
 
   .dashboard-component-tabs-content {
     min-height: ${({ theme }) => theme.gridUnit * 12}px;
@@ -327,6 +332,7 @@ export class Tabs extends React.PureComponent {
       isComponentVisible: isCurrentTabVisible,
       editMode,
       nativeFilters,
+      isAppDashboard,
     } = this.props;
 
     const { children: tabIds } = tabsComponent;
@@ -372,6 +378,9 @@ export class Tabs extends React.PureComponent {
               onEdit={this.handleEdit}
               data-test="nav-list"
               type={editMode ? 'editable-card' : 'card'}
+              renderTabBar={
+                isAppDashboard && !editMode ? () => <></> : undefined
+              }
             >
               {tabIds.map((tabId, tabIndex) => (
                 <LineEditableTabs.TabPane

@@ -42,7 +42,7 @@ function Copilot() {
           src={`${bootstrapData.common.copilot_url}/chat?cid=1&model=chatgpt&token=${token}`}
           style={{
             width: '100%',
-            height: 'calc(100vh - 53px)',
+            height: '100vh',
           }}
         />
       )}

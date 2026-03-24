@@ -18,7 +18,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { t, SupersetClient } from '@superset-ui/core';
+import { t, SupersetClient, styled } from '@superset-ui/core';
 
 import rison from 'rison';
 import { useListViewResource } from 'src/views/CRUD/hooks';
@@ -37,6 +37,14 @@ import CssTemplateModal from 'src/features/cssTemplates/CssTemplateModal';
 import { TemplateObject } from 'src/features/cssTemplates/types';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
+
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
 
 const PAGE_SIZE = 25;
 
@@ -293,23 +301,25 @@ function CssTemplatesList({
             : [];
 
           return (
-            <ListView<TemplateObject>
-              className="css-templates-list-view"
-              columns={columns}
-              count={templatesCount}
-              data={templates}
-              fetchData={fetchData}
-              filters={filters}
-              initialSort={initialSort}
-              loading={loading}
-              pageSize={PAGE_SIZE}
-              bulkActions={bulkActions}
-              bulkSelectEnabled={bulkSelectEnabled}
-              disableBulkSelect={toggleBulkSelect}
-              addDangerToast={addDangerToast}
-              addSuccessToast={addSuccessToast}
-              refreshData={refreshData}
-            />
+            <ListViewContainer>
+              <ListView<TemplateObject>
+                className="css-templates-list-view"
+                columns={columns}
+                count={templatesCount}
+                data={templates}
+                fetchData={fetchData}
+                filters={filters}
+                initialSort={initialSort}
+                loading={loading}
+                pageSize={PAGE_SIZE}
+                bulkActions={bulkActions}
+                bulkSelectEnabled={bulkSelectEnabled}
+                disableBulkSelect={toggleBulkSelect}
+                addDangerToast={addDangerToast}
+                addSuccessToast={addSuccessToast}
+                refreshData={refreshData}
+              />
+            </ListViewContainer>
           );
         }}
       </ConfirmStatusChange>

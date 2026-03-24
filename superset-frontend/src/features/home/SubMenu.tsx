@@ -29,6 +29,10 @@ import Icons from 'src/components/Icons';
 import { MenuObjectProps } from 'src/types/bootstrapTypes';
 
 const StyledHeader = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  background-color: ${({ theme }) => theme.colors.grayscale.light5};
   margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   .header {
     font-weight: ${({ theme }) => theme.typography.weights.bold};
@@ -99,7 +103,7 @@ const StyledHeader = styled.div`
           margin: 0;
           padding: ${({ theme }) => theme.gridUnit * 2}px
             ${({ theme }) => theme.gridUnit * 4}px;
-          line-height: ${({ theme }) => theme.gridUnit * 5}px;
+          line-height: ${({ theme }) => theme.gridUnit * 6}px;
 
           &:hover {
             text-decoration: none;
@@ -129,7 +133,7 @@ const StyledHeader = styled.div`
       background: ${({ theme }) => theme.colors.secondary.light4};
       border-bottom: none;
       border-radius: ${({ theme }) => theme.borderRadius}px;
-      margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
+      // margin-bottom: ${({ theme }) => theme.gridUnit * 2}px;
       text-decoration: none;
     }
   }

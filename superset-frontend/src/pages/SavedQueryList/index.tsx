@@ -61,6 +61,14 @@ import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import SavedQueryPreviewModal from 'src/features/queries/SavedQueryPreviewModal';
 import { findPermission } from 'src/utils/findPermission';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
   'The passwords for the databases below are needed in order to ' +
@@ -577,26 +585,28 @@ function SavedQueryList({
             });
           }
           return (
-            <ListView<SavedQueryObject>
-              className="saved_query-list-view"
-              columns={columns}
-              count={queryCount}
-              data={queries}
-              fetchData={fetchData}
-              filters={filters}
-              initialSort={initialSort}
-              loading={loading}
-              pageSize={PAGE_SIZE}
-              bulkActions={bulkActions}
-              addSuccessToast={addSuccessToast}
-              addDangerToast={addDangerToast}
-              bulkSelectEnabled={bulkSelectEnabled}
-              disableBulkSelect={toggleBulkSelect}
-              highlightRowId={savedQueryCurrentlyPreviewing?.id}
-              enableBulkTag
-              bulkTagResourceName="query"
-              refreshData={refreshData}
-            />
+            <ListViewContainer>
+              <ListView<SavedQueryObject>
+                className="saved_query-list-view"
+                columns={columns}
+                count={queryCount}
+                data={queries}
+                fetchData={fetchData}
+                filters={filters}
+                initialSort={initialSort}
+                loading={loading}
+                pageSize={PAGE_SIZE}
+                bulkActions={bulkActions}
+                addSuccessToast={addSuccessToast}
+                addDangerToast={addDangerToast}
+                bulkSelectEnabled={bulkSelectEnabled}
+                disableBulkSelect={toggleBulkSelect}
+                highlightRowId={savedQueryCurrentlyPreviewing?.id}
+                enableBulkTag
+                bulkTagResourceName="query"
+                refreshData={refreshData}
+              />
+            </ListViewContainer>
           );
         }}
       </ConfirmStatusChange>

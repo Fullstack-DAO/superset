@@ -56,6 +56,14 @@ import { AlertObject, AlertState } from 'src/features/alerts/types';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const extensionsRegistry = getExtensionsRegistry();
 
 const PAGE_SIZE = 25;
@@ -599,24 +607,26 @@ function AlertList({
               ]
             : [];
           return (
-            <ListView<AlertObject>
-              className="alerts-list-view"
-              columns={columns}
-              count={alertsCount}
-              data={alerts}
-              emptyState={emptyState}
-              fetchData={fetchData}
-              filters={filters}
-              initialSort={initialSort}
-              loading={loading}
-              bulkActions={bulkActions}
-              bulkSelectEnabled={bulkSelectEnabled}
-              disableBulkSelect={toggleBulkSelect}
-              refreshData={refreshData}
-              addDangerToast={addDangerToast}
-              addSuccessToast={addSuccessToast}
-              pageSize={PAGE_SIZE}
-            />
+            <ListViewContainer>
+              <ListView<AlertObject>
+                className="alerts-list-view"
+                columns={columns}
+                count={alertsCount}
+                data={alerts}
+                emptyState={emptyState}
+                fetchData={fetchData}
+                filters={filters}
+                initialSort={initialSort}
+                loading={loading}
+                bulkActions={bulkActions}
+                bulkSelectEnabled={bulkSelectEnabled}
+                disableBulkSelect={toggleBulkSelect}
+                refreshData={refreshData}
+                addDangerToast={addDangerToast}
+                addSuccessToast={addSuccessToast}
+                pageSize={PAGE_SIZE}
+              />
+            </ListViewContainer>
           );
         }}
       </ConfirmStatusChange>

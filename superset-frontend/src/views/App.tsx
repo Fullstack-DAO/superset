@@ -40,6 +40,7 @@ import { logEvent } from 'src/logger/actions';
 import { store } from 'src/views/store';
 import { RootContextProviders } from './RootContextProviders';
 import { ScrollToTop } from './ScrollToTop';
+import { styled } from '@superset-ui/core';
 
 setupApp();
 setupPlugins();
@@ -48,6 +49,8 @@ setupExtensions();
 const bootstrapData = getBootstrapData();
 
 let lastLocationPathname: string;
+
+const HIDE_MENU_PATHS = new Set(['/superset/app/dashboard']);
 
 const boundActions = bindActionCreators({ logEvent }, store.dispatch);
 
@@ -70,7 +73,9 @@ const LocationPathnameLogger = () => {
 
 const MenuWrapper = () => {
   const location = useLocation();
-  if (location.pathname === '/superset/app/dashboard' || location.pathname === '/superset/app/dashboard/') {
+  const normalizedPathname = location.pathname.replace(/\/$/, '') || '/';
+
+  if (HIDE_MENU_PATHS.has(normalizedPathname)) {
     return null;
   }
   return (
@@ -81,24 +86,41 @@ const MenuWrapper = () => {
   );
 };
 
+const LayoutContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  height: 100%;
+  overflow: auto;
+`;
+
 const App = () => (
   <Router>
     <ScrollToTop />
     <LocationPathnameLogger />
     <RootContextProviders>
       <GlobalStyles />
-      <MenuWrapper />
-      <Switch>
-        {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
-          <Route path={path} key={path}>
-            <Suspense fallback={<Fallback />}>
-              <ErrorBoundary>
-                <Component user={bootstrapData.user} {...props} />
-              </ErrorBoundary>
-            </Suspense>
-          </Route>
-        ))}
-      </Switch>
+      <LayoutContainer>
+        <MenuWrapper />
+        <MainContent>
+          <Switch>
+            {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
+              <Route path={path} key={path}>
+                <Suspense fallback={<Fallback />}>
+                  <ErrorBoundary>
+                    <Component user={bootstrapData.user} {...props} />
+                  </ErrorBoundary>
+                </Suspense>
+              </Route>
+            ))}
+          </Switch>
+        </MainContent>
+      </LayoutContainer>
       <ToastContainer />
     </RootContextProviders>
   </Router>

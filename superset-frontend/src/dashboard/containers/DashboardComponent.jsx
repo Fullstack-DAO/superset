@@ -58,10 +58,12 @@ const propTypes = {
   directPathLastUpdated: PropTypes.number,
   dashboardId: PropTypes.number.isRequired,
   isComponentVisible: PropTypes.bool,
+  isAppDashboard: PropTypes.bool,
 };
 
 const defaultProps = {
   isComponentVisible: true,
+  isAppDashboard: false,
 };
 
 function mapStateToProps(

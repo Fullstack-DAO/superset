@@ -20,7 +20,7 @@ import { FeatureFlag, isFeatureEnabled } from '@superset-ui/core';
 import React, { lazy } from 'react';
 
 // not lazy loaded since this is the home page.
-import Home from 'src/pages/Home';
+// import Home from 'src/pages/Home';
 
 const Copilot = lazy(
   () => import(/* webpackChunkName: "Copilot" */ 'src/pages/Copilot'),
@@ -154,10 +154,10 @@ type Routes = {
 }[];
 
 export const routes: Routes = [
-  {
-    path: '/superset/welcome/',
-    Component: Home,
-  },
+  // {
+  //   path: '/superset/welcome/',
+  //   Component: Home,
+  // },
   {
     path: '/superset/app/dashboard',
     Component: AppDashboard,

@@ -21,12 +21,11 @@ import { styled, css, useTheme, SupersetTheme } from '@superset-ui/core';
 import { debounce } from 'lodash';
 import { Global } from '@emotion/react';
 import { getUrlParam } from 'src/utils/urlUtils';
-import { Row, Col, Grid } from 'src/components';
+import { Grid } from 'src/components';
 import { MainNav as DropdownMenu, MenuMode } from 'src/components/Menu';
 import { Tooltip } from 'src/components/Tooltip';
 import { NavLink, useLocation } from 'react-router-dom';
 import { GenericLink } from 'src/components/GenericLink/GenericLink';
-import Icons from 'src/components/Icons';
 import { useUiConfig } from 'src/components/UiConfigContext';
 import { URL_PARAMS } from 'src/constants';
 import {
@@ -35,11 +34,34 @@ import {
   MenuData,
 } from 'src/types/bootstrapTypes';
 import getBootstrapData from 'src/utils/getBootstrapData';
-import { CloseOutlined, MenuOutlined } from '@ant-design/icons';
+import {
+  CloseOutlined,
+  MenuOutlined,
+  DashboardOutlined,
+  BarChartOutlined,
+  DatabaseOutlined,
+  RobotOutlined,
+  PartitionOutlined,
+  ReadOutlined,
+  ConsoleSqlOutlined,
+  FileOutlined,
+  FolderOutlined,
+} from '@ant-design/icons';
 import { Button } from 'antd';
 import RightMenu from './RightMenu';
 
 const bootstrapData = getBootstrapData();
+
+const iconMap: Record<string, React.ReactNode> = {
+  'Dashboards': <DashboardOutlined />,
+  'Charts': <BarChartOutlined />,
+  'Datasets': <DatabaseOutlined />,
+  'SQL Lab': <ConsoleSqlOutlined />,
+  'SQL': <ConsoleSqlOutlined />,
+  'Copilot': <RobotOutlined />,
+  'Workflow': <PartitionOutlined />,
+  '文档': <ReadOutlined />,
+};
 
 interface MenuProps {
   data: MenuData;
@@ -50,11 +72,19 @@ const StyledHeader = styled.header`
   ${({ theme }) => `
       background-color: ${theme.colors.grayscale.light5};
       margin-bottom: 2px;
-      z-index: 10;
+      z-index: 1000;
+      box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.05);
+      width: 220px;
+      flex-shrink: 0;
+      height: 100vh;
+      overflow-y: auto;
 
-      &:nth-last-of-type(2) nav {
-        margin-bottom: 2px;
+      .navbar-brand-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
+
       .caret {
         display: none;
       }
@@ -63,11 +93,11 @@ const StyledHeader = styled.header`
         flex-direction: column;
         justify-content: center;
         /* must be exactly the height of the Antd navbar */
-        min-height: 50px;
+        min-height: 60px;
         padding: ${theme.gridUnit}px
           ${theme.gridUnit * 2}px
           ${theme.gridUnit}px
-          ${theme.gridUnit * 4}px;
+          ${theme.gridUnit * 2}px;
         max-width: ${theme.gridUnit * theme.brandIconMaxWidth}px;
         img {
           height: 100%;
@@ -100,102 +130,79 @@ const StyledHeader = styled.header`
       }
 
       @media (max-width: 767px) {
-        .main-nav {
-          transition: max-height 0.3s;
-          max-height: 0;
-          overflow: hidden;
-        }
-        .main-nav .ant-menu-item {
-          height: 44px;
-          line-height: 44px;
-        }
-      }
-
-      .main-nav .ant-menu-submenu-title > svg {
-        top: ${theme.gridUnit * 5.25}px;
-      }
-      @media (max-width: 767px) {
         .navbar-brand {
           float: none;
         }
       }
-      .ant-menu-horizontal .ant-menu-item {
-        height: 100%;
-        line-height: inherit;
-      }
-      .ant-menu > .ant-menu-item > a {
-        padding: ${theme.gridUnit * 4}px;
-      }
-      @media (max-width: 767px) {
-        .ant-menu-item {
-          padding: 0 ${theme.gridUnit * 6}px 0
-            ${theme.gridUnit * 3}px !important;
-        }
-        .ant-menu > .ant-menu-item > a {
-          padding: 0px;
-        }
-        .main-nav .ant-menu-submenu-title > svg:nth-of-type(1) {
-          display: none;
-        }
-        .ant-menu-item-active > a {
-          &:hover {
+
+      .ant-menu-submenu-selected,
+      .ant-menu-submenu:has(.ant-menu-item-selected),
+      .ant-menu-submenu:has(.is-active) {
+        > .ant-menu-submenu-title {
+          color: ${theme.colors.primary.base} !important;
+          .anticon {
             color: ${theme.colors.primary.base} !important;
-            background-color: transparent !important;
           }
         }
       }
-      .ant-menu-item a {
+
+      .ant-menu-item-selected,
+      .ant-menu-item:has(.is-active) {
+        background-color: #E7F6EC !important;
+        color: ${theme.colors.primary.base} !important;
+        
+        .anticon {
+          color: ${theme.colors.primary.base} !important;
+        }
+        
+        a {
+          color: ${theme.colors.primary.base} !important;
+        }
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          border-right: 3px solid ${theme.colors.primary.base} !important;
+          transform: scaleY(1) !important;
+          opacity: 1 !important;
+        }
+
         &:hover {
-          color: ${theme.colors.grayscale.dark1};
+          background-color: #E7F6EC !important;
+          color: ${theme.colors.primary.base} !important;
+          
+          .anticon {
+            color: ${theme.colors.primary.base} !important;
+          }
+          
+          a {
+            color: ${theme.colors.primary.base} !important;
+          }
+        }
+      }
+
+      .ant-menu-item:not(.ant-menu-item-selected):not(:has(.is-active)) {
+        &:hover {
           background-color: ${theme.colors.primary.light5};
-          border-bottom: none;
-          margin: 0;
-          &:after {
-            opacity: 1;
-            width: 100%;
+          color: ${theme.colors.primary.base};
+
+          .anticon {
+            color: ${theme.colors.primary.base};
+          }
+
+          a {
+            color: ${theme.colors.primary.base};
+            text-decoration: none;
           }
         }
       }
   `}
 `;
-const globalStyles = (theme: SupersetTheme) => css`
-  .ant-menu-submenu.ant-menu-submenu-popup.ant-menu.ant-menu-light.ant-menu-submenu-placement-bottomLeft {
-    border-radius: 0px;
-  }
-  .ant-menu-submenu.ant-menu-submenu-popup.ant-menu.ant-menu-light {
-    border-radius: 0px;
-  }
-  .ant-menu-vertical > .ant-menu-submenu.data-menu > .ant-menu-submenu-title {
-    height: 28px;
-    i {
-      padding-right: ${theme.gridUnit * 2}px;
-      margin-left: ${theme.gridUnit * 1.75}px;
-    }
-  }
-  .ant-menu-item-selected {
-    background-color: transparent;
-    &:not(.ant-menu-item-active) {
-      color: inherit;
-      border-bottom-color: transparent;
-      & > a {
-        color: inherit;
-      }
-    }
-  }
-  .ant-menu-horizontal > .ant-menu-item:has(> .is-active) {
-    color: ${theme.colors.primary.base};
-    border-bottom-color: ${theme.colors.primary.base};
-    & > a {
-      color: ${theme.colors.primary.base};
-    }
-  }
-  .ant-menu-vertical > .ant-menu-item:has(> .is-active) {
-    background-color: ${theme.colors.primary.light5};
-    & > a {
-      color: ${theme.colors.primary.base};
-    }
-  }
-`;
+
+const globalStyles = (theme: SupersetTheme) => css``;
 const { SubMenu } = DropdownMenu;
 
 const { useBreakpoint } = Grid;
@@ -210,7 +217,7 @@ export function Menu({
   },
   isFrontendRoute = () => false,
 }: MenuProps) {
-  const [showMenu, setMenu] = useState<MenuMode>('horizontal');
+  const [showMenu, setMenu] = useState<MenuMode>('vertical');
   const screens = useBreakpoint();
   const uiConfig = useUiConfig();
   const theme = useTheme();
@@ -220,7 +227,7 @@ export function Menu({
     function handleResize() {
       if (window.innerWidth <= 767) {
         setMenu('inline');
-      } else setMenu('horizontal');
+      } else setMenu('inline');
     }
     handleResize();
     const windowResize = debounce(() => handleResize(), 10);
@@ -259,15 +266,18 @@ export function Menu({
   if (standalone || uiConfig.hideNav) return <></>;
 
   const renderSubMenu = ({
+    name,
     label,
     childs,
     url,
     index,
     isFrontendRoute,
   }: MenuObjectProps) => {
+    const icon = iconMap[name || ''] || <FileOutlined />;
+
     if (url && isFrontendRoute) {
       return (
-        <DropdownMenu.Item key={label} role="presentation">
+        <DropdownMenu.Item key={label} role="presentation" icon={icon}>
           <NavLink role="button" to={url} activeClassName="is-active">
             {label}
           </NavLink>
@@ -276,146 +286,156 @@ export function Menu({
     }
     if (url) {
       return (
-        <DropdownMenu.Item key={label}>
+        <DropdownMenu.Item key={label} icon={icon}>
           <a href={url}>{label}</a>
         </DropdownMenu.Item>
       );
     }
+
+    const renderChild = (child: MenuObjectChildProps | string, idx: number) => {
+      if (typeof child === 'string') {
+        if (child === '-' && label !== 'Data') {
+          return <DropdownMenu.Divider key={`divider-${idx}`} />;
+        }
+        return null;
+      }
+
+      const childObj = child as MenuObjectProps;
+      const hasChildren = childObj.childs && childObj.childs.length > 0;
+
+      if (hasChildren) {
+        return (
+          <SubMenu
+            key={child.label}
+            title={child.label}
+            icon={<FolderOutlined />}
+          >
+            {childObj.childs?.map((grandChild, grandIdx) =>
+              renderChild(grandChild, grandIdx),
+            )}
+          </SubMenu>
+        );
+      }
+
+      return (
+        <DropdownMenu.Item key={child.label} icon={<FileOutlined />}>
+          {child.isFrontendRoute ? (
+            <NavLink to={child.url || ''} exact activeClassName="is-active">
+              {child.label}
+            </NavLink>
+          ) : (
+            <a href={child.url}>{child.label}</a>
+          )}
+        </DropdownMenu.Item>
+      );
+    };
+
     return (
-      <SubMenu
-        key={index}
-        title={label}
-        icon={showMenu === 'inline' ? <></> : <Icons.TriangleDown />}
-      >
-        {childs?.map((child: MenuObjectChildProps | string, index1: number) => {
-          if (typeof child === 'string' && child === '-' && label !== 'Data') {
-            return <DropdownMenu.Divider key={`$${index1}`} />;
-          }
-          if (typeof child !== 'string') {
-            return (
-              <DropdownMenu.Item key={`${child.label}`}>
-                {child.isFrontendRoute ? (
-                  <NavLink
-                    to={child.url || ''}
-                    exact
-                    activeClassName="is-active"
-                  >
-                    {child.label}
-                  </NavLink>
-                ) : (
-                  <a href={child.url}>{child.label}</a>
-                )}
-              </DropdownMenu.Item>
-            );
-          }
-          return null;
-        })}
+      <SubMenu key={index} title={label} icon={icon}>
+        {childs?.map((child, index1) => renderChild(child, index1))}
       </SubMenu>
     );
   };
+
   return (
     <StyledHeader className="top" id="main-menu" role="navigation">
       <Global styles={globalStyles(theme)} />
-      <Row>
-        <Col md={16} xs={24}>
-          <Row>
-            <Col md={4} xs={22}>
-              <Tooltip
-                id="brand-tooltip"
-                placement="bottomLeft"
-                title={brand.tooltip}
-                arrowPointAtCenter
-              >
-                {isFrontendRoute(window.location.pathname) ? (
-                  <GenericLink className="navbar-brand" to={brand.path}>
-                    <img src={brand.icon} alt={brand.alt} />
-                  </GenericLink>
-                ) : (
-                  <a className="navbar-brand" href={brand.path}>
-                    <img src={brand.icon} alt={brand.alt} />
-                  </a>
-                )}
-              </Tooltip>
-            </Col>
-            <Col md={0} xs={2}>
-              <Button
-                size="large"
-                color="black"
-                type="link"
-                onClick={() => {
-                  setMenuOpen(!menuOpen);
-                }}
-                icon={menuOpen ? <CloseOutlined /> : <MenuOutlined />}
-              />
-            </Col>
-            <Col md={20} xs={24}>
-              <DropdownMenu
-                mode={showMenu}
-                data-test="navbar-top"
-                className="main-nav"
-                style={{
-                  maxHeight: menuOpen ? '600px' : '0',
-                }}
-                selectedKeys={activeTabs}
-              >
-                {menu.map((item, index) => {
-                  const props = {
-                    index,
-                    ...item,
-                    isFrontendRoute: isFrontendRoute(item.url),
-                    childs: item.childs?.map(c => {
-                      if (typeof c === 'string') {
-                        return c;
-                      }
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+        }}
+      >
+        <div className="navbar-brand-container">
+          <Tooltip
+            id="brand-tooltip"
+            placement="bottomLeft"
+            title={brand.tooltip}
+            arrowPointAtCenter
+          >
+            {isFrontendRoute(window.location.pathname) ? (
+              <GenericLink className="navbar-brand" to={brand.path}>
+                <img src={brand.icon} alt={brand.alt} />
+              </GenericLink>
+            ) : (
+              <a className="navbar-brand" href={brand.path}>
+                <img src={brand.icon} alt={brand.alt} />
+              </a>
+            )}
+          </Tooltip>
+        </div>
 
-                      return {
-                        ...c,
-                        isFrontendRoute: isFrontendRoute(c.url),
-                      };
-                    }),
-                  };
+        {!screens.md && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <Button
+              size="large"
+              color="black"
+              type="link"
+              onClick={() => {
+                setMenuOpen(!menuOpen);
+              }}
+              icon={menuOpen ? <CloseOutlined /> : <MenuOutlined />}
+            />
+          </div>
+        )}
 
-                  return renderSubMenu(props);
-                })}
-                <DropdownMenu.Item role="presentation">
-                  <a
-                    role="button"
-                    href={bootstrapData.common.docs_url}
-                    rel="noreferrer noopener"
-                    target="_blank"
-                  >
-                    文档
-                  </a>
-                </DropdownMenu.Item>
+        <DropdownMenu
+          mode={showMenu}
+          data-test="navbar-top"
+          className="main-nav"
+          style={{
+            maxHeight: !screens.md && !menuOpen ? '0' : 'none',
+            flex: 1,
+            overflowY: 'auto',
+            borderRight: 'none',
+          }}
+          selectedKeys={activeTabs}
+        >
+          {menu.map((item, index) => {
+            const props = {
+              index,
+              ...item,
+              isFrontendRoute: isFrontendRoute(item.url),
+              childs: item.childs?.map(c => {
+                if (typeof c === 'string') {
+                  return c;
+                }
 
-                {!screens.md && (
-                  <RightMenu
-                    align={screens.md ? 'flex-end' : 'flex-start'}
-                    settings={settings}
-                    navbarRight={navbarRight}
-                    isFrontendRoute={isFrontendRoute}
-                    environmentTag={environmentTag}
-                  />
-                )}
-              </DropdownMenu>
-            </Col>
-          </Row>
-          {/* {brand.text && (
-            <div className="navbar-brand-text">
-              <span>{brand.text}</span>
-            </div>
-          )} */}
-        </Col>
-        <Col md={8} xs={0}>
+                return {
+                  ...c,
+                  isFrontendRoute: isFrontendRoute(c.url),
+                };
+              }),
+            };
+
+            return renderSubMenu(props);
+          })}
+          <DropdownMenu.Item role="presentation">
+            <a
+              role="button"
+              href={bootstrapData.common.docs_url}
+              rel="noreferrer noopener"
+              target="_blank"
+            >
+              <span>
+                <ReadOutlined />
+              </span>
+              文档
+            </a>
+          </DropdownMenu.Item>
+        </DropdownMenu>
+
+        <div style={{ marginTop: 'auto' }}>
           <RightMenu
-            align={screens.md ? 'flex-end' : 'flex-start'}
+            align="flex-start"
             settings={settings}
             navbarRight={navbarRight}
             isFrontendRoute={isFrontendRoute}
             environmentTag={environmentTag}
           />
-        </Col>
-      </Row>
+        </div>
+      </div>
     </StyledHeader>
   );
 }
@@ -436,7 +456,7 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
   const cleanedMenu: MenuObjectProps[] = [];
   const settings: MenuObjectProps[] = [];
   newMenuData.menu.forEach((item: any) => {
-    if (!item) {
+    if (!item || item.name === 'Home') {
       return;
     }
 

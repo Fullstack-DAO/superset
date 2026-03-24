@@ -209,6 +209,24 @@ test('renders', async () => {
   await waitFor(() => expect(container).toBeInTheDocument());
 });
 
+test('renders profile as a normal link for backend-rendered pages', async () => {
+  const mockedProps = {
+    ...createProps(),
+    isFrontendRoute: () => false,
+  };
+
+  resetUseSelectorMock();
+  render(<RightMenu {...mockedProps} />, {
+    useRedux: true,
+    useQueryParams: true,
+  });
+
+  userEvent.hover(await screen.findByText('Settings'));
+  const profile = await screen.findByText('Profile');
+
+  expect(profile).toHaveAttribute('href', '/profile/');
+});
+
 test('If user has permission to upload files AND connect DBs we query existing DBs that has allow_file_upload as True and DBs that are not examples', async () => {
   const mockedProps = createProps();
   // Initial Load

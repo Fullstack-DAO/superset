@@ -1,8 +1,42 @@
 {% extends "appbuilder/base.html" %}
 
+{% block navbar %}
+<div id="app-menu" style="display: none;"></div>
+{% endblock %}
+
+{% block messages %}{% endblock %}
+
 {% block content %}
-<div class="container">
-    <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+<div class="col-sm-12" style="padding: 0;">
+    <div
+        style="position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: #fff; padding: 0 16px; height: 60px; display: flex; align-items: center;"
+    >
+        <div style="display: flex; align-items: center; gap: 32px; min-height: 48px;">
+            <img
+                src="{{ appbuilder.app_icon }}"
+                alt="{{ appbuilder.app_name }}"
+                style="max-width: 132px; height: auto; width: 100%; display: block;"
+            />
+            {% if appbuilder.app.config['DOCS_URL'] %}
+            <a
+                href="{{ appbuilder.app.config['DOCS_URL'] }}"
+                target="_blank"
+                rel="noreferrer noopener"
+                class="btn btn-link"
+                style="padding: 0; display: inline-flex; align-items: center; min-height: 32px;"
+            >
+                {{ _('文档') }}
+            </a>
+            {% endif %}
+        </div>
+
+        <div style="position: absolute; top: 70px;">
+            {% include 'superset/flash_wrapper.html' %}
+        </div>
+    </div>
+
+<div style="margin-top: 100px;">
+    <div id="loginbox" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
         <div class="panel panel-primary" >
             <div class="panel-heading">
                 <div class="panel-title">{{ title }}</div>
@@ -29,5 +63,6 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 {% endblock %}

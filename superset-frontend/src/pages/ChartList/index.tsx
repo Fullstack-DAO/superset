@@ -74,6 +74,15 @@ import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
+import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
+
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
 
 const FlexRowContainer = styled.div`
   align-items: center;
@@ -171,7 +180,7 @@ function ChartList(props: ChartListProps) {
     addSuccessToast,
     user: { userId },
   } = props;
-
+  const screens = useBreakpoint();
   const history = useHistory();
 
   const {
@@ -974,37 +983,41 @@ function ChartList(props: ChartListProps) {
             });
           }
           return (
-            <ListView<Chart>
-              bulkActions={bulkActions}
-              bulkSelectEnabled={bulkSelectEnabled}
-              cardSortSelectOptions={sortTypes}
-              className="chart-list-view"
-              columns={columns}
-              count={chartCount}
-              data={charts}
-              disableBulkSelect={toggleBulkSelect}
-              refreshData={refreshData}
-              fetchData={fetchData}
-              filters={filters}
-              initialSort={initialSort}
-              loading={loading}
-              pageSize={PAGE_SIZE}
-              renderCard={renderCard}
-              enableBulkTag
-              bulkTagResourceName="chart"
-              addSuccessToast={addSuccessToast}
-              addDangerToast={addDangerToast}
-              showThumbnails={
-                userSettings
-                  ? userSettings.thumbnails
-                  : isFeatureEnabled(FeatureFlag.THUMBNAILS)
-              }
-              defaultViewMode={
-                isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
-                  ? 'card'
-                  : 'table'
-              }
-            />
+            <ListViewContainer>
+              <ListView<Chart>
+                bulkActions={bulkActions}
+                bulkSelectEnabled={bulkSelectEnabled}
+                cardSortSelectOptions={sortTypes}
+                className="chart-list-view"
+                columns={columns}
+                count={chartCount}
+                data={charts}
+                disableBulkSelect={toggleBulkSelect}
+                refreshData={refreshData}
+                fetchData={fetchData}
+                filters={filters}
+                initialSort={initialSort}
+                loading={loading}
+                pageSize={PAGE_SIZE}
+                renderCard={renderCard}
+                enableBulkTag
+                bulkTagResourceName="chart"
+                addSuccessToast={addSuccessToast}
+                addDangerToast={addDangerToast}
+                showThumbnails={
+                  userSettings
+                    ? userSettings.thumbnails
+                    : isFeatureEnabled(FeatureFlag.THUMBNAILS)
+                }
+                defaultViewMode={
+                  !screens.md
+                    ? 'card'
+                    : isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
+                    ? 'card'
+                    : 'table'
+                }
+              />
+            </ListViewContainer>
           );
         }}
       </ConfirmStatusChange>

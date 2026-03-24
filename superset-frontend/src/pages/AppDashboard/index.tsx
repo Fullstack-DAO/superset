@@ -25,7 +25,15 @@ const StyledContainer = styled.div<{ showBackground?: boolean }>`
 `;
 
 const StyledSelect = styled(Select)`
-  width: 100%;
+  width: fit-content;
+  max-width: calc(100vw - 10px);
+  min-width: 0;
+
+  .ant-select-selector,
+  &.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+    width: auto !important;
+    max-width: calc(100vw - 10px);
+  }
   
   .ant-select-selector {
     background-color: transparent !important;
@@ -139,16 +147,16 @@ const AppDashboard = () => {
   return (
     <StyledContainer showBackground>
       <div className="dashboard-select-container">
-        <div>
-          <StyledSelect
-            aria-label={t('Select Dashboard')}
-            options={options}
-            value={selectedId}
-            onChange={handleChange}
-            placeholder={t('Select a dashboard')}
-            bordered={false}
-          />
-        </div>
+        <StyledSelect
+          aria-label={t('Select Dashboard')}
+          options={options}
+          value={selectedId}
+          onChange={handleChange}
+          placeholder={t('Select a dashboard')}
+          bordered={false}
+          dropdownMatchSelectWidth={false}
+          dropdownStyle={{ width: 230 }}
+        />
       </div>
       {selectedId && (
         <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>

@@ -38,7 +38,8 @@ export const Table = styled.table`
   ${({ theme }) => `
     background-color: ${theme.colors.grayscale.light5};
     border-collapse: separate;
-    border-radius: ${theme.borderRadius}px;
+    // border-radius: ${theme.borderRadius}px;
+    border-bottom: 1px solid #e0e0e0;
 
     thead > tr > th {
       border: 0;
@@ -50,7 +51,8 @@ export const Table = styled.table`
       }
     }
     th {
-      background: ${theme.colors.grayscale.light5};
+      background: #F6F7FA;
+      border-bottom: 1px solid #e0e0e0 !important;
       position: sticky;
       top: 0;
 

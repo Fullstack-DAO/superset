@@ -73,6 +73,14 @@ import { useSelector } from 'react-redux';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const extensionsRegistry = getExtensionsRegistry();
 const DatasetDeleteRelatedExtension = extensionsRegistry.get(
   'dataset.delete.related',
@@ -815,60 +823,62 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
             });
           }
           return (
-            <ListView<Dataset>
-              className="dataset-list-view"
-              columns={columns}
-              data={datasets}
-              count={datasetCount}
-              pageSize={PAGE_SIZE}
-              fetchData={fetchData}
-              filters={filterTypes}
-              loading={loading}
-              initialSort={initialSort}
-              bulkActions={bulkActions}
-              bulkSelectEnabled={bulkSelectEnabled}
-              disableBulkSelect={toggleBulkSelect}
-              addDangerToast={addDangerToast}
-              addSuccessToast={addSuccessToast}
-              refreshData={refreshData}
-              renderBulkSelectCopy={selected => {
-                const { virtualCount, physicalCount } = selected.reduce(
-                  (acc, e) => {
-                    if (e.original.kind === 'physical') acc.physicalCount += 1;
-                    else if (e.original.kind === 'virtual') {
-                      acc.virtualCount += 1;
-                    }
-                    return acc;
-                  },
-                  { virtualCount: 0, physicalCount: 0 },
-                );
-
-                if (!selected.length) {
-                  return t('0 Selected');
-                }
-                if (virtualCount && !physicalCount) {
-                  return t(
-                    '%s Selected (Virtual)',
-                    selected.length,
-                    virtualCount,
+            <ListViewContainer>
+              <ListView<Dataset>
+                className="dataset-list-view"
+                columns={columns}
+                data={datasets}
+                count={datasetCount}
+                pageSize={PAGE_SIZE}
+                fetchData={fetchData}
+                filters={filterTypes}
+                loading={loading}
+                initialSort={initialSort}
+                bulkActions={bulkActions}
+                bulkSelectEnabled={bulkSelectEnabled}
+                disableBulkSelect={toggleBulkSelect}
+                addDangerToast={addDangerToast}
+                addSuccessToast={addSuccessToast}
+                refreshData={refreshData}
+                renderBulkSelectCopy={selected => {
+                  const { virtualCount, physicalCount } = selected.reduce(
+                    (acc, e) => {
+                      if (e.original.kind === 'physical') acc.physicalCount += 1;
+                      else if (e.original.kind === 'virtual') {
+                        acc.virtualCount += 1;
+                      }
+                      return acc;
+                    },
+                    { virtualCount: 0, physicalCount: 0 },
                   );
-                }
-                if (physicalCount && !virtualCount) {
+
+                  if (!selected.length) {
+                    return t('0 Selected');
+                  }
+                  if (virtualCount && !physicalCount) {
+                    return t(
+                      '%s Selected (Virtual)',
+                      selected.length,
+                      virtualCount,
+                    );
+                  }
+                  if (physicalCount && !virtualCount) {
+                    return t(
+                      '%s Selected (Physical)',
+                      selected.length,
+                      physicalCount,
+                    );
+                  }
+
                   return t(
-                    '%s Selected (Physical)',
+                    '%s Selected (%s Physical, %s Virtual)',
                     selected.length,
                     physicalCount,
+                    virtualCount,
                   );
-                }
-
-                return t(
-                  '%s Selected (%s Physical, %s Virtual)',
-                  selected.length,
-                  physicalCount,
-                  virtualCount,
-                );
-              }}
-            />
+                }}
+              />
+            </ListViewContainer>
           );
         }}
       </ConfirmStatusChange>

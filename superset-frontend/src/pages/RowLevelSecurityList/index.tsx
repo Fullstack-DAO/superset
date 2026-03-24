@@ -37,6 +37,14 @@ import { createErrorHandler, createFetchRelated } from 'src/views/CRUD/utils';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
 
+const ListViewContainer = styled.div`
+  background-color: #FFFFFF;
+  padding: ${({ theme }) => theme.gridUnit * 4}px;
+  min-height: calc(100vh - 150px);
+  margin: 0 16px 16px;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+`;
+
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
 `;
@@ -353,24 +361,26 @@ function RowLevelSecurityList(props: RLSProps) {
                 addSuccessToast={addSuccessToast}
                 show={ruleModalOpen}
               />
-              <ListView<RLSObject>
-                className="rls-list-view"
-                bulkActions={bulkActions}
-                bulkSelectEnabled={bulkSelectEnabled}
-                disableBulkSelect={toggleBulkSelect}
-                columns={columns}
-                count={rulesCount}
-                data={rules}
-                emptyState={emptyState}
-                fetchData={fetchData}
-                filters={filters}
-                initialSort={initialSort}
-                loading={loading}
-                addDangerToast={addDangerToast}
-                addSuccessToast={addSuccessToast}
-                refreshData={() => {}}
-                pageSize={PAGE_SIZE}
-              />
+              <ListViewContainer>
+                <ListView<RLSObject>
+                  className="rls-list-view"
+                  bulkActions={bulkActions}
+                  bulkSelectEnabled={bulkSelectEnabled}
+                  disableBulkSelect={toggleBulkSelect}
+                  columns={columns}
+                  count={rulesCount}
+                  data={rules}
+                  emptyState={emptyState}
+                  fetchData={fetchData}
+                  filters={filters}
+                  initialSort={initialSort}
+                  loading={loading}
+                  addDangerToast={addDangerToast}
+                  addSuccessToast={addSuccessToast}
+                  refreshData={() => {}}
+                  pageSize={PAGE_SIZE}
+                />
+              </ListViewContainer>
             </>
           );
         }}

@@ -42,9 +42,12 @@ const propTypes = {
   setDirectPathToChild: PropTypes.func.isRequired,
   width: PropTypes.number.isRequired,
   dashboardId: PropTypes.number,
+  isAppDashboard: PropTypes.bool,
 };
 
-const defaultProps = {};
+const defaultProps = {
+  isAppDashboard: false,
+};
 
 const renderDraggableContentBottom = dropProps =>
   dropProps.dropIndicatorProps && (
@@ -228,6 +231,7 @@ class DashboardGrid extends React.PureComponent {
       canEdit,
       setEditMode,
       dashboardId,
+      isAppDashboard,
     } = this.props;
 
     const gridSettings = isMobile
@@ -348,6 +352,7 @@ class DashboardGrid extends React.PureComponent {
                 onResize={this.handleResize}
                 onResizeStop={this.handleResizeStop}
                 onChangeTab={this.handleChangeTab}
+                isAppDashboard={isAppDashboard}
               />
             ))}
             {/* make the area below components droppable */}

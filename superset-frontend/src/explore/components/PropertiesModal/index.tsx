@@ -42,7 +42,6 @@ import {
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
 import TagType from 'src/types/TagType';
-import 'antd/dist/antd.css';
 import CollaboratorModal from './CollaboratorModal'; // 新增的管理协作者弹窗组件
 
 export type PropertiesModalProps = {

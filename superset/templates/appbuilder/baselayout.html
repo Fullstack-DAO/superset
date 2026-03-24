@@ -23,28 +23,32 @@
     {% include 'appbuilder/general/confirm.html' %}
     {% include 'appbuilder/general/alert.html' %}
 
-    {% block navbar %}
-      {% include 'appbuilder/navbar.html' %}
-    {% endblock %}
+    <div style="display: flex; height: 100vh; overflow: hidden; align-items: stretch;">
+        <div style="flex-shrink: 0; overflow-y: auto;">
+            {% block navbar %}
+              {% include 'appbuilder/navbar.html' %}
+            {% endblock %}
+        </div>
 
-    {% block uncontained %}{% endblock %}
+        <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 16px;">
+            {% block uncontained %}{% endblock %}
 
-    <div class="container">
-      <div class="row">
-          {% block messages %}
-            {% include 'superset/flash_wrapper.html' %}
-          {% endblock %}
-          {% block content %}
-          {% endblock %}
-      </div>
-    </div>
-    <div class="container-fluid">
-        {% block content_fluid %}
-        {% endblock %}
-    </div>
-    <div id="app" data-bootstrap="{{ bootstrap_data() }}"></div>
+            <div class="container" style="width: 100%; max-width: none;">
+              <div class="row">
+                  {% block messages %}
+                    {% include 'superset/flash_wrapper.html' %}
+                  {% endblock %}
+                  {% block content %}
+                  {% endblock %}
+              </div>
+            </div>
+            <div class="container-fluid">
+                {% block content_fluid %}
+                {% endblock %}
+            </div>
+            <div id="app" data-bootstrap="{{ bootstrap_data() }}"></div>
 
-    {% block footer %}
+    <!-- {% block footer %}
         <footer>
           <div class="img-rounded nav-fixed-bottom">
               <div class="container-fluid">
@@ -52,5 +56,5 @@
               </div>
           </div>
         </footer>
-    {% endblock %}
+    {% endblock %} -->
 {% endblock %}

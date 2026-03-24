@@ -45,13 +45,16 @@ const ListViewStyles = styled.div`
   .superset-list-view {
     text-align: left;
     border-radius: 4px 0;
-    margin: 0 ${({ theme }) => theme.gridUnit * 4}px;
+    // margin: 0 ${({ theme }) => theme.gridUnit * 4}px;
 
     .header {
       display: flex;
+      padding-left: 2px;
+      padding-right: 2px;
       padding-bottom: ${({ theme }) => theme.gridUnit * 4}px;
 
       & .controls {
+        flex-grow: 1;
         display: flex;
         flex-wrap: wrap;
         column-gap: ${({ theme }) => theme.gridUnit * 6}px;
@@ -137,7 +140,7 @@ const bulkSelectColumnConfig = {
 };
 
 const ViewModeContainer = styled.div`
-  padding-right: ${({ theme }) => theme.gridUnit * 4}px;
+  // padding-right: ${({ theme }) => theme.gridUnit * 4}px;
   margin-top: ${({ theme }) => theme.gridUnit * 5 + 1}px;
   white-space: nowrap;
   display: inline-block;
@@ -336,9 +339,6 @@ function ListView<T extends object = any>({
       )}
       <div data-test={className} className={`superset-list-view ${className}`}>
         <div className="header">
-          {cardViewEnabled && (
-            <ViewModeToggle mode={viewMode} setMode={setViewMode} />
-          )}
           <div className="controls">
             {filterable && (
               <FilterControls
@@ -358,6 +358,9 @@ function ListView<T extends object = any>({
               />
             )}
           </div>
+          {cardViewEnabled && (
+            <ViewModeToggle mode={viewMode} setMode={setViewMode} />
+          )}
         </div>
         <div className={`body ${rows.length === 0 ? 'empty' : ''}`}>
           {bulkSelectEnabled && (

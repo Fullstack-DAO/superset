@@ -667,32 +667,32 @@ function ChartList(props: ChartListProps) {
         input: 'search',
         operator: FilterOperator.chartAllText,
       },
-      {
-        Header: t('Type'),
-        key: 'viz_type',
-        id: 'viz_type',
-        input: 'select',
-        operator: FilterOperator.equals,
-        unfilteredLabel: t('All'),
-        selects: registry
-          .keys()
-          .filter(k => nativeFilterGate(registry.get(k)?.behaviors || []))
-          .map(k => ({ label: registry.get(k)?.name || k, value: k }))
-          .sort((a, b) => {
-            if (!a.label || !b.label) {
-              return 0;
-            }
+      // {
+      //   Header: t('Type'),
+      //   key: 'viz_type',
+      //   id: 'viz_type',
+      //   input: 'select',
+      //   operator: FilterOperator.equals,
+      //   unfilteredLabel: t('All'),
+      //   selects: registry
+      //     .keys()
+      //     .filter(k => nativeFilterGate(registry.get(k)?.behaviors || []))
+      //     .map(k => ({ label: registry.get(k)?.name || k, value: k }))
+      //     .sort((a, b) => {
+      //       if (!a.label || !b.label) {
+      //         return 0;
+      //       }
 
-            if (a.label > b.label) {
-              return 1;
-            }
-            if (a.label < b.label) {
-              return -1;
-            }
+      //       if (a.label > b.label) {
+      //         return 1;
+      //       }
+      //       if (a.label < b.label) {
+      //         return -1;
+      //       }
 
-            return 0;
-          }),
-      },
+      //       return 0;
+      //     }),
+      // },
       {
         Header: t('Dataset'),
         key: 'dataset',
@@ -716,28 +716,28 @@ function ChartList(props: ChartListProps) {
             },
           ]
         : []),
-      {
-        Header: t('Owner'),
-        key: 'owner',
-        id: 'owners',
-        input: 'select',
-        operator: FilterOperator.relationManyMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'chart',
-          'owners',
-          createErrorHandler(errMsg =>
-            addDangerToast(
-              t(
-                'An error occurred while fetching chart owners values: %s',
-                errMsg,
-              ),
-            ),
-          ),
-          props.user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Owner'),
+      //   key: 'owner',
+      //   id: 'owners',
+      //   input: 'select',
+      //   operator: FilterOperator.relationManyMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'chart',
+      //     'owners',
+      //     createErrorHandler(errMsg =>
+      //       addDangerToast(
+      //         t(
+      //           'An error occurred while fetching chart owners values: %s',
+      //           errMsg,
+      //         ),
+      //       ),
+      //     ),
+      //     props.user,
+      //   ),
+      //   paginate: true,
+      // },
       {
         Header: t('Dashboard'),
         key: 'dashboards',
@@ -749,39 +749,39 @@ function ChartList(props: ChartListProps) {
         paginate: true,
       },
       ...(userId ? [favoritesFilter] : []),
-      {
-        Header: t('Certified'),
-        key: 'certified',
-        id: 'id',
-        urlDisplay: 'certified',
-        input: 'select',
-        operator: FilterOperator.chartIsCertified,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Yes'), value: true },
-          { label: t('No'), value: false },
-        ],
-      },
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.relationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'chart',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          props.user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Certified'),
+      //   key: 'certified',
+      //   id: 'id',
+      //   urlDisplay: 'certified',
+      //   input: 'select',
+      //   operator: FilterOperator.chartIsCertified,
+      //   unfilteredLabel: t('Any'),
+      //   selects: [
+      //     { label: t('Yes'), value: true },
+      //     { label: t('No'), value: false },
+      //   ],
+      // },
+      // {
+      //   Header: t('Modified by'),
+      //   key: 'changed_by',
+      //   id: 'changed_by',
+      //   input: 'select',
+      //   operator: FilterOperator.relationOneMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'chart',
+      //     'changed_by',
+      //     createErrorHandler(errMsg =>
+      //       t(
+      //         'An error occurred while fetching dataset datasource values: %s',
+      //         errMsg,
+      //       ),
+      //     ),
+      //     props.user,
+      //   ),
+      //   paginate: true,
+      // },
     ] as Filters;
     return filters_list;
   }, [addDangerToast, favoritesFilter, props.user]);
@@ -987,7 +987,7 @@ function ChartList(props: ChartListProps) {
               <ListView<Chart>
                 bulkActions={bulkActions}
                 bulkSelectEnabled={bulkSelectEnabled}
-                cardSortSelectOptions={sortTypes}
+                // cardSortSelectOptions={sortTypes}
                 className="chart-list-view"
                 columns={columns}
                 count={chartCount}

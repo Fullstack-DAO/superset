@@ -460,23 +460,23 @@ function AlertList({
         input: 'search',
         operator: FilterOperator.contains,
       },
-      {
-        Header: t('Owner'),
-        key: 'owner',
-        id: 'owners',
-        input: 'select',
-        operator: FilterOperator.relationManyMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'report',
-          'owners',
-          createErrorHandler(errMsg =>
-            t('An error occurred while fetching owners values: %s', errMsg),
-          ),
-          user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Owner'),
+      //   key: 'owner',
+      //   id: 'owners',
+      //   input: 'select',
+      //   operator: FilterOperator.relationManyMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'report',
+      //     'owners',
+      //     createErrorHandler(errMsg =>
+      //       t('An error occurred while fetching owners values: %s', errMsg),
+      //     ),
+      //     user,
+      //   ),
+      //   paginate: true,
+      // },
       {
         Header: t('Status'),
         key: 'status',
@@ -498,26 +498,26 @@ function AlertList({
           { label: AlertStateLabel[AlertState.Grace], value: AlertState.Grace },
         ],
       },
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.relationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'report',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Modified by'),
+      //   key: 'changed_by',
+      //   id: 'changed_by',
+      //   input: 'select',
+      //   operator: FilterOperator.relationOneMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'report',
+      //     'changed_by',
+      //     createErrorHandler(errMsg =>
+      //       t(
+      //         'An error occurred while fetching dataset datasource values: %s',
+      //         errMsg,
+      //       ),
+      //     ),
+      //     user,
+      //   ),
+      //   paginate: true,
+      // },
     ],
     [],
   );

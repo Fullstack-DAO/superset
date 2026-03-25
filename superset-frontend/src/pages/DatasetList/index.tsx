@@ -577,59 +577,59 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
         ),
         paginate: true,
       },
-      {
-        Header: t('Owner'),
-        key: 'owner',
-        id: 'owners',
-        input: 'select',
-        operator: FilterOperator.relationManyMany,
-        unfilteredLabel: 'All',
-        fetchSelects: createFetchRelated(
-          'dataset',
-          'owners',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset owner values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-      },
-      {
-        Header: t('Certified'),
-        key: 'certified',
-        id: 'id',
-        urlDisplay: 'certified',
-        input: 'select',
-        operator: FilterOperator.datasetIsCertified,
-        unfilteredLabel: t('Any'),
-        selects: [
-          { label: t('Yes'), value: true },
-          { label: t('No'), value: false },
-        ],
-      },
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.relationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'dataset',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Owner'),
+      //   key: 'owner',
+      //   id: 'owners',
+      //   input: 'select',
+      //   operator: FilterOperator.relationManyMany,
+      //   unfilteredLabel: 'All',
+      //   fetchSelects: createFetchRelated(
+      //     'dataset',
+      //     'owners',
+      //     createErrorHandler(errMsg =>
+      //       t(
+      //         'An error occurred while fetching dataset owner values: %s',
+      //         errMsg,
+      //       ),
+      //     ),
+      //     user,
+      //   ),
+      //   paginate: true,
+      // },
+      // {
+      //   Header: t('Certified'),
+      //   key: 'certified',
+      //   id: 'id',
+      //   urlDisplay: 'certified',
+      //   input: 'select',
+      //   operator: FilterOperator.datasetIsCertified,
+      //   unfilteredLabel: t('Any'),
+      //   selects: [
+      //     { label: t('Yes'), value: true },
+      //     { label: t('No'), value: false },
+      //   ],
+      // },
+      // {
+      //   Header: t('Modified by'),
+      //   key: 'changed_by',
+      //   id: 'changed_by',
+      //   input: 'select',
+      //   operator: FilterOperator.relationOneMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'dataset',
+      //     'changed_by',
+      //     createErrorHandler(errMsg =>
+      //       t(
+      //         'An error occurred while fetching dataset datasource values: %s',
+      //         errMsg,
+      //       ),
+      //     ),
+      //     user,
+      //   ),
+      //   paginate: true,
+      // },
     ],
     [user],
   );

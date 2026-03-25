@@ -65,6 +65,7 @@ export default function SqlLab() {
     <LocationProvider>
       <div
         css={css`
+          height: 100%;
           flex: 1 1 auto;
           position: relative;
           display: flex;

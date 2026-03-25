@@ -509,26 +509,26 @@ function SavedQueryList({
             },
           ]
         : []) as Filters),
-      {
-        Header: t('Modified by'),
-        key: 'changed_by',
-        id: 'changed_by',
-        input: 'select',
-        operator: FilterOperator.relationOneMany,
-        unfilteredLabel: t('All'),
-        fetchSelects: createFetchRelated(
-          'saved_query',
-          'changed_by',
-          createErrorHandler(errMsg =>
-            t(
-              'An error occurred while fetching dataset datasource values: %s',
-              errMsg,
-            ),
-          ),
-          user,
-        ),
-        paginate: true,
-      },
+      // {
+      //   Header: t('Modified by'),
+      //   key: 'changed_by',
+      //   id: 'changed_by',
+      //   input: 'select',
+      //   operator: FilterOperator.relationOneMany,
+      //   unfilteredLabel: t('All'),
+      //   fetchSelects: createFetchRelated(
+      //     'saved_query',
+      //     'changed_by',
+      //     createErrorHandler(errMsg =>
+      //       t(
+      //         'An error occurred while fetching dataset datasource values: %s',
+      //         errMsg,
+      //       ),
+      //     ),
+      //     user,
+      //   ),
+      //   paginate: true,
+      // },
     ],
     [addDangerToast],
   );

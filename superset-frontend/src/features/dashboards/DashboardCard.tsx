@@ -18,7 +18,7 @@
  */
 import React from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { isFeatureEnabled, FeatureFlag, t, useTheme } from '@superset-ui/core';
+import { t, useTheme } from '@superset-ui/core';
 import { CardStyles } from 'src/views/CRUD/utils';
 import { AntdDropdown } from 'src/components';
 import { Menu } from 'src/components/Menu';
@@ -121,14 +121,14 @@ function DashboardCard({
         titleRight={
           <Label>{dashboard.published ? t('published') : t('draft')}</Label>
         }
-        cover={
-          !isFeatureEnabled(FeatureFlag.THUMBNAILS) || !showThumbnails ? (
-            <></>
-          ) : null
-        }
+        // cover={
+        //   !isFeatureEnabled(FeatureFlag.THUMBNAILS) || !showThumbnails ? (
+        //     <></>
+        //   ) : null
+        // }
         url={bulkSelectEnabled ? undefined : dashboard.url}
         linkComponent={Link}
-        imgURL={dashboard.thumbnail_url}
+        // imgURL={dashboard.thumbnail_url}
         imgFallbackURL="/static/assets/images/dashboard-list-icon.svg"
         description={t('Modified %s', dashboard.changed_on_delta_humanized)}
         coverLeft={<FacePile users={dashboard.owners || []} />}

@@ -146,13 +146,13 @@ export default function ChartCard({
         title={chart.slice_name}
         certifiedBy={chart.certified_by}
         certificationDetails={chart.certification_details}
-        cover={
-          !isFeatureEnabled(FeatureFlag.THUMBNAILS) || !showThumbnails ? (
-            <></>
-          ) : null
-        }
+        // cover={
+        //   !isFeatureEnabled(FeatureFlag.THUMBNAILS) || !showThumbnails ? (
+        //     <></>
+        //   ) : null
+        // }
         url={bulkSelectEnabled ? undefined : chart.url}
-        imgURL={chart.thumbnail_url || ''}
+        // imgURL={chart.thumbnail_url || ''}
         imgFallbackURL="/static/assets/images/chart-list-icon.svg"
         description={t('Modified %s', chart.changed_on_delta_humanized)}
         coverLeft={<FacePile users={chart.owners || []} />}

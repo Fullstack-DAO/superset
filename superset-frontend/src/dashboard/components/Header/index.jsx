@@ -26,7 +26,6 @@ import {
   isFeatureEnabled,
   FeatureFlag,
   t,
-  getSharedLabelColor,
   getExtensionsRegistry,
 } from '@superset-ui/core';
 import { Global } from '@emotion/react';

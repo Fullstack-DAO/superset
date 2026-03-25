@@ -20,7 +20,7 @@ import React from 'react';
 import { styled, useTheme } from '@superset-ui/core';
 import { Skeleton, AntdCard } from 'src/components';
 import { Tooltip } from 'src/components/Tooltip';
-import ImageLoader, { BackgroundPosition } from './ImageLoader';
+import type { BackgroundPosition } from './ImageLoader';
 import CertifiedBadge from '../CertifiedBadge';
 
 const ActionsWrapper = styled.div`

@@ -32,7 +32,6 @@ import { uniqBy } from 'lodash';
 import { useSelector } from 'react-redux';
 import {
   createErrorHandler,
-  createFetchRelated,
   handleChartDelete,
 } from 'src/views/CRUD/utils';
 import {
@@ -63,7 +62,6 @@ import Chart, { ChartLinkedDashboard } from 'src/types/Chart';
 import Tag from 'src/types/TagType';
 import { Tooltip } from 'src/components/Tooltip';
 import Icons from 'src/components/Icons';
-import { nativeFilterGate } from 'src/dashboard/components/nativeFilters/utils';
 import InfoTooltip from 'src/components/InfoTooltip';
 import CertifiedBadge from 'src/components/CertifiedBadge';
 import { GenericLink } from 'src/components/GenericLink/GenericLink';
@@ -785,27 +783,6 @@ function ChartList(props: ChartListProps) {
     ] as Filters;
     return filters_list;
   }, [addDangerToast, favoritesFilter, props.user]);
-
-  const sortTypes = [
-    {
-      desc: false,
-      id: 'slice_name',
-      label: t('Alphabetical'),
-      value: 'alphabetical',
-    },
-    {
-      desc: true,
-      id: 'changed_on_delta_humanized',
-      label: t('Recently modified'),
-      value: 'recently_modified',
-    },
-    {
-      desc: false,
-      id: 'changed_on_delta_humanized',
-      label: t('Least recently modified'),
-      value: 'least_recently_modified',
-    },
-  ];
 
   const renderCard = useCallback(
     (chart: Chart) => (

@@ -22,7 +22,7 @@ import rison from 'rison';
 import { t, SupersetClient, styled } from '@superset-ui/core';
 import { Link, useHistory } from 'react-router-dom';
 import { useListViewResource } from 'src/views/CRUD/hooks';
-import { createFetchRelated, createErrorHandler } from 'src/views/CRUD/utils';
+import { createErrorHandler } from 'src/views/CRUD/utils';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import ActionsBar, { ActionProps } from 'src/components/ListView/ActionsBar';

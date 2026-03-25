@@ -35,14 +35,11 @@ import {
   styled,
   t,
   useTheme,
-  useElementOnScreen,
 } from '@superset-ui/core';
 import { Global } from '@emotion/react';
 import { useDispatch, useSelector } from 'react-redux';
-import ErrorBoundary from 'src/components/ErrorBoundary';
 import BuilderComponentPane from 'src/dashboard/components/BuilderComponentPane';
 import DashboardHeader from 'src/dashboard/containers/DashboardHeader';
-import Button from 'src/components/Button'; // 添加这行
 import Icons from 'src/components/Icons';
 import IconButton from 'src/dashboard/components/IconButton';
 import DragDroppable from 'src/dashboard/components/dnd/DragDroppable';
@@ -74,16 +71,9 @@ import FilterBar from 'src/dashboard/components/nativeFilters/FilterBar';
 import Loading from 'src/components/Loading';
 import { EmptyStateBig } from 'src/components/EmptyState';
 import { useUiConfig } from 'src/components/UiConfigContext';
-import ResizableSidebar from 'src/components/ResizableSidebar';
 import {
   BUILDER_SIDEPANEL_WIDTH,
-  CLOSED_FILTER_BAR_WIDTH,
-  FILTER_BAR_HEADER_HEIGHT,
-  MAIN_HEADER_HEIGHT,
-  OPEN_FILTER_BAR_MAX_WIDTH,
-  OPEN_FILTER_BAR_WIDTH,
 } from 'src/dashboard/constants';
-import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 import { getRootLevelTabsComponent, shouldFocusTabs } from './utils';
 import DashboardContainer from './DashboardContainer';
 import { useNativeFilters } from './state';
@@ -92,22 +82,6 @@ import DashboardWrapper from './DashboardWrapper';
 type DashboardBuilderProps = {
   isAppDashboard?: boolean;
 };
-
-// @z-index-above-dashboard-charts + 1 = 11
-const FiltersPanel = styled.div<{ width: number; hidden: boolean }>`
-  grid-column: 1;
-  grid-row: 1 / span 2;
-  z-index: 11;
-  width: ${({ width }) => width}px;
-  ${({ hidden }) => hidden && `display: none;`}
-`;
-
-const StickyPanel = styled.div<{ width: number }>`
-  position: sticky;
-  top: -1px;
-  width: ${({ width }) => width}px;
-  flex: 0 0 ${({ width }) => width}px;
-`;
 
 // @z-index-above-dashboard-popovers (99) + 1 = 100
 const StyledHeader = styled.div`
@@ -436,28 +410,12 @@ const StyledDashboardContent = styled.div<{
   `}
 `;
 
-const HeaderButtons = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.gridUnit * 6}px; // 48px 间距
-  position: absolute;
-  right: ${({ theme }) => theme.gridUnit * 58}px; // 将56改为58，向左平移2px
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 99;
-`;
-
 const DashboardBuilder: FC<DashboardBuilderProps> = ({
   isAppDashboard = false,
 }) => {
   const dispatch = useDispatch();
   const uiConfig = useUiConfig();
   const theme = useTheme();
-  const screens = useBreakpoint();
-
-  const dashboardId = useSelector<RootState, number>(
-    ({ dashboardInfo }) => dashboardInfo.id,
-  );
   const dashboardLayout = useSelector<RootState, DashboardLayout>(
     state => state.dashboardLayout.present,
   );
@@ -539,23 +497,11 @@ const DashboardBuilder: FC<DashboardBuilderProps> = ({
   const {
     showDashboard,
     dashboardFiltersOpen,
-    toggleDashboardFiltersOpen,
     nativeFiltersEnabled,
   } = useNativeFilters();
 
-  const [containerRef, isSticky] = useElementOnScreen<HTMLDivElement>({
-    threshold: [1],
-  });
-
   const showFilterBar =
     (crossFiltersEnabled || nativeFiltersEnabled) && !editMode && !isAppDashboard;
-
-  const offset =
-    FILTER_BAR_HEADER_HEIGHT +
-    (isSticky || standaloneMode ? 0 : MAIN_HEADER_HEIGHT);
-
-  const filterBarHeight = `calc(100vh - ${offset}px)`;
-  const filterBarOffset = dashboardFiltersOpen ? 0 : barTopOffset + 20;
 
   const draggableStyle = useMemo(
     () => ({

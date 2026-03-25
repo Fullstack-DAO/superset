@@ -34,7 +34,6 @@ import Loading from 'src/components/Loading';
 import { useListViewResource } from 'src/views/CRUD/hooks';
 import {
   createErrorHandler,
-  createFetchRelated,
   uploadUserPerms,
 } from 'src/views/CRUD/utils';
 import withToasts from 'src/components/MessageToasts/withToasts';
@@ -112,7 +111,6 @@ function BooleanDisplay({ value }: { value: Boolean }) {
 function DatabaseList({
   addDangerToast,
   addSuccessToast,
-  user,
 }: DatabaseListProps) {
   const {
     state: {

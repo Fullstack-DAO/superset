@@ -23,7 +23,6 @@ import { Tooltip } from 'src/components/Tooltip';
 import {
   // CategoricalColorNamespace,
   css,
-  logging,
   SupersetClient,
   t,
   tn,
@@ -90,7 +89,6 @@ const additionalItemsStyles = theme => css`
 `;
 
 export const ExploreChartHeader = ({
-  dashboardId,
   slice,
   actions,
   formData,

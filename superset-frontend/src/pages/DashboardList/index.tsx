@@ -28,7 +28,6 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import rison from 'rison';
 import {
-  createFetchRelated,
   createErrorHandler,
   handleDashboardDelete,
 } from 'src/views/CRUD/utils';
@@ -633,27 +632,6 @@ function DashboardList(props: DashboardListProps) {
     ] as Filters;
     return filters_list;
   }, [addDangerToast, favoritesFilter, props.user]);
-
-  const sortTypes = [
-    {
-      desc: false,
-      id: 'dashboard_title',
-      label: t('Alphabetical'),
-      value: 'alphabetical',
-    },
-    {
-      desc: true,
-      id: 'changed_on_delta_humanized',
-      label: t('Recently modified'),
-      value: 'recently_modified',
-    },
-    {
-      desc: false,
-      id: 'changed_on_delta_humanized',
-      label: t('Least recently modified'),
-      value: 'least_recently_modified',
-    },
-  ];
 
   const renderCard = useCallback(
     (dashboard: Dashboard) => (

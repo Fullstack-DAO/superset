@@ -22,7 +22,7 @@ import { t, SupersetClient, styled } from '@superset-ui/core';
 
 import rison from 'rison';
 import { useListViewResource } from 'src/views/CRUD/hooks';
-import { createErrorHandler, createFetchRelated } from 'src/views/CRUD/utils';
+import { createErrorHandler } from 'src/views/CRUD/utils';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import DeleteModal from 'src/components/DeleteModal';
@@ -61,7 +61,6 @@ interface CssTemplatesListProps {
 function CssTemplatesList({
   addDangerToast,
   addSuccessToast,
-  user,
 }: CssTemplatesListProps) {
   const {
     state: {

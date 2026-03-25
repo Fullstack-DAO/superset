@@ -21,7 +21,7 @@ import { useHistory } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { Tooltip } from 'src/components/Tooltip';
 import {
-  CategoricalColorNamespace,
+  // CategoricalColorNamespace,
   css,
   logging,
   SupersetClient,
@@ -114,47 +114,47 @@ export const ExploreChartHeader = ({
   const saveChartModalVisible = useSelector(
     state => state.explore.saveModalVisible,
   );
-  const updateCategoricalNamespace = async () => {
-    const { dashboards } = metadata || {};
-    const dashboard =
-      dashboardId && dashboards && dashboards.find(d => d.id === dashboardId);
+  // const updateCategoricalNamespace = async () => {
+  //   const { dashboards } = metadata || {};
+  //   const dashboard =
+  //     dashboardId && dashboards && dashboards.find(d => d.id === dashboardId);
 
-    if (dashboard) {
-      try {
-        // Dashboards from metadata don't contain the json_metadata field
-        // to avoid unnecessary payload. Here we query for the dashboard json_metadata.
-        const response = await SupersetClient.get({
-          endpoint: `/api/v1/dashboard/${dashboard.id}`,
-        });
-        const result = response?.json?.result;
+  //   if (dashboard) {
+  //     try {
+  //       // Dashboards from metadata don't contain the json_metadata field
+  //       // to avoid unnecessary payload. Here we query for the dashboard json_metadata.
+  //       const response = await SupersetClient.get({
+  //         endpoint: `/api/v1/dashboard/${dashboard.id}`,
+  //       });
+  //       const result = response?.json?.result;
 
-        // setting the chart to use the dashboard custom label colors if any
-        const metadata = JSON.parse(result.json_metadata);
-        const sharedLabelColors = metadata.shared_label_colors || {};
-        const customLabelColors = metadata.label_colors || {};
-        const mergedLabelColors = {
-          ...sharedLabelColors,
-          ...customLabelColors,
-        };
+  //       // setting the chart to use the dashboard custom label colors if any
+  //       const metadata = JSON.parse(result.json_metadata);
+  //       const sharedLabelColors = metadata.shared_label_colors || {};
+  //       const customLabelColors = metadata.label_colors || {};
+  //       const mergedLabelColors = {
+  //         ...sharedLabelColors,
+  //         ...customLabelColors,
+  //       };
 
-        const categoricalNamespace = CategoricalColorNamespace.getNamespace();
+  //       const categoricalNamespace = CategoricalColorNamespace.getNamespace();
 
-        Object.keys(mergedLabelColors).forEach(label => {
-          categoricalNamespace.setColor(
-            label,
-            mergedLabelColors[label],
-            metadata.color_scheme,
-          );
-        });
-      } catch (error) {
-        logging.info(t('Unable to retrieve dashboard colors'));
-      }
-    }
-  };
+  //       Object.keys(mergedLabelColors).forEach(label => {
+  //         categoricalNamespace.setColor(
+  //           label,
+  //           mergedLabelColors[label],
+  //           metadata.color_scheme,
+  //         );
+  //       });
+  //     } catch (error) {
+  //       logging.info(t('Unable to retrieve dashboard colors'));
+  //     }
+  //   }
+  // };
 
-  useEffect(() => {
-    if (dashboardId) updateCategoricalNamespace();
-  }, []);
+  // useEffect(() => {
+  //   if (dashboardId) updateCategoricalNamespace();
+  // }, []);
 
   const openPropertiesModal = () => {
     setIsPropertiesModalOpen(true);

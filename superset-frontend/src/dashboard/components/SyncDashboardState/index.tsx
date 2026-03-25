@@ -64,9 +64,8 @@ const SyncDashboardState: React.FC<Props> = ({ dashboardPageId }) => {
     DashboardContextForExplore
   >(
     ({ dashboardInfo, dashboardState, nativeFilters, dataMask }) => ({
-      labelColors: dashboardInfo.metadata?.label_colors || EMPTY_OBJECT,
-      sharedLabelColors:
-        dashboardInfo.metadata?.shared_label_colors || EMPTY_OBJECT,
+      labelColors: EMPTY_OBJECT,
+      sharedLabelColors: EMPTY_OBJECT,
       colorScheme: dashboardState?.colorScheme,
       chartConfiguration:
         dashboardInfo.metadata?.chart_configuration || EMPTY_OBJECT,

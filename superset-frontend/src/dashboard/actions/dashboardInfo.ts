@@ -18,7 +18,6 @@
  */
 import { Dispatch } from 'redux';
 import { makeApi, CategoricalColorNamespace, t } from '@superset-ui/core';
-import { isString } from 'lodash';
 import { getErrorText } from 'src/utils/getClientErrorObject';
 import { addDangerToast } from 'src/components/MessageToasts/actions';
 import {
@@ -32,20 +31,6 @@ import { onSave } from './dashboardState';
 
 export const DASHBOARD_INFO_UPDATED = 'DASHBOARD_INFO_UPDATED';
 
-export function updateColorSchema(
-  metadata: Record<string, any>,
-  labelColors: Record<string, string>,
-) {
-  const categoricalNamespace = CategoricalColorNamespace.getNamespace(
-    metadata?.color_namespace,
-  );
-  const colorMap = isString(labelColors)
-    ? JSON.parse(labelColors)
-    : labelColors;
-  Object.keys(colorMap).forEach(label => {
-    categoricalNamespace.setColor(label, colorMap[label]);
-  });
-}
 
 // updates partially changed dashboard info
 export function dashboardInfoChanged(newInfo: { metadata: any }) {
@@ -56,14 +41,6 @@ export function dashboardInfoChanged(newInfo: { metadata: any }) {
   );
 
   categoricalNamespace.resetColors();
-
-  if (metadata?.shared_label_colors) {
-    updateColorSchema(metadata, metadata?.shared_label_colors);
-  }
-
-  if (metadata?.label_colors) {
-    updateColorSchema(metadata, metadata?.label_colors);
-  }
 
   return { type: DASHBOARD_INFO_UPDATED, newInfo };
 }

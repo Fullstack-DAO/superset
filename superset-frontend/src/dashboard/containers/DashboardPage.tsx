@@ -191,16 +191,27 @@ export const DashboardPage: FC<PageProps> = ({
 
   useEffect(() => {
     const sharedLabelColor = getSharedLabelColor();
-    sharedLabelColor.source = SharedLabelColorSource.dashboard;
+    // Temporarily disable dashboard-level shared label colors to avoid
+    // cross-dashboard color leakage and render-order dependent mapping.
+    sharedLabelColor.source = SharedLabelColorSource.explore;
+    CategoricalColorNamespace.getNamespace().resetColors();
+    sharedLabelColor.clear();
+
+    if (metadata?.color_namespace) {
+      CategoricalColorNamespace.getNamespace(metadata.color_namespace).resetColors();
+    }
+
     return () => {
       // clean up label color
-      const categoricalNamespace = CategoricalColorNamespace.getNamespace(
-        metadata?.color_namespace,
-      );
-      categoricalNamespace.resetColors();
+      CategoricalColorNamespace.getNamespace().resetColors();
+      if (metadata?.color_namespace) {
+        CategoricalColorNamespace.getNamespace(
+          metadata.color_namespace,
+        ).resetColors();
+      }
       sharedLabelColor.clear();
     };
-  }, [metadata?.color_namespace]);
+  }, [id, metadata?.color_namespace]);
 
   useEffect(() => {
     if (datasetsApiError) {

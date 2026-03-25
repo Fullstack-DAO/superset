@@ -429,9 +429,7 @@ class Header extends React.PureComponent {
       dashboardInfo?.metadata?.color_scheme || colorScheme;
     const currentColorNamespace =
       dashboardInfo?.metadata?.color_namespace || colorNamespace;
-    const currentSharedLabelColors = Object.fromEntries(
-      getSharedLabelColor().getColorMap(),
-    );
+    const currentSharedLabelColors = {};
 
     const data = {
       certified_by: dashboardInfo.certified_by,

@@ -86,8 +86,6 @@ const getDashboardContextFormData = () => {
   if (dashboardContext) {
     const sliceId = getUrlParam(URL_PARAMS.sliceId) || 0;
     const {
-      labelColors,
-      sharedLabelColors,
       colorScheme,
       chartConfiguration,
       nativeFilters,
@@ -102,8 +100,8 @@ const getDashboardContextFormData = () => {
       chartConfiguration,
       colorScheme,
       dataMask,
-      labelColors,
-      sharedLabelColors,
+      labelColors: {},
+      sharedLabelColors: {},
       sliceId,
       allSliceIds: [sliceId],
       extraControls: {},

@@ -31,9 +31,16 @@ import FaveStar from 'src/components/FaveStar';
 import FacePile from 'src/components/FacePile';
 import { handleChartDelete, CardStyles } from 'src/views/CRUD/utils';
 
+type ChartPermissions = {
+  can_delete: boolean;
+  can_export: boolean;
+  can_write: boolean;
+};
+
 interface ChartCardProps {
   chart: Chart;
   hasPerm: (perm: string) => boolean;
+  permissions?: ChartPermissions;
   openChartEditModal: (chart: Chart) => void;
   bulkSelectEnabled: boolean;
   addDangerToast: (msg: string) => void;
@@ -51,6 +58,7 @@ interface ChartCardProps {
 export default function ChartCard({
   chart,
   hasPerm,
+  permissions,
   openChartEditModal,
   bulkSelectEnabled,
   addDangerToast,
@@ -65,10 +73,11 @@ export default function ChartCard({
   handleBulkChartExport,
 }: ChartCardProps) {
   const history = useHistory();
-  const canEdit = hasPerm('can_write');
-  const canDelete = hasPerm('can_write');
+  const canEdit = permissions?.can_write ?? hasPerm('can_write');
+  const canDelete = permissions?.can_delete ?? hasPerm('can_write');
   const canExport =
-    hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
+    permissions?.can_export ??
+    (hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT));
   const theme = useTheme();
 
   const menu = (

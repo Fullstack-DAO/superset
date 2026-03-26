@@ -785,27 +785,35 @@ function ChartList(props: ChartListProps) {
   }, [addDangerToast, favoritesFilter, props.user]);
 
   const renderCard = useCallback(
-    (chart: Chart) => (
-      <ChartCard
-        chart={chart}
-        showThumbnails={
-          userSettings
-            ? userSettings.thumbnails
-            : isFeatureEnabled(FeatureFlag.THUMBNAILS)
-        }
-        hasPerm={hasPerm}
-        openChartEditModal={openChartEditModal}
-        bulkSelectEnabled={bulkSelectEnabled}
-        addDangerToast={addDangerToast}
-        addSuccessToast={addSuccessToast}
-        refreshData={refreshData}
-        userId={userId}
-        loading={loading}
-        favoriteStatus={favoriteStatus[chart.id]}
-        saveFavoriteStatus={saveFavoriteStatus}
-        handleBulkChartExport={handleBulkChartExport}
-      />
-    ),
+    (chart: Chart) => {
+      if (!chart.id) {
+        return null;
+      }
+      const permissions = getResourcePermissions(chart.id);
+
+      return (
+        <ChartCard
+          chart={chart}
+          showThumbnails={
+            userSettings
+              ? userSettings.thumbnails
+              : isFeatureEnabled(FeatureFlag.THUMBNAILS)
+          }
+          hasPerm={hasPerm}
+          permissions={permissions}
+          openChartEditModal={openChartEditModal}
+          bulkSelectEnabled={bulkSelectEnabled}
+          addDangerToast={addDangerToast}
+          addSuccessToast={addSuccessToast}
+          refreshData={refreshData}
+          userId={userId}
+          loading={loading}
+          favoriteStatus={favoriteStatus[chart.id]}
+          saveFavoriteStatus={saveFavoriteStatus}
+          handleBulkChartExport={handleBulkChartExport}
+        />
+      );
+    },
     [
       addDangerToast,
       addSuccessToast,

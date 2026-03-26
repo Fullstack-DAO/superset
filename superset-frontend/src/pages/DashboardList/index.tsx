@@ -435,38 +435,6 @@ function DashboardList(props: DashboardListProps) {
 
           return (
             <Actions className="actions">
-              {permissions.can_write && (
-                <Tooltip
-                  id="edit-action-tooltip"
-                  title={t('Edit')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleEdit}
-                  >
-                    <Icons.EditAlt data-test="edit-alt" />
-                  </span>
-                </Tooltip>
-              )}
-              {permissions.can_export && (
-                <Tooltip
-                  id="export-action-tooltip"
-                  title={t('Export')}
-                  placement="bottom"
-                >
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="action-button"
-                    onClick={handleExport}
-                  >
-                    <Icons.Share />
-                  </span>
-                </Tooltip>
-              )}
               {permissions.can_delete && (
                 <ConfirmStatusChange
                   title={t('Please confirm')}
@@ -495,6 +463,38 @@ function DashboardList(props: DashboardListProps) {
                     </Tooltip>
                   )}
                 </ConfirmStatusChange>
+              )}
+              {permissions.can_export && (
+                <Tooltip
+                  id="export-action-tooltip"
+                  title={t('Export')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleExport}
+                  >
+                    <Icons.Share />
+                  </span>
+                </Tooltip>
+              )}
+              {permissions.can_write && (
+                <Tooltip
+                  id="edit-action-tooltip"
+                  title={t('Edit')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleEdit}
+                  >
+                    <Icons.EditAlt data-test="edit-alt" />
+                  </span>
+                </Tooltip>
               )}
             </Actions>
           );
@@ -634,25 +634,33 @@ function DashboardList(props: DashboardListProps) {
   }, [addDangerToast, favoritesFilter, props.user]);
 
   const renderCard = useCallback(
-    (dashboard: Dashboard) => (
-      <DashboardCard
-        dashboard={dashboard}
-        hasPerm={hasPerm}
-        bulkSelectEnabled={bulkSelectEnabled}
-        showThumbnails={
-          userKey
-            ? userKey.thumbnails
-            : isFeatureEnabled(FeatureFlag.THUMBNAILS)
-        }
-        userId={user?.userId}
-        loading={loading}
-        openDashboardEditModal={openDashboardEditModal}
-        saveFavoriteStatus={saveFavoriteStatus}
-        favoriteStatus={favoriteStatus[dashboard.id]}
-        handleBulkDashboardExport={handleBulkDashboardExport}
-        onDelete={dashboard => setDashboardToDelete(dashboard)}
-      />
-    ),
+    (dashboard: Dashboard) => {
+      if (!dashboard.id) {
+        return null;
+      }
+      const permissions = getResourcePermissions(dashboard.id);
+
+      return (
+        <DashboardCard
+          dashboard={dashboard}
+          hasPerm={hasPerm}
+          permissions={permissions}
+          bulkSelectEnabled={bulkSelectEnabled}
+          showThumbnails={
+            userKey
+              ? userKey.thumbnails
+              : isFeatureEnabled(FeatureFlag.THUMBNAILS)
+          }
+          userId={user?.userId}
+          loading={loading}
+          openDashboardEditModal={openDashboardEditModal}
+          saveFavoriteStatus={saveFavoriteStatus}
+          favoriteStatus={favoriteStatus[dashboard.id]}
+          handleBulkDashboardExport={handleBulkDashboardExport}
+          onDelete={dashboard => setDashboardToDelete(dashboard)}
+        />
+      );
+    },
     [
       bulkSelectEnabled,
       favoriteStatus,

@@ -61,12 +61,12 @@ const StyledJsonEditor = styled(JsonEditor)`
   border: 1px solid ${({ theme }) => theme.colors.secondary.light2};
 `;
 
-const CollaboratorSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin-right: 40px; /* 向右移动 */
-`;
+// const CollaboratorSection = styled.div`
+//   display: flex;
+//   flex-direction: column;
+//   align-items: flex-end;
+//   margin-right: 40px; /* 向右移动 */
+// `;
 
 type PropertiesModalProps = {
   dashboardId: number;
@@ -663,6 +663,9 @@ const PropertiesModal = ({
       title={t('Dashboard properties')}
       footer={
         <>
+          <Button type="primary" onClick={showCollaboratorsModal}>
+            {t('管理协作者')}
+          </Button>
           <Button
             htmlType="button"
             buttonSize="small"
@@ -836,7 +839,7 @@ const PropertiesModal = ({
           </Col>
         </Row>
         {/* 替换 Manage Collaborators 部分 */}
-        <Row gutter={16} style={{ marginTop: '1em' }}>
+        {/* <Row gutter={16} style={{ marginTop: '1em' }}>
           <Col span={24}>
             <CollaboratorSection>
               <h3 style={{ marginBottom: '8px' }}>{t('管理协作者')}</h3>
@@ -845,7 +848,7 @@ const PropertiesModal = ({
               </Button>
             </CollaboratorSection>
           </Col>
-        </Row>
+        </Row> */}
       </AntdForm>
 
       {/* 集成 DashboardCollaboratorModal 组件 */}

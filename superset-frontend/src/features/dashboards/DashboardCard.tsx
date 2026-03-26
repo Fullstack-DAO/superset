@@ -29,10 +29,17 @@ import FacePile from 'src/components/FacePile';
 import FaveStar from 'src/components/FaveStar';
 import { Dashboard } from 'src/views/CRUD/types';
 
+type DashboardPermissions = {
+  can_delete: boolean;
+  can_export: boolean;
+  can_write: boolean;
+};
+
 interface DashboardCardProps {
   isChart?: boolean;
   dashboard: Dashboard;
   hasPerm: (name: string) => boolean;
+  permissions?: DashboardPermissions;
   bulkSelectEnabled: boolean;
   loading: boolean;
   openDashboardEditModal?: (d: Dashboard) => void;
@@ -47,6 +54,7 @@ interface DashboardCardProps {
 function DashboardCard({
   dashboard,
   hasPerm,
+  permissions,
   bulkSelectEnabled,
   userId,
   openDashboardEditModal,
@@ -57,23 +65,23 @@ function DashboardCard({
   onDelete,
 }: DashboardCardProps) {
   const history = useHistory();
-  const canEdit = hasPerm('can_write');
-  const canDelete = hasPerm('can_write');
-  const canExport = hasPerm('can_export');
+  const canEdit = permissions?.can_write ?? hasPerm('can_write');
+  const canDelete = permissions?.can_delete ?? hasPerm('can_write');
+  const canExport = permissions?.can_export ?? hasPerm('can_export');
 
   const theme = useTheme();
   const menu = (
     <Menu>
-      {canEdit && openDashboardEditModal && (
+      {canDelete && (
         <Menu.Item>
           <div
             role="button"
             tabIndex={0}
             className="action-button"
-            onClick={() => openDashboardEditModal?.(dashboard)}
-            data-test="dashboard-card-option-edit-button"
+            onClick={() => onDelete(dashboard)}
+            data-test="dashboard-card-option-delete-button"
           >
-            <Icons.EditAlt iconSize="l" data-test="edit-alt" /> {t('Edit')}
+            <Icons.Trash iconSize="l" /> {t('Delete')}
           </div>
         </Menu.Item>
       )}
@@ -90,16 +98,16 @@ function DashboardCard({
           </div>
         </Menu.Item>
       )}
-      {canDelete && (
+      {canEdit && openDashboardEditModal && (
         <Menu.Item>
           <div
             role="button"
             tabIndex={0}
             className="action-button"
-            onClick={() => onDelete(dashboard)}
-            data-test="dashboard-card-option-delete-button"
+            onClick={() => openDashboardEditModal?.(dashboard)}
+            data-test="dashboard-card-option-edit-button"
           >
-            <Icons.Trash iconSize="l" /> {t('Delete')}
+            <Icons.EditAlt iconSize="l" data-test="edit-alt" /> {t('Edit')}
           </div>
         </Menu.Item>
       )}

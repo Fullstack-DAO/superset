@@ -64,12 +64,12 @@ const StyledHelpBlock = styled.span`
   margin-bottom: 0;
 `;
 
-const CollaboratorSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin-right: 40px; /* 向右移动 */
-`;
+// const CollaboratorSection = styled.div`
+//   display: flex;
+//   flex-direction: column;
+//   align-items: flex-end;
+//   margin-right: 40px; /* 向右移动 */
+// `;
 
 function PropertiesModal({
   slice,
@@ -386,6 +386,9 @@ function PropertiesModal({
       title={t('Edit Chart Properties')}
       footer={
         <>
+          <Button type="primary" onClick={handleOpenCollaboratorModal}>
+            {t('管理协作者')}
+          </Button>
           <Button
             data-test="properties-modal-cancel-button"
             htmlType="button"
@@ -515,7 +518,7 @@ function PropertiesModal({
             )}
           </Col>
         </Row>
-        <Row gutter={16} style={{ marginTop: '1em' }}>
+        {/* <Row gutter={16} style={{ marginTop: '1em' }}>
           <Col span={24}>
             <CollaboratorSection>
               <h3 style={{ marginBottom: '8px' }}>{t('管理协作者')}</h3>
@@ -524,7 +527,7 @@ function PropertiesModal({
               </Button>
             </CollaboratorSection>
           </Col>
-        </Row>
+        </Row> */}
       </AntdForm>
 
       {/* 管理协作者弹窗 */}

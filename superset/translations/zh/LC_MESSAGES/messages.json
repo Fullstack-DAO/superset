@@ -625,7 +625,7 @@
       "Append": ["追加"],
       "Applied cross-filters (%d)": ["应用的交叉条件 (%d)"],
       "Applied filters (%d)": ["应用的条件 (%d)"],
-      "Applied filters: %s": ["应用的条件 (%d)"],
+      "Applied filters: %s": ["应用的条件 %s"],
       "Applied rolling window did not return any data. Please make sure the source query satisfies the minimum periods defined in the rolling window.": [
         "应用的滚动窗口（rolling window）未返回任何数据。请确保源查询满足滚动窗口中定义的最小周期。"
       ],

@@ -26,10 +26,16 @@ import {
   SupersetClient,
   t,
 } from '@superset-ui/core';
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from 'react';
 import rison from 'rison';
 import { uniqBy } from 'lodash';
-import { useSelector } from 'react-redux';
+// import { useSelector } from 'react-redux';
 import {
   createErrorHandler,
   handleChartDelete,
@@ -44,11 +50,12 @@ import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
 import { TagsList } from 'src/components/Tags';
 import SubMenu, { SubMenuProps } from 'src/features/home/SubMenu';
 import FaveStar from 'src/components/FaveStar';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import ListView, {
   Filter,
   FilterOperator,
   Filters,
+  FilterValue,
   ListViewProps,
   SelectOption,
 } from 'src/components/ListView';
@@ -65,14 +72,22 @@ import Icons from 'src/components/Icons';
 import InfoTooltip from 'src/components/InfoTooltip';
 import CertifiedBadge from 'src/components/CertifiedBadge';
 import { GenericLink } from 'src/components/GenericLink/GenericLink';
-import { loadTags } from 'src/components/Tags/utils';
+// import { loadTags } from 'src/components/Tags/utils';
 import FacePile from 'src/components/FacePile';
 import ChartCard from 'src/features/charts/ChartCard';
-import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
-import { findPermission } from 'src/utils/findPermission';
+// import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
+// import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
 import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
+import { FetchDataConfig } from 'src/components/ListView/types';
+import {
+  CHART_FOLDER_QUERY_KEY,
+  ChartFolder,
+  emitChartFoldersUpdated,
+  removeChartFromFolder,
+} from 'src/features/charts/folders/api';
+import useChartFolders from 'src/features/charts/folders/useChartFolders';
 
 const ListViewContainer = styled.div`
   background-color: #FFFFFF;
@@ -150,6 +165,91 @@ const createFetchDatasets = async (
   };
 };
 
+const parseChartJsonField = (value: unknown) => {
+  if (!value) {
+    return undefined;
+  }
+  if (typeof value === 'object') {
+    return value as Record<string, any>;
+  }
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as Record<string, any>;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+};
+
+const parseDatasourceId = (value: unknown): number | undefined => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    const [datasourceId] = value.split('__');
+    const parsedId = Number(datasourceId);
+    return Number.isNaN(parsedId) ? undefined : parsedId;
+  }
+  return undefined;
+};
+
+const getDatasourceIdFromChart = (chart: Record<string, any>): number | undefined => {
+  const queryContext = parseChartJsonField(chart.query_context);
+  const queryContextDatasourceId = parseDatasourceId(
+    queryContext?.datasource?.id ?? queryContext?.form_data?.datasource,
+  );
+
+  if (queryContextDatasourceId) {
+    return queryContextDatasourceId;
+  }
+
+  const directDatasourceId = chart.datasource_id ?? chart.datasource?.id;
+  if (typeof directDatasourceId === 'number') {
+    return directDatasourceId;
+  }
+  if (typeof directDatasourceId === 'string' && directDatasourceId.length > 0) {
+    const parsedId = Number(directDatasourceId);
+    return Number.isNaN(parsedId) ? undefined : parsedId;
+  }
+
+  const params = parseChartJsonField(chart.params);
+  const datasourceValue = chart.form_data?.datasource ?? params?.datasource;
+
+  return parseDatasourceId(datasourceValue);
+};
+
+const getChartDatasourceName = async (chart: Record<string, any>) => {
+  const existingDatasourceName =
+    chart.datasource_name_text ??
+    chart.datasource?.datasource_name ??
+    chart.datasource?.table_name ??
+    chart.datasource_name;
+
+  if (existingDatasourceName) {
+    return existingDatasourceName;
+  }
+
+  const datasourceId = getDatasourceIdFromChart(chart);
+  if (!datasourceId) {
+    return '';
+  }
+
+  try {
+    const { json } = await SupersetClient.get({
+      endpoint: `/api/v1/dataset/${datasourceId}`,
+    });
+    return (
+      json?.result?.name ??
+      json?.result?.table_name ??
+      json?.result?.datasource_name ??
+      ''
+    );
+  } catch {
+    return '';
+  }
+};
+
 interface ChartListProps {
   addDangerToast: (msg: string) => void;
   addSuccessToast: (msg: string) => void;
@@ -172,6 +272,13 @@ type ChartPermissions = {
   role: string;
 };
 
+type FolderChartsState = {
+  loading: boolean;
+  collection: Chart[];
+  count: number;
+  lastFetchDataConfig: FetchDataConfig | null;
+};
+
 function ChartList(props: ChartListProps) {
   const {
     addDangerToast,
@@ -180,6 +287,7 @@ function ChartList(props: ChartListProps) {
   } = props;
   const screens = useBreakpoint();
   const history = useHistory();
+  const location = useLocation();
 
   const {
     state: {
@@ -195,18 +303,47 @@ function ChartList(props: ChartListProps) {
     refreshData,
     getResourcePermissions,
   } = useListViewResource<Chart>('chart', t('chart'), addDangerToast);
-
-  const chartIds = useMemo(() => charts.map(c => c.id), [charts]);
-  const { roles } = useSelector<any, UserWithPermissionsAndRoles>(
-    state => state.user,
+  const [folderState, setFolderState] = useState<FolderChartsState>({
+    loading: false,
+    collection: [],
+    count: 0,
+    lastFetchDataConfig: null,
+  });
+  const selectedFolderId = useMemo(
+    () => new URLSearchParams(location.search).get(CHART_FOLDER_QUERY_KEY),
+    [location.search],
   );
-  const canReadTag = findPermission('can_read', 'Tag', roles);
+  const { chartFolders } = useChartFolders();
+  const selectedFolder = useMemo<ChartFolder | null>(
+    () => chartFolders.find(folder => folder.id === selectedFolderId) ?? null,
+    [chartFolders, selectedFolderId],
+  );
+  const isFolderView = !!selectedFolder;
+  const activeCharts = isFolderView ? folderState.collection : charts;
+  const activeChartCount = isFolderView ? folderState.count : chartCount;
+  const activeLoading = isFolderView ? folderState.loading : loading;
+  const chartIds = useMemo(
+    () =>
+      isFolderView
+        ? selectedFolder?.items.map(item => item.chartId) ?? []
+        : charts.map(c => c.id),
+    [charts, isFolderView, selectedFolder],
+  );
+  // const { roles } = useSelector<any, UserWithPermissionsAndRoles>(
+  //   state => state.user,
+  // );
+  // const canReadTag = findPermission('can_read', 'Tag', roles);
 
   const [saveFavoriteStatus, favoriteStatus] = useFavoriteStatus(
     'chart',
     chartIds,
     addDangerToast,
   );
+  const favoriteStatusRef = useRef(favoriteStatus);
+
+  useEffect(() => {
+    favoriteStatusRef.current = favoriteStatus;
+  }, [favoriteStatus]);
   const {
     sliceCurrentlyEditing,
     handleChartUpdated,
@@ -288,6 +425,36 @@ function ChartList(props: ChartListProps) {
   // 修改 hasPerm 函数的使用
   const canCreate = globalPermissions.can_write; // 使用全局权限
 
+  const getSelectBooleanValue = useCallback((value?: FilterValue['value']) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (
+      value &&
+      typeof value === 'object' &&
+      'value' in value &&
+      typeof value.value === 'boolean'
+    ) {
+      return value.value;
+    }
+
+    return undefined;
+  }, []);
+
+  const getSelectFilterValue = useCallback((value?: FilterValue['value']) => {
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      'value' in value
+    ) {
+      return value.value;
+    }
+
+    return value;
+  }, []);
+
   // 在组件加载时获取权限信息
   useEffect(() => {
     const fetchPermissions = async () => {
@@ -306,6 +473,183 @@ function ChartList(props: ChartListProps) {
 
     fetchPermissions();
   }, [addDangerToast]);
+
+  const fetchFolderCharts = useCallback(
+    async ({ pageIndex, pageSize, sortBy, filters }: FetchDataConfig) => {
+      setFolderState(currentState => ({
+        ...currentState,
+        loading: true,
+        lastFetchDataConfig: {
+          pageIndex,
+          pageSize,
+          sortBy,
+          filters,
+        },
+      }));
+
+      if (!selectedFolder) {
+        setFolderState({
+          loading: false,
+          collection: [],
+          count: 0,
+          lastFetchDataConfig: {
+            pageIndex,
+            pageSize,
+            sortBy,
+            filters,
+          },
+        });
+        return;
+      }
+
+      const chartsInFolder = await Promise.all(
+        selectedFolder.items.map(async item => {
+          try {
+            const { json } = await SupersetClient.get({
+              endpoint: `/api/v1/chart/${item.chartId}`,
+            });
+            const chart = json?.result;
+
+            if (!chart?.id) {
+              return { chart: null, staleItemId: item.id };
+            }
+
+            const datasourceNameText = await getChartDatasourceName(chart);
+
+            return {
+              chart: {
+                ...chart,
+                cache_timeout: chart.cache_timeout ?? null,
+                datasource_id: getDatasourceIdFromChart(chart),
+                datasource_name_text: datasourceNameText,
+                datasource_url: chart.datasource_url ?? chart.datasource?.url,
+                dashboards: chart.dashboards || [],
+                description: chart.description ?? null,
+                form_data: chart.form_data || { viz_type: chart.viz_type || '' },
+                is_managed_externally: !!chart.is_managed_externally,
+                owners: chart.owners || [],
+                slice_name: chart.slice_name || item.name,
+                tags: chart.tags || [],
+                url: chart.url || item.url,
+              } as Chart,
+              staleItemId: null,
+            };
+          } catch {
+            return { chart: null, staleItemId: item.id };
+          }
+        }),
+      );
+
+      const staleItemIds = chartsInFolder
+        .map(result => result.staleItemId)
+        .filter(Boolean) as string[];
+
+      if (staleItemIds.length) {
+        await Promise.all(
+          selectedFolder.items
+            .filter(item => staleItemIds.includes(item.id))
+            .map(item => removeChartFromFolder(selectedFolder.id, item.id)),
+        );
+        emitChartFoldersUpdated();
+      }
+
+      const collection = chartsInFolder
+        .map(result => result.chart)
+        .filter(Boolean) as Chart[];
+      const nameFilter = filters.find(filter => filter.id === 'slice_name');
+      const datasetFilter = filters.find(filter => filter.id === 'datasource_id');
+      const dashboardFilter = filters.find(filter => filter.id === 'dashboards');
+      const favoriteFilter = filters.find(
+        filter => (filter.urlDisplay || filter.id) === 'favorite',
+      );
+      const searchValue =
+        typeof nameFilter?.value === 'string'
+          ? nameFilter.value.trim().toLowerCase()
+          : '';
+      const datasetValue = getSelectFilterValue(datasetFilter?.value);
+      const dashboardValue = getSelectFilterValue(dashboardFilter?.value);
+      const favoriteValue = getSelectBooleanValue(favoriteFilter?.value);
+      const filteredCollection = collection.filter(chart => {
+        const chartDatasourceId = (
+          chart as Chart & { datasource_id?: number | string }
+        ).datasource_id;
+        const name = chart.slice_name?.toLowerCase() || '';
+        const url = chart.url?.toLowerCase() || '';
+        const matchesSearch =
+          !searchValue || name.includes(searchValue) || url.includes(searchValue);
+        const matchesDataset =
+          datasetValue === undefined ||
+          datasetValue === null ||
+          String(chartDatasourceId) === String(datasetValue);
+        const matchesDashboard =
+          dashboardValue === undefined ||
+          dashboardValue === null ||
+          ensureIsArray(chart.dashboards).some(
+            (dashboard: ChartLinkedDashboard) =>
+              String(dashboard.id) === String(dashboardValue),
+          );
+
+        return matchesSearch && matchesDataset && matchesDashboard;
+      });
+      const visibilityFilteredCollection = filteredCollection.filter(chart =>
+        typeof favoriteValue === 'boolean'
+          ? Boolean(favoriteStatusRef.current[chart.id]) === favoriteValue
+          : true,
+      );
+      const sortedCollection = [...visibilityFilteredCollection].sort((a, b) => {
+        const sortKey = sortBy[0]?.id || 'changed_on_delta_humanized';
+        const sortDesc = sortBy[0]?.desc ?? true;
+        const valueA = a[sortKey as keyof Chart];
+        const valueB = b[sortKey as keyof Chart];
+
+        return sortDesc
+          ? String(valueB ?? '').localeCompare(String(valueA ?? ''))
+          : String(valueA ?? '').localeCompare(String(valueB ?? ''));
+      });
+
+      const startIndex = pageIndex * pageSize;
+      const pagedCollection = sortedCollection.slice(
+        startIndex,
+        startIndex + pageSize,
+      );
+
+      setFolderState({
+        loading: false,
+        collection: pagedCollection,
+        count: sortedCollection.length,
+        lastFetchDataConfig: {
+          pageIndex,
+          pageSize,
+          sortBy,
+          filters,
+        },
+      });
+    },
+    [
+      favoriteStatusRef,
+      getSelectBooleanValue,
+      getSelectFilterValue,
+      selectedFolder,
+    ],
+  );
+
+  const activeFetchData = isFolderView ? fetchFolderCharts : fetchData;
+  const activeRefreshData = useCallback(
+    (provideConfig?: FetchDataConfig | null) => {
+      if (isFolderView) {
+        if (folderState.lastFetchDataConfig) {
+          return fetchFolderCharts(folderState.lastFetchDataConfig);
+        }
+        if (provideConfig) {
+          return fetchFolderCharts(provideConfig);
+        }
+        return null;
+      }
+
+      return refreshData(provideConfig || undefined);
+    },
+    [fetchFolderCharts, folderState.lastFetchDataConfig, isFolderView, refreshData],
+  );
 
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
@@ -534,7 +878,7 @@ function ChartList(props: ChartListProps) {
               original,
               addSuccessToast,
               addDangerToast,
-              refreshData,
+              activeRefreshData,
             );
           const openEditModal = () => openChartEditModal(original);
           const handleExport = () => handleBulkChartExport([original]);
@@ -631,7 +975,7 @@ function ChartList(props: ChartListProps) {
       canExport,
       saveFavoriteStatus,
       favoriteStatus,
-      refreshData,
+      activeRefreshData,
       addSuccessToast,
       addDangerToast,
       chartPermissions,
@@ -701,19 +1045,19 @@ function ChartList(props: ChartListProps) {
         fetchSelects: createFetchDatasets,
         paginate: true,
       },
-      ...(isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && canReadTag
-        ? [
-            {
-              Header: t('Tag'),
-              key: 'tags',
-              id: 'tags',
-              input: 'select',
-              operator: FilterOperator.chartTags,
-              unfilteredLabel: t('All'),
-              fetchSelects: loadTags,
-            },
-          ]
-        : []),
+      // ...(isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && canReadTag
+      //   ? [
+      //       {
+      //         Header: t('Tag'),
+      //         key: 'tags',
+      //         id: 'tags',
+      //         input: 'select',
+      //         operator: FilterOperator.chartTags,
+      //         unfilteredLabel: t('All'),
+      //         fetchSelects: loadTags,
+      //       },
+      //     ]
+      //   : []),
       // {
       //   Header: t('Owner'),
       //   key: 'owner',
@@ -784,6 +1128,15 @@ function ChartList(props: ChartListProps) {
     return filters_list;
   }, [addDangerToast, favoritesFilter, props.user]);
 
+  const visibleFilters: Filters = useMemo(
+    () => filters.filter(filter => filter.key !== 'favorite'),
+    [filters],
+  );
+  const folderVisibleFilters: Filters = useMemo(
+    () => visibleFilters,
+    [visibleFilters],
+  );
+
   const renderCard = useCallback(
     (chart: Chart) => {
       if (!chart.id) {
@@ -805,9 +1158,11 @@ function ChartList(props: ChartListProps) {
           bulkSelectEnabled={bulkSelectEnabled}
           addDangerToast={addDangerToast}
           addSuccessToast={addSuccessToast}
-          refreshData={refreshData}
+          refreshData={() => {
+            activeRefreshData();
+          }}
           userId={userId}
-          loading={loading}
+          loading={activeLoading}
           favoriteStatus={favoriteStatus[chart.id]}
           saveFavoriteStatus={saveFavoriteStatus}
           handleBulkChartExport={handleBulkChartExport}
@@ -820,7 +1175,8 @@ function ChartList(props: ChartListProps) {
       bulkSelectEnabled,
       favoriteStatus,
       hasPerm,
-      loading,
+      activeLoading,
+      activeRefreshData,
     ],
   );
 
@@ -970,19 +1326,21 @@ function ChartList(props: ChartListProps) {
           return (
             <ListViewContainer>
               <ListView<Chart>
+                key={`${location.pathname}${location.search}`}
                 bulkActions={bulkActions}
                 bulkSelectEnabled={bulkSelectEnabled}
                 // cardSortSelectOptions={sortTypes}
                 className="chart-list-view"
                 columns={columns}
-                count={chartCount}
-                data={charts}
+                count={activeChartCount}
+                data={activeCharts}
                 disableBulkSelect={toggleBulkSelect}
-                refreshData={refreshData}
-                fetchData={fetchData}
+                refreshData={activeRefreshData}
+                fetchData={activeFetchData}
                 filters={filters}
+                visibleFilters={isFolderView ? folderVisibleFilters : visibleFilters}
                 initialSort={initialSort}
-                loading={loading}
+                loading={activeLoading}
                 pageSize={PAGE_SIZE}
                 renderCard={renderCard}
                 enableBulkTag

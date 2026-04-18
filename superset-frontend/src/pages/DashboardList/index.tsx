@@ -24,8 +24,8 @@ import {
   t,
 } from '@superset-ui/core';
 import { useSelector } from 'react-redux';
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import rison from 'rison';
 import {
   createErrorHandler,
@@ -41,8 +41,10 @@ import ListView, {
   ListViewProps,
   Filter,
   Filters,
+  FilterValue,
   FilterOperator,
 } from 'src/components/ListView';
+import { FetchDataConfig } from 'src/components/ListView/types';
 import { dangerouslyGetItemDoNotUse } from 'src/utils/localStorageHelpers';
 import Owner from 'src/types/Owner';
 import Tag from 'src/types/TagType';
@@ -61,13 +63,20 @@ import {
   QueryObjectColumns,
 } from 'src/views/CRUD/types';
 import CertifiedBadge from 'src/components/CertifiedBadge';
-import { loadTags } from 'src/components/Tags/utils';
+// import { loadTags } from 'src/components/Tags/utils';
 import DashboardCard from 'src/features/dashboards/DashboardCard';
 import { DashboardStatus } from 'src/features/dashboards/types';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
+import {
+  DASHBOARD_FOLDER_QUERY_KEY,
+  DashboardFolder,
+  emitDashboardFoldersUpdated,
+  removeDashboardFromFolder,
+} from 'src/features/dashboards/folders/api';
+import useDashboardFolders from 'src/features/dashboards/folders/useDashboardFolders';
 
 const ListViewContainer = styled.div`
   background-color: #FFFFFF;
@@ -115,6 +124,13 @@ export interface Dashboard {
   created_by: object;
 }
 
+type FolderDashboardsState = {
+  loading: boolean;
+  collection: Dashboard[];
+  count: number;
+  lastFetchDataConfig: FetchDataConfig | null;
+};
+
 const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
 `;
@@ -122,6 +138,8 @@ const Actions = styled.div`
 function DashboardList(props: DashboardListProps) {
   const { addDangerToast, addSuccessToast, user } = props;
   const screens = useBreakpoint();
+  const history = useHistory();
+  const location = useLocation();
   const { roles } = useSelector<any, UserWithPermissionsAndRoles>(
     state => state.user,
   );
@@ -145,11 +163,233 @@ function DashboardList(props: DashboardListProps) {
     t('dashboard'),
     addDangerToast,
   );
-  const dashboardIds = useMemo(() => dashboards.map(d => d.id), [dashboards]);
+  const [folderState, setFolderState] = useState<FolderDashboardsState>({
+    loading: false,
+    collection: [],
+    count: 0,
+    lastFetchDataConfig: null,
+  });
+  const selectedFolderId = useMemo(
+    () => new URLSearchParams(location.search).get(DASHBOARD_FOLDER_QUERY_KEY),
+    [location.search],
+  );
+  const { dashboardFolders } = useDashboardFolders();
+  const selectedFolder = useMemo<DashboardFolder | null>(
+    () =>
+      dashboardFolders.find(folder => folder.id === selectedFolderId) ?? null,
+    [dashboardFolders, selectedFolderId],
+  );
+  const isFolderView = !!selectedFolder;
+  const activeDashboards = isFolderView ? folderState.collection : dashboards;
+  const activeDashboardCount = isFolderView ? folderState.count : dashboardCount;
+  const activeLoading = isFolderView ? folderState.loading : loading;
+  const dashboardIds = useMemo(
+    () =>
+      isFolderView
+        ? selectedFolder?.items.map(item => item.dashboardId) ?? []
+        : dashboards.map(d => d.id),
+    [dashboards, isFolderView, selectedFolder],
+  );
   const [saveFavoriteStatus, favoriteStatus] = useFavoriteStatus(
     'dashboard',
     dashboardIds,
     addDangerToast,
+  );
+  const favoriteStatusRef = useRef(favoriteStatus);
+
+  useEffect(() => {
+    favoriteStatusRef.current = favoriteStatus;
+  }, [favoriteStatus]);
+
+  const getSelectBooleanValue = useCallback((value?: FilterValue['value']) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (
+      value &&
+      typeof value === 'object' &&
+      'value' in value &&
+      typeof value.value === 'boolean'
+    ) {
+      return value.value;
+    }
+
+    return undefined;
+  }, []);
+
+  const fetchFolderDashboards = useCallback(
+    async ({ pageIndex, pageSize, sortBy, filters }: FetchDataConfig) => {
+      setFolderState(currentState => ({
+        ...currentState,
+        loading: true,
+        lastFetchDataConfig: {
+          pageIndex,
+          pageSize,
+          sortBy,
+          filters,
+        },
+      }));
+
+      if (!selectedFolder) {
+        setFolderState({
+          loading: false,
+          collection: [],
+          count: 0,
+          lastFetchDataConfig: {
+            pageIndex,
+            pageSize,
+            sortBy,
+            filters,
+          },
+        });
+        return;
+      }
+
+      const dashboardsInFolder = await Promise.all(
+        selectedFolder.items.map(async item => {
+          try {
+            const { json } = await SupersetClient.get({
+              endpoint: `/api/v1/dashboard/${item.dashboardId}`,
+            });
+            const dashboard = json?.result;
+
+            if (!dashboard?.id) {
+              return { dashboard: null, staleItemId: item.id };
+            }
+
+            return {
+              dashboard: {
+                ...dashboard,
+                changed_by: dashboard.changed_by || '',
+                changed_by_name: dashboard.changed_by_name || '',
+                changed_on_delta_humanized:
+                  dashboard.changed_on_delta_humanized || '',
+                dashboard_title: dashboard.dashboard_title || item.name,
+                owners: dashboard.owners || [],
+                published: !!dashboard.published,
+                status: dashboard.published
+                  ? DashboardStatus.PUBLISHED
+                  : DashboardStatus.DRAFT,
+                tags: dashboard.tags || [],
+                url: dashboard.url || item.url,
+              } as Dashboard,
+              staleItemId: null,
+            };
+          } catch {
+            return { dashboard: null, staleItemId: item.id };
+          }
+        }),
+      );
+
+      const staleItemIds = dashboardsInFolder
+        .map(result => result.staleItemId)
+        .filter(Boolean) as string[];
+
+      if (staleItemIds.length) {
+        await Promise.all(
+          selectedFolder.items
+            .filter(item => staleItemIds.includes(item.id))
+            .map(item => removeDashboardFromFolder(selectedFolder.id, item.id)),
+        );
+        emitDashboardFoldersUpdated();
+      }
+
+      const collection = dashboardsInFolder
+        .map(result => result.dashboard)
+        .filter(Boolean) as Dashboard[];
+      const nameFilter = filters.find(
+        filter => filter.id === 'dashboard_title',
+      );
+      const publishedFilter = filters.find(filter => filter.id === 'published');
+      const favoriteFilter = filters.find(
+        filter => (filter.urlDisplay || filter.id) === 'favorite',
+      );
+      const searchValue =
+        typeof nameFilter?.value === 'string'
+          ? nameFilter.value.trim().toLowerCase()
+          : '';
+      const publishedValue = getSelectBooleanValue(publishedFilter?.value);
+      const favoriteValue = getSelectBooleanValue(favoriteFilter?.value);
+      const filteredCollection = searchValue
+        ? collection.filter(dashboard => {
+            const title = dashboard.dashboard_title?.toLowerCase() || '';
+            const slug = String(
+              (dashboard as Dashboard & { slug?: string }).slug || '',
+            ).toLowerCase();
+            return (
+              title.includes(searchValue) || slug.includes(searchValue)
+            );
+          })
+        : collection;
+      const visibilityFilteredCollection = filteredCollection.filter(
+        dashboard => {
+          const matchesPublished =
+            typeof publishedValue === 'boolean'
+              ? dashboard.published === publishedValue
+              : true;
+          const matchesFavorite =
+            typeof favoriteValue === 'boolean'
+              ? Boolean(favoriteStatusRef.current[dashboard.id]) === favoriteValue
+              : true;
+
+          return matchesPublished && matchesFavorite;
+        },
+      );
+      const sortedCollection = [...visibilityFilteredCollection].sort((a, b) => {
+        const sortKey = sortBy[0]?.id || 'changed_on_delta_humanized';
+        const sortDesc = sortBy[0]?.desc ?? true;
+
+        const valueA = a[sortKey as keyof Dashboard];
+        const valueB = b[sortKey as keyof Dashboard];
+
+        if (typeof valueA === 'boolean' && typeof valueB === 'boolean') {
+          return sortDesc
+            ? Number(valueB) - Number(valueA)
+            : Number(valueA) - Number(valueB);
+        }
+
+        return sortDesc
+          ? String(valueB ?? '').localeCompare(String(valueA ?? ''))
+          : String(valueA ?? '').localeCompare(String(valueB ?? ''));
+      });
+
+      const startIndex = pageIndex * pageSize;
+      const pagedCollection = sortedCollection.slice(
+        startIndex,
+        startIndex + pageSize,
+      );
+
+      setFolderState({
+        loading: false,
+        collection: pagedCollection,
+        count: sortedCollection.length,
+        lastFetchDataConfig: {
+          pageIndex,
+          pageSize,
+          sortBy,
+          filters,
+        },
+      });
+    },
+    [dashboardFolders, getSelectBooleanValue, selectedFolder],
+  );
+  const activeFetchData = isFolderView ? fetchFolderDashboards : fetchData;
+  const activeRefreshData = useCallback(
+    (provideConfig?: FetchDataConfig) => {
+      if (isFolderView) {
+        if (folderState.lastFetchDataConfig) {
+          return fetchFolderDashboards(folderState.lastFetchDataConfig);
+        }
+        if (provideConfig) {
+          return fetchFolderDashboards(provideConfig);
+        }
+        return null;
+      }
+
+      return refreshData(provideConfig);
+    },
+    [fetchFolderDashboards, folderState.lastFetchDataConfig, isFolderView, refreshData],
   );
 
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(
@@ -209,6 +449,37 @@ function DashboardList(props: DashboardListProps) {
     hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
 
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
+  const nameFilter: Filter = useMemo(
+    () => ({
+      Header: t('Name'),
+      key: 'search',
+      id: 'dashboard_title',
+      input: 'search',
+      operator: FilterOperator.titleOrSlug,
+    }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!user?.userId) {
+      return;
+    }
+
+    if (location.pathname !== '/dashboard/list/' || location.search) {
+      return;
+    }
+
+    const favoriteQuery = rison.encode({
+      favorite: {
+        label: t('Yes'),
+        value: true,
+      },
+    });
+
+    history.replace(
+      `/dashboard/list/?pageIndex=0&sortColumn=changed_on_delta_humanized&sortOrder=desc&viewMode=card&filters=${favoriteQuery}`,
+    );
+  }, [history, location.pathname, location.search, user?.userId]);
 
   function openDashboardEditModal(dashboard: Dashboard) {
     setDashboardToEdit(dashboard);
@@ -424,7 +695,7 @@ function DashboardList(props: DashboardListProps) {
           const handleDelete = () =>
             handleDashboardDelete(
               original,
-              refreshData,
+              activeRefreshData,
               addSuccessToast,
               addDangerToast,
             );
@@ -515,7 +786,7 @@ function DashboardList(props: DashboardListProps) {
       canExport,
       saveFavoriteStatus,
       favoriteStatus,
-      refreshData,
+      activeRefreshData,
       addSuccessToast,
       addDangerToast,
       getResourcePermissions,
@@ -541,13 +812,7 @@ function DashboardList(props: DashboardListProps) {
 
   const filters: Filters = useMemo(() => {
     const filters_list = [
-      {
-        Header: t('Name'),
-        key: 'search',
-        id: 'dashboard_title',
-        input: 'search',
-        operator: FilterOperator.titleOrSlug,
-      },
+      nameFilter,
       {
         Header: t('Status'),
         key: 'published',
@@ -560,19 +825,19 @@ function DashboardList(props: DashboardListProps) {
           { label: t('Draft'), value: false },
         ],
       },
-      ...(isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && canReadTag
-        ? [
-            {
-              Header: t('Tag'),
-              key: 'tags',
-              id: 'tags',
-              input: 'select',
-              operator: FilterOperator.dashboardTags,
-              unfilteredLabel: t('All'),
-              fetchSelects: loadTags,
-            },
-          ]
-        : []),
+      // ...(isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && canReadTag
+      //   ? [
+      //       {
+      //         Header: t('Tag'),
+      //         key: 'tags',
+      //         id: 'tags',
+      //         input: 'select',
+      //         operator: FilterOperator.dashboardTags,
+      //         unfilteredLabel: t('All'),
+      //         fetchSelects: loadTags,
+      //       },
+      //     ]
+      //   : []),
       // {
       //   Header: t('Owner'),
       //   key: 'owner',
@@ -631,7 +896,16 @@ function DashboardList(props: DashboardListProps) {
       // },
     ] as Filters;
     return filters_list;
-  }, [addDangerToast, favoritesFilter, props.user]);
+  }, [canReadTag, favoritesFilter, nameFilter, user?.userId]);
+
+  const visibleFilters: Filters = useMemo(
+    () => filters.filter(filter => !['published', 'favorite'].includes(filter.key)),
+    [filters],
+  );
+  const folderVisibleFilters: Filters = useMemo(
+    () => visibleFilters.filter(filter => filter.key === 'search'),
+    [visibleFilters],
+  );
 
   const renderCard = useCallback(
     (dashboard: Dashboard) => {
@@ -710,10 +984,11 @@ function DashboardList(props: DashboardListProps) {
       });
     }
   }
+
   return (
     <>
       <SubMenu
-        name={t('Dashboards')}
+        name={isFolderView ? selectedFolder?.name || t('Dashboards') : t('Dashboards')}
         buttons={!screens.md ? [] : subMenuButtons}
       />
       <ConfirmStatusChange
@@ -762,7 +1037,7 @@ function DashboardList(props: DashboardListProps) {
                   onConfirm={() => {
                     handleDashboardDelete(
                       dashboardToDelete,
-                      refreshData,
+                      activeRefreshData,
                       addSuccessToast,
                       addDangerToast,
                       undefined,
@@ -777,19 +1052,22 @@ function DashboardList(props: DashboardListProps) {
               )}
               <ListViewContainer>
                 <ListView<Dashboard>
+                  key={`${location.pathname}${location.search}`}
                   bulkActions={bulkActions}
                   bulkSelectEnabled={bulkSelectEnabled}
                   // cardSortSelectOptions={sortTypes}
                   className="dashboard-list-view"
                   columns={columns}
-                  count={dashboardCount}
-                  data={dashboards}
+                  count={activeDashboardCount}
+                  data={activeDashboards}
                   disableBulkSelect={toggleBulkSelect}
-                  fetchData={fetchData}
-                  refreshData={refreshData}
-                  filters={!screens.md ? [] : filters}
+                  fetchData={activeFetchData}
+                  refreshData={activeRefreshData}
+                  filters={filters}
+                  visibleFilters={isFolderView ? folderVisibleFilters : visibleFilters}
+                  showFilters={screens.md}
                   initialSort={initialSort}
-                  loading={loading}
+                  loading={activeLoading}
                   pageSize={PAGE_SIZE}
                   addSuccessToast={addSuccessToast}
                   addDangerToast={addDangerToast}

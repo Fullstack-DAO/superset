@@ -71,10 +71,9 @@ const Cover = styled.div`
     .card-actions {
       margin-left: auto;
       position: absolute;
-      right: ${({ theme }) => theme.gridUnit * 2}px;
+      right: ${({ theme }) => theme.gridUnit * 4}px;
       top: ${({ theme }) => theme.gridUnit * 4}px;
       align-self: flex-end;
-      padding-left: ${({ theme }) => theme.gridUnit}px;
       span[role='img'] {
         display: flex;
         align-items: center;
@@ -163,7 +162,7 @@ interface CardProps {
   imgURL?: string;
   imgFallbackURL?: string;
   imgPosition?: BackgroundPosition;
-  description: string;
+  description: React.ReactNode;
   loading?: boolean;
   titleRight?: React.ReactNode;
   coverLeft?: React.ReactNode;

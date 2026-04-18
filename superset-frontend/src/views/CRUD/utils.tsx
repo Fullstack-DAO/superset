@@ -35,6 +35,7 @@ import SupersetText from 'src/utils/textUtils';
 import { findPermission } from 'src/utils/findPermission';
 import { User } from 'src/types/bootstrapTypes';
 import { WelcomeTable } from 'src/features/home/types';
+import { refreshAndBroadcastDashboardFolders } from 'src/features/dashboards/folders/api';
 import { Dashboard, Filter, TableTab } from './types';
 
 // Modifies the rison encoding slightly to match the backend's rison encoding/decoding. Applies globally.
@@ -288,7 +289,8 @@ export function handleDashboardDelete(
   return SupersetClient.delete({
     endpoint: `/api/v1/dashboard/${id}`,
   }).then(
-    () => {
+    async () => {
+      await refreshAndBroadcastDashboardFolders();
       const filters = {
         pageIndex: 0,
         pageSize: PAGE_SIZE,

@@ -114,21 +114,28 @@ const getDashboardContextFormData = () => {
 
 export default function ExplorePage() {
   const [isLoaded, setIsLoaded] = useState(false);
-  const isExploreInitialized = useRef(false);
+  const lastLoadedLocation = useRef('');
   const dispatch = useDispatch();
   const location = useLocation();
 
   useEffect(() => {
     const exploreUrlParams = getParsedExploreURLParams(location);
+    const currentLocationKey = `${location.pathname}${location.search}`;
     const saveAction = getUrlParam(
       URL_PARAMS.saveAction,
     ) as SaveActionType | null;
     const dashboardContextFormData = getDashboardContextFormData();
-    if (!isExploreInitialized.current || !!saveAction) {
+    const shouldFetch =
+      !lastLoadedLocation.current ||
+      lastLoadedLocation.current !== currentLocationKey ||
+      !!saveAction;
+
+    if (shouldFetch) {
+      setIsLoaded(false);
       fetchExploreData(exploreUrlParams)
         .then(({ result }) => {
           const formData =
-            !isExploreInitialized.current && dashboardContextFormData
+            !lastLoadedLocation.current && dashboardContextFormData
               ? getFormDataWithDashboardContext(
                   result.form_data,
                   dashboardContextFormData,
@@ -148,7 +155,7 @@ export default function ExplorePage() {
         })
         .finally(() => {
           setIsLoaded(true);
-          isExploreInitialized.current = true;
+          lastLoadedLocation.current = currentLocationKey;
         });
     }
     getSharedLabelColor().source = SharedLabelColorSource.explore;

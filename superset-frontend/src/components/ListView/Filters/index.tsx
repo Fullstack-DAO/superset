@@ -39,10 +39,16 @@ interface UIFiltersProps {
   filters: Filters;
   internalFilters: InternalFilter[];
   updateFilterValue: (id: number, value: FilterValue['value']) => void;
+  filterIndexes?: number[];
 }
 
 function UIFilters(
-  { filters, internalFilters = [], updateFilterValue }: UIFiltersProps,
+  {
+    filters,
+    internalFilters = [],
+    updateFilterValue,
+    filterIndexes,
+  }: UIFiltersProps,
   ref: React.RefObject<{ clearFilters: () => void }>,
 ) {
   const filterRefs = useMemo(
@@ -75,7 +81,8 @@ function UIFilters(
           },
           index,
         ) => {
-          const initialValue = internalFilters?.[index]?.value;
+          const filterIndex = filterIndexes?.[index] ?? index;
+          const initialValue = internalFilters?.[filterIndex]?.value;
           if (input === 'select') {
             return (
               <SelectFilter
@@ -96,7 +103,7 @@ function UIFilters(
                     }
                   }
 
-                  updateFilterValue(index, option);
+                  updateFilterValue(filterIndex, option);
                 }}
                 paginate={paginate}
                 selects={selects}
@@ -116,7 +123,7 @@ function UIFilters(
                     onFilterUpdate(value);
                   }
 
-                  updateFilterValue(index, value);
+                  updateFilterValue(filterIndex, value);
                 }}
               />
             );
@@ -129,7 +136,7 @@ function UIFilters(
                 initialValue={initialValue}
                 key={key}
                 name={id}
-                onSubmit={value => updateFilterValue(index, value)}
+                onSubmit={value => updateFilterValue(filterIndex, value)}
               />
             );
           }

@@ -128,6 +128,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.cachekeys.api import CacheRestApi
         from superset.charts.api import ChartRestApi
         from superset.charts.data.api import ChartDataRestApi
+        from superset.charts.folders.api import ChartMenuRestApi
         from superset.connectors.sqla.views import (
             RowLevelSecurityView,
             SqlMetricInlineView,
@@ -137,6 +138,7 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         from superset.css_templates.api import CssTemplateRestApi
         from superset.dashboards.api import DashboardRestApi
         from superset.dashboards.filter_state.api import DashboardFilterStateRestApi
+        from superset.dashboards.folders.api import DashboardMenuRestApi
         from superset.dashboards.permalink.api import DashboardPermalinkRestApi
         from superset.databases.api import DatabaseRestApi
         from superset.datasets.api import DatasetRestApi
@@ -211,9 +213,11 @@ class SupersetAppInitializer:  # pylint: disable=too-many-public-methods
         appbuilder.add_api(CacheRestApi)
         appbuilder.add_api(ChartRestApi)
         appbuilder.add_api(ChartDataRestApi)
+        appbuilder.add_api(ChartMenuRestApi)
         appbuilder.add_api(CssTemplateRestApi)
         appbuilder.add_api(CurrentUserRestApi)
         appbuilder.add_api(DashboardFilterStateRestApi)
+        appbuilder.add_api(DashboardMenuRestApi)
         appbuilder.add_api(DashboardPermalinkRestApi)
         appbuilder.add_api(DashboardRestApi)
         appbuilder.add_api(DatabaseRestApi)

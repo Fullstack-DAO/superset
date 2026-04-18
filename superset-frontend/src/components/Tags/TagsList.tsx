@@ -80,6 +80,8 @@ const TagsList = ({
               index={index}
               onDelete={handleDelete}
               editable={editable}
+              onClick={tag.onClick}
+              toolTipTitle={tag.toolTipTitle}
             />
           ))}
           {tags.length > tempMaxTags ? (
@@ -100,6 +102,8 @@ const TagsList = ({
               index={index}
               onDelete={handleDelete}
               editable={editable}
+              onClick={tag.onClick}
+              toolTipTitle={tag.toolTipTitle}
             />
           ))}
           {maxTags ? (

@@ -33,6 +33,18 @@ const StyledTag = styled(AntdTag)`
 
 const MAX_DISPLAY_CHAR = 20;
 
+const TagLabel = styled.span`
+  display: inline-block;
+  color: inherit;
+
+  a,
+  &:hover,
+  &:focus {
+    color: inherit;
+    text-decoration: none;
+  }
+`;
+
 const Tag = ({
   name,
   id,
@@ -62,8 +74,13 @@ const Tag = ({
         </Tooltip>
       ) : (
         <Tooltip title={toolTipTitle} key={toolTipTitle}>
-          <StyledTag data-test="tag" role="link" key={id} onClick={onClick}>
-            {id ? (
+          <StyledTag
+            data-test="tag"
+            role={onClick ? 'button' : 'link'}
+            key={id}
+            onClick={onClick}
+          >
+            {id && !onClick ? (
               <a
                 href={`/superset/all_entities/?id=${id}`}
                 target="_blank"
@@ -72,7 +89,7 @@ const Tag = ({
                 {tagDisplay}
               </a>
             ) : (
-              tagDisplay
+              <TagLabel>{tagDisplay}</TagLabel>
             )}
           </StyledTag>
         </Tooltip>

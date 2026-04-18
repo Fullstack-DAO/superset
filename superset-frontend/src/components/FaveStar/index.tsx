@@ -30,11 +30,12 @@ export interface FaveStarProps {
   fetchFaveStar?: (id: number) => void;
 }
 
-const StyledLink = styled.a`
+const StyledLink = styled.span`
   ${({ theme }) => css`
     font-size: ${theme.typography.sizes.xl}px;
     display: flex;
-    padding: 0 0 0 ${theme.gridUnit * 2}px;
+    margin-right: ${theme.gridUnit}px;
+    cursor: pointer;
   `};
 `;
 
@@ -59,7 +60,6 @@ const FaveStar = ({
 
   const content = (
     <StyledLink
-      href="#"
       onClick={onClick}
       className="fave-unfave-icon"
       data-test="fave-unfave-icon"

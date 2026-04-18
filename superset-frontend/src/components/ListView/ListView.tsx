@@ -140,26 +140,45 @@ const bulkSelectColumnConfig = {
 };
 
 const ViewModeContainer = styled.div`
-  // padding-right: ${({ theme }) => theme.gridUnit * 4}px;
   margin-top: ${({ theme }) => theme.gridUnit * 5 + 1}px;
   white-space: nowrap;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  padding: ${({ theme }) => theme.gridUnit * 0.5}px;
+  border-radius: ${({ theme }) => theme.gridUnit * 1.5}px;
+  background-color: ${({ theme }) => theme.colors.grayscale.light4};
 
   .toggle-button {
-    display: inline-block;
-    border-radius: ${({ theme }) => theme.gridUnit / 2}px;
-    padding: ${({ theme }) => theme.gridUnit}px;
-    padding-bottom: ${({ theme }) => theme.gridUnit * 0.5}px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: ${({ theme }) => theme.gridUnit * 7}px;
+    height: ${({ theme }) => theme.gridUnit * 7}px;
+    border-radius: ${({ theme }) => theme.gridUnit}px;
+    color: ${({ theme }) => theme.colors.grayscale.light1};
+    transition: all ${({ theme }) => theme.transitionTiming}s ease;
 
     &:first-of-type {
-      margin-right: ${({ theme }) => theme.gridUnit * 2}px;
+      margin-right: ${({ theme }) => theme.gridUnit * 0.5}px;
+    }
+
+    svg {
+      color: currentColor;
+      font-size: ${({ theme }) => theme.typography.sizes.xl}px;
+    }
+
+    &:hover {
+      color: ${({ theme }) => theme.colors.primary.base};
     }
   }
 
   .active {
-    background-color: ${({ theme }) => theme.colors.grayscale.base};
+    background-color: ${({ theme }) => theme.colors.grayscale.light5};
+    color: ${({ theme }) => theme.colors.primary.base};
+    box-shadow: 0px 1px 2px 0px rgba(15, 23, 42, 0.06);
+
     svg {
-      color: ${({ theme }) => theme.colors.grayscale.light5};
+      color: currentColor;
     }
   }
 `;
@@ -218,6 +237,8 @@ export interface ListViewProps<T extends object = any> {
   className?: string;
   initialSort?: SortColumn[];
   filters?: Filters;
+  visibleFilters?: Filters;
+  showFilters?: boolean;
   bulkActions?: Array<{
     key: string;
     name: React.ReactNode;
@@ -249,6 +270,8 @@ function ListView<T extends object = any>({
   initialSort = [],
   className = '',
   filters = [],
+  visibleFilters,
+  showFilters = true,
   bulkActions = [],
   bulkSelectEnabled = false,
   disableBulkSelect = () => {},
@@ -293,13 +316,28 @@ function ListView<T extends object = any>({
     defaultViewMode,
   });
   const allowBulkTagActions = bulkTagResourceName && enableBulkTag;
-  const filterable = Boolean(filters.length);
+  const renderedFilters = visibleFilters || filters;
+  const renderedFilterIndexes = renderedFilters.map(filter => {
+    const directIndex = filters.indexOf(filter);
+    if (directIndex >= 0) {
+      return directIndex;
+    }
+
+    return filters.findIndex(
+      candidate =>
+        candidate.id === filter.id &&
+        candidate.key === filter.key &&
+        candidate.urlDisplay === filter.urlDisplay,
+    );
+  });
+  const filterable = Boolean(renderedFilters.length);
+  const shouldRenderFilters = showFilters && filterable;
   if (filterable) {
     const columnAccessors = columns.reduce(
       (acc, col) => ({ ...acc, [col.id || col.accessor]: true }),
       {},
     );
-    filters.forEach(f => {
+    renderedFilters.forEach(f => {
       if (!columnAccessors[f.id]) {
         throw new ListViewError(
           `Invalid filter config, ${f.id} is not present in columns`,
@@ -340,10 +378,11 @@ function ListView<T extends object = any>({
       <div data-test={className} className={`superset-list-view ${className}`}>
         <div className="header">
           <div className="controls">
-            {filterable && (
+            {shouldRenderFilters && (
               <FilterControls
                 ref={filterControlsRef}
-                filters={filters}
+                filters={renderedFilters}
+                filterIndexes={renderedFilterIndexes}
                 internalFilters={internalFilters}
                 updateFilterValue={applyFilterValue}
               />

@@ -210,6 +210,7 @@ export function useListViewState({
 }: UseListViewConfig) {
   const [query, setQuery] = useQueryParams({
     filters: RisonParam,
+    folder: StringParam,
     pageIndex: NumberParam,
     sortColumn: StringParam,
     sortOrder: StringParam,
@@ -314,6 +315,7 @@ export function useListViewState({
 
     const queryParams: any = {
       filters: Object.keys(filterObj).length ? filterObj : undefined,
+      folder: query.folder,
       pageIndex,
     };
     if (sortBy[0]) {

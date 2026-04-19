@@ -233,11 +233,12 @@ function DashboardCard({
   const [showFolderTagModal, setShowFolderTagModal] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isSavingFolderTags, setIsSavingFolderTags] = useState(false);
+  const canManageFolders = canEdit;
   const visibleTags =
     dashboardTags.filter(
       (tag: Tag) => tag.type === 'TagTypes.custom' || tag.type === 1,
     ) || [];
-  const emptyTagDisplay = canEdit && isTaggingEnabled ? t('选择分类') : t('无分类');
+  const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
 
   useEffect(() => {
     setDashboardTags(dashboardWithTags.tags || []);
@@ -476,12 +477,12 @@ function DashboardCard({
                 />
               ) : (
                 <EmptyFolderTagTrigger
-                  clickable={canEdit && isTaggingEnabled}
-                  role={canEdit && isTaggingEnabled ? 'button' : undefined}
-                  tabIndex={canEdit && isTaggingEnabled ? 0 : undefined}
-                  onClick={canEdit && isTaggingEnabled ? openFolderTagModal : undefined}
+                  clickable={canManageFolders}
+                  role={canManageFolders ? 'button' : undefined}
+                  tabIndex={canManageFolders ? 0 : undefined}
+                  onClick={canManageFolders ? openFolderTagModal : undefined}
                   onKeyDown={
-                    canEdit && isTaggingEnabled
+                    canManageFolders
                       ? event => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             openFolderTagModal(

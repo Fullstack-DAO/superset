@@ -234,7 +234,7 @@ export default function ChartCard({
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isSavingFolders, setIsSavingFolders] = useState(false);
-  const canManageFolders = Boolean(userId);
+  const canManageFolders = canEdit;
 
   const currentFolders = useMemo(
     () =>
@@ -406,7 +406,7 @@ export default function ChartCard({
                       : undefined
                   }
                 >
-                  {canManageFolders ? t('选择分类') : t('无分类')}
+                  {canEdit ? t('选择分类') : t('无分类')}
                 </EmptyFolderTrigger>
               )}
             </span>

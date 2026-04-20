@@ -37,7 +37,7 @@ import Modal from 'src/components/Modal';
 import { Input } from 'src/components/Input';
 import { MainNav as DropdownMenu, MenuMode } from 'src/components/Menu';
 import { Tooltip } from 'src/components/Tooltip';
-import { NavLink, useHistory, useLocation } from 'react-router-dom';
+import { NavLink, useHistory, useLocation, matchPath } from 'react-router-dom';
 import { GenericLink } from 'src/components/GenericLink/GenericLink';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { useUiConfig } from 'src/components/UiConfigContext';
@@ -579,12 +579,46 @@ export function Menu({
       folderId,
     )}`;
 
-  const navigateToFrontendRoute = (
+  const isSpaManagedPath = (path?: string) => {
+    if (!path) {
+      return false;
+    }
+
+    if (isFrontendRoute(path)) {
+      return true;
+    }
+
+    return Boolean(
+      matchPath(path, {
+        path: '/superset/dashboard/:idOrSlug/',
+        exact: true,
+        strict: false,
+      }),
+    );
+  };
+
+  const shouldUseSpaNavigation = (url: string) => {
+    try {
+      const pathname = new URL(url, window.location.origin).pathname;
+      return (
+        isSpaManagedPath(location.pathname) &&
+        isSpaManagedPath(pathname)
+      );
+    } catch {
+      return (
+        isSpaManagedPath(location.pathname) &&
+        isSpaManagedPath(url.split(/[?#]/)[0])
+      );
+    }
+  };
+
+  const navigateToRoute = (
     url: string,
     state?: { fromMenu?: boolean },
     menuSelectionKey?: string,
   ) => {
     const nextUrl = new URL(url, window.location.origin);
+    const nextLocation = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
     const currentUrl = new URL(
       `${location.pathname}${location.search}`,
       window.location.origin,
@@ -592,8 +626,14 @@ export function Menu({
 
     if (
       nextUrl.pathname === currentUrl.pathname &&
-      nextUrl.search === currentUrl.search
+      nextUrl.search === currentUrl.search &&
+      nextUrl.hash === currentUrl.hash
     ) {
+      return;
+    }
+
+    if (!shouldUseSpaNavigation(url)) {
+      window.location.assign(nextLocation);
       return;
     }
 
@@ -601,7 +641,7 @@ export function Menu({
       setLastMenuSelectionKey(menuSelectionKey);
     }
 
-    history.push(`${nextUrl.pathname}${nextUrl.search}`, state);
+    history.push(nextLocation, state);
   };
 
   const onFrontendLinkClick = (
@@ -614,7 +654,7 @@ export function Menu({
       return;
     }
     event.preventDefault();
-    navigateToFrontendRoute(url, state, menuSelectionKey);
+    navigateToRoute(url, state, menuSelectionKey);
   };
 
   const shouldSyncMenuStateFromRoute =
@@ -1009,10 +1049,10 @@ export function Menu({
         }
 
         if (url) {
-          navigateToFrontendRoute(url, { fromMenu: true }, _menuKey);
+          navigateToRoute(url, { fromMenu: true }, _menuKey);
         }
       },
-    [navigateToFrontendRoute],
+    [navigateToRoute],
   );
 
   const handleOpenKeysChange = useCallback(

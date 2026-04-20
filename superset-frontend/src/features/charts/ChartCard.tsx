@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   isFeatureEnabled,
   FeatureFlag,
@@ -243,6 +243,7 @@ export default function ChartCard({
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isSavingFolders, setIsSavingFolders] = useState(false);
   const canManageFolders = canEdit;
+  const previousFolderNamesRef = useRef<string[]>([]);
 
   useEffect(() => {
     setChartTags(chart.tags || []);
@@ -264,6 +265,49 @@ export default function ChartCard({
       })),
     [chartFolders],
   );
+
+  const visibleTags = useMemo(
+    () =>
+      currentFolders.map(folder => {
+        const existingTag = chartTags.find(tag => tag.name === folder.name);
+        return (
+          existingTag ||
+          ({
+            id: folder.id,
+            name: folder.name,
+            type: 1,
+            toolTipTitle: folder.name,
+          } as TagType)
+        );
+      }),
+    [chartTags, currentFolders],
+  );
+
+  const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
+
+  useEffect(() => {
+    const currentFolderNames = currentFolders.map(folder => folder.name);
+    const previousFolderNames = previousFolderNamesRef.current;
+
+    setChartTags(previousTags => {
+      const nextFolderTagNames = new Set(currentFolderNames);
+      const previousFolderTagNames = new Set(previousFolderNames);
+      const nonFolderTags = previousTags.filter(
+        tag => !previousFolderTagNames.has(tag.name),
+      );
+      const nextFolderTags = currentFolderNames.map(folderName => {
+        const existingTag = previousTags.find(tag => tag.name === folderName);
+        return existingTag || ({ name: folderName, type: 1 } as TagType);
+      });
+
+      return [
+        ...nonFolderTags.filter(tag => !nextFolderTagNames.has(tag.name)),
+        ...nextFolderTags,
+      ];
+    });
+
+    previousFolderNamesRef.current = currentFolderNames;
+  }, [currentFolders]);
 
   const openFolderModal = useCallback(async (event?: React.MouseEvent<HTMLElement>) => {
     event?.preventDefault();
@@ -482,13 +526,11 @@ export default function ChartCard({
               {`${chart.changed_on_delta_humanized}`}
             </span>
             <span className="card-meta-right">
-              {currentFolders.length ? (
+              {visibleTags.length ? (
                 <TagsList
-                  tags={currentFolders.map(folder => ({
-                    id: folder.id,
-                    name: folder.name,
+                  tags={visibleTags.map(tag => ({
+                    ...tag,
                     onClick: openFolderModal,
-                    toolTipTitle: folder.name,
                   }))}
                   maxTags={3}
                 />
@@ -510,7 +552,7 @@ export default function ChartCard({
                       : undefined
                   }
                 >
-                  {canEdit ? t('选择分类') : t('无分类')}
+                  {emptyTagDisplay}
                 </EmptyFolderTrigger>
               )}
             </span>

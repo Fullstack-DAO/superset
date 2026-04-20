@@ -664,7 +664,7 @@ function DashboardList(props: DashboardListProps) {
         Header: t('Tags'),
         accessor: 'tags',
         disableSortBy: true,
-        hidden: !isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM),
+        hidden: true,
       },
       {
         Cell: ({

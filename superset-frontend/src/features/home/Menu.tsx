@@ -599,7 +599,7 @@ export function Menu({
 
   const shouldUseSpaNavigation = (url: string) => {
     try {
-      const pathname = new URL(url, window.location.origin).pathname;
+        const { pathname } = new URL(url, window.location.origin);
       return (
         isSpaManagedPath(location.pathname) &&
         isSpaManagedPath(pathname)

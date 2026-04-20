@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   isFeatureEnabled,
   FeatureFlag,
@@ -40,6 +40,12 @@ import Button from 'src/components/Button';
 import { FormLabel } from 'src/components/Form';
 import { Input } from 'src/components/Input';
 import { TagsList } from 'src/components/Tags';
+import TagType from 'src/types/TagType';
+import {
+  addTag,
+  deleteTaggedObjects,
+  OBJECT_TYPES,
+} from 'src/features/tags/tags';
 import { handleChartDelete, CardStyles } from 'src/views/CRUD/utils';
 import {
   syncChartFoldersForChart,
@@ -224,6 +230,7 @@ export default function ChartCard({
   handleBulkChartExport,
 }: ChartCardProps) {
   const history = useHistory();
+  const isTaggingEnabled = isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM);
   const canEdit = permissions?.can_write ?? hasPerm('can_write');
   const canDelete = permissions?.can_delete ?? hasPerm('can_write');
   const canExport =
@@ -231,10 +238,15 @@ export default function ChartCard({
     (hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT));
   const theme = useTheme();
   const { chartFolders, refreshChartFolders } = useChartFolders();
+  const [chartTags, setChartTags] = useState<TagType[]>(chart.tags || []);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isSavingFolders, setIsSavingFolders] = useState(false);
   const canManageFolders = canEdit;
+
+  useEffect(() => {
+    setChartTags(chart.tags || []);
+  }, [chart.tags]);
 
   const currentFolders = useMemo(
     () =>
@@ -270,16 +282,108 @@ export default function ChartCard({
     setSelectedFolderIds(currentFolders.map(folder => folder.id));
   }, [currentFolders]);
 
+  const addChartFolderTag = useCallback(
+    async (chartId: number, folderName: string) => {
+      if (!isTaggingEnabled || !folderName.trim()) {
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        addTag(
+          {
+            objectType: OBJECT_TYPES.CHART,
+            objectId: chartId,
+            includeTypes: false,
+          },
+          folderName,
+          () => resolve(),
+          response => reject(response),
+        );
+      });
+    },
+    [isTaggingEnabled],
+  );
+
+  const deleteChartFolderTag = useCallback(
+    async (chartId: number, folderName: string) => {
+      if (!isTaggingEnabled || !folderName.trim()) {
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        deleteTaggedObjects(
+          {
+            objectType: OBJECT_TYPES.CHART,
+            objectId: chartId,
+          },
+          { name: folderName } as TagType,
+          () => resolve(),
+          errorText => reject(new Error(errorText)),
+        );
+      });
+    },
+    [isTaggingEnabled],
+  );
+
   const saveFolders = useCallback(async () => {
+    const normalizedNextFolderIds = Array.from(
+      new Set(selectedFolderIds.map(id => id.trim()).filter(Boolean)),
+    );
+    const previousFolderNames = currentFolders.map(folder => folder.name);
+    const nextFolderNames = chartFolders
+      .filter(folder => normalizedNextFolderIds.includes(folder.id))
+      .map(folder => folder.name);
+    const addedFolderNames = nextFolderNames.filter(
+      name => !previousFolderNames.includes(name),
+    );
+    const removedFolderNames = previousFolderNames.filter(
+      name => !nextFolderNames.includes(name),
+    );
+
     setIsSavingFolders(true);
 
     try {
-      await syncChartFoldersForChart(chart.id, selectedFolderIds, chartFolders);
+      await syncChartFoldersForChart(
+        chart.id,
+        normalizedNextFolderIds,
+        chartFolders,
+      );
+
+      await Promise.allSettled([
+        ...addedFolderNames.map(folderName =>
+          addChartFolderTag(chart.id, folderName),
+        ),
+        ...removedFolderNames.map(folderName =>
+          deleteChartFolderTag(chart.id, folderName),
+        ),
+      ]);
+
+      const nextFolderTagNames = new Set(nextFolderNames);
+      const nonFolderTags = chartTags.filter(
+        tag => !previousFolderNames.includes(tag.name),
+      );
+      const nextFolderTags = nextFolderNames.map(folderName => {
+        const existingTag = chartTags.find(tag => tag.name === folderName);
+        return existingTag || ({ name: folderName, type: 1 } as TagType);
+      });
+
+      setChartTags([
+        ...nonFolderTags.filter(tag => !nextFolderTagNames.has(tag.name)),
+        ...nextFolderTags,
+      ]);
       setShowFolderModal(false);
     } finally {
       setIsSavingFolders(false);
     }
-  }, [chart.id, chartFolders, selectedFolderIds]);
+  }, [
+    addChartFolderTag,
+    chart.id,
+    chartFolders,
+    chartTags,
+    currentFolders,
+    deleteChartFolderTag,
+    selectedFolderIds,
+  ]);
 
   const stopModalClickPropagation = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {

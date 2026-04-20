@@ -1276,6 +1276,25 @@ export function Menu({
     });
   };
 
+  const addChartFolderTag = async (chartId: number, folderName: string) => {
+    if (!isTaggingEnabled || !folderName.trim()) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      addTag(
+        {
+          objectType: OBJECT_TYPES.CHART,
+          objectId: chartId,
+          includeTypes: false,
+        },
+        folderName,
+        () => resolve(),
+        response => reject(response),
+      );
+    });
+  };
+
   const deleteDashboardFolderTag = async (
     dashboardId: number,
     folderName: string,
@@ -1289,6 +1308,24 @@ export function Menu({
         {
           objectType: OBJECT_TYPES.DASHBOARD,
           objectId: dashboardId,
+        },
+        { name: folderName } as TagType,
+        () => resolve(),
+        errorText => reject(new Error(errorText)),
+      );
+    });
+  };
+
+  const deleteChartFolderTag = async (chartId: number, folderName: string) => {
+    if (!isTaggingEnabled || !folderName.trim()) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      deleteTaggedObjects(
+        {
+          objectType: OBJECT_TYPES.CHART,
+          objectId: chartId,
         },
         { name: folderName } as TagType,
         () => resolve(),
@@ -1318,6 +1355,34 @@ export function Menu({
 
         if (nextName && previousName !== nextName) {
           await addDashboardFolderTag(item.dashboardId, nextName);
+        }
+      }),
+    );
+
+    return results.every(result => result.status === 'fulfilled');
+  };
+
+  const syncChartFolderTags = async ({
+    items,
+    previousName,
+    nextName,
+  }: {
+    items: ChartFolder['items'];
+    previousName?: string;
+    nextName?: string;
+  }) => {
+    if (!isTaggingEnabled || !items.length) {
+      return true;
+    }
+
+    const results = await Promise.allSettled(
+      items.map(async item => {
+        if (previousName && previousName !== nextName) {
+          await deleteChartFolderTag(item.chartId, previousName);
+        }
+
+        if (nextName && previousName !== nextName) {
+          await addChartFolderTag(item.chartId, nextName);
         }
       }),
     );
@@ -1403,8 +1468,17 @@ export function Menu({
 
     try {
       await renameChartFolderApi(renameChartFolderTarget.id, folderName);
+      const tagsUpdated = await syncChartFolderTags({
+        items: renameChartFolderTarget.items,
+        previousName: renameChartFolderTarget.name,
+        nextName: folderName,
+      });
       closeRenameChartFolderModal();
-      addSuccessToast(t('分类已重命名'));
+      if (tagsUpdated) {
+        addSuccessToast(t('分类已重命名'));
+      } else {
+        addDangerToast(t('分类已重命名，但部分图表标签同步失败'));
+      }
     } catch {
       addDangerToast(t('重命名分类失败'));
     }
@@ -1473,8 +1547,16 @@ export function Menu({
 
     try {
       await deleteChartFolder(deleteChartFolderTarget.id);
+      const tagsUpdated = await syncChartFolderTags({
+        items: deleteChartFolderTarget.items,
+        previousName: deleteChartFolderTarget.name,
+      });
       closeDeleteChartFolderModal();
-      addSuccessToast(t('分类已删除'));
+      if (tagsUpdated) {
+        addSuccessToast(t('分类已删除'));
+      } else {
+        addDangerToast(t('分类已删除，但部分图表标签移除失败'));
+      }
     } catch {
       addDangerToast(t('删除分类失败'));
     }

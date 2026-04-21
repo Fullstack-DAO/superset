@@ -9,14 +9,14 @@
         "lang": "zh"
       },
       "\n                This filter was inherited from the dashboard's context.\n                It won't be saved when saving the chart.\n              ": [
-        "此过滤条件是从看板上下文继承的。保存图表时不会保存。"
+        "此过滤条件是从仪表盘上下文继承的。保存图表时不会保存。"
       ],
       "\n            Error: %(text)s\n            ": ["\n 错误：%(text)s\n "],
       " (excluded)": ["(不包含)"],
       " Set the opacity to 0 if you do not want to override the color specified in the GeoJSON": [
         "如果您不想覆盖GeoJSON中指定的颜色，请将不透明度设置为0"
       ],
-      " a dashboard OR ": ["一个看板或"],
+      " a dashboard OR ": ["一个仪表盘或"],
       " a new one": ["创建一个新的"],
       " expression which needs to adhere to the ": [" 表达式并基于 "],
       " source code of Superset's sandboxed parser": [
@@ -46,7 +46,7 @@
         "%(object)s 在数据库中不存在。"
       ],
       "%(other)s charts will appear here": ["%(other)s 图表将显示在此处"],
-      "%(other)s dashboards will appear here": ["%(other)s 看板将显示在此处"],
+      "%(other)s dashboards will appear here": ["%(other)s 仪表盘将显示在此处"],
       "%(other)s recents will appear here": ["%(other)s 最近的将显示在此处"],
       "%(other)s saved queries will appear here": [
         "%(other)s 保存的查询将显示在此处"
@@ -223,7 +223,7 @@
       "A polar coordinate chart where the circle is broken into wedges of equal angle, and the value represented by any wedge is illustrated by its area, rather than its radius or sweep angle.": [
         "一种极坐标图表，其中圆被分成等角度的楔形，任何楔形表示的值由其面积表示，而不是其半径或扫掠角度。"
       ],
-      "A readable URL for your dashboard": ["为看板生成一个可读的 URL"],
+      "A readable URL for your dashboard": ["为仪表盘生成一个可读的 URL"],
       "A reference to the [Time] configuration, taking granularity into account": [
         "对 [时间] 配置的引用，会将粒度考虑在内"
       ],
@@ -278,7 +278,7 @@
       "Add CSS template": ["新增CSS模板"],
       "Add Chart": ["添加图表"],
       "Add Column": ["添加列"],
-      "Add Dashboard": ["添加看板"],
+      "Add Dashboard": ["添加仪表盘"],
       "Add Database": ["添加数据库"],
       "Add Log": ["新增日志"],
       "Add Metric": ["添加指标"],
@@ -332,10 +332,10 @@
       "Add tag to entities": ["为实体添加标签"],
       "Add the name of the chart": ["添加图表名称"],
       "Add the name of the dashboard": ["添加仪表板名称"],
-      "Add to dashboard": ["添加到看板"],
+      "Add to dashboard": ["添加到仪表盘"],
       "Add/Edit Filters": ["增加/编辑过滤条件"],
       "Added": ["已添加"],
-      "Added to 1 dashboard": ["已添加到 %s 个看板中"],
+      "Added to 1 dashboard": ["已添加到 %s 个仪表盘中"],
       "Additional Parameters": ["附加参数"],
       "Additional fields may be required": ["可能需要其他字段"],
       "Additional information": ["附加信息"],
@@ -497,7 +497,7 @@
       "An error occurred while fetching dashboard owner values: %s": [
         "获取仪表板所有者时出错：%s"
       ],
-      "An error occurred while fetching dashboards": ["获取看板时出错"],
+      "An error occurred while fetching dashboards": ["获取仪表盘时出错"],
       "An error occurred while fetching dashboards: %s": [
         "获取仪表板时出错：%s"
       ],
@@ -614,7 +614,7 @@
         "要在认证工具提示中显示详细信息。"
       ],
       "Any color palette selected here will override the colors applied to this dashboard's individual charts": [
-        "此处选择的任何调色板都将覆盖应用于此看板的各个图表的颜色"
+        "此处选择的任何调色板都将覆盖应用于此仪表盘的各个图表的颜色"
       ],
       "Any databases that allow connections via SQL Alchemy URIs can be added. ": [
         "可以添加任何允许通过SQL AlChemy URI进行连接的数据库。"
@@ -869,7 +869,7 @@
         "SSH隧道不能有多个证书"
       ],
       "Cannot import dashboard: %(db_error)s.\nMake sure to create the database before importing the dashboard.": [
-        "无法导入看板：%(db_error)s 。\n请确保在导入看板之前创建数据库。"
+        "无法导入仪表盘：%(db_error)s 。\n请确保在导入仪表盘之前创建数据库。"
       ],
       "Cannot load filter": ["无法加载筛选器"],
       "Cannot parse time string [%(human_readable)s]": [
@@ -904,7 +904,7 @@
       "Changed by": ["修改人"],
       "Changes saved.": ["修改已保存"],
       "Changing one or more of these dashboards is forbidden": [
-        "无法修改该看板"
+        "无法修改该仪表盘"
       ],
       "Changing the dataset may break the chart if the chart relies on columns or metadata that does not exist in the target dataset": [
         "如果图表依赖于目标数据集中不存在的列或元数据，则更改数据集可能会破坏图表"
@@ -912,7 +912,7 @@
       "Changing these settings will affect all charts using this dataset, including charts owned by other people.": [
         "更改这些设置将影响使用此数据集的所有图表，包括其他人拥有的图表。"
       ],
-      "Changing this Dashboard is forbidden": ["无法修改该看板"],
+      "Changing this Dashboard is forbidden": ["无法修改该仪表盘"],
       "Changing this chart is forbidden": ["禁止更改此图表"],
       "Changing this control takes effect instantly": ["更改此控件立即生效。"],
       "Changing this dataset is forbidden": ["没有权限更新此数据集"],
@@ -936,12 +936,12 @@
       "Chart [%s] has been overwritten": ["图表 [%s] 已经覆盖"],
       "Chart [%s] has been saved": ["图表 [%s] 已经保存"],
       "Chart [%s] was added to dashboard [%s]": [
-        "图表 [%s] 已经添加到看板 [%s]"
+        "图表 [%s] 已经添加到仪表盘 [%s]"
       ],
       "Chart [{}] has been overwritten": ["图表 [{}] 已经覆盖"],
       "Chart [{}] has been saved": ["图表 [{}] 已经保存"],
       "Chart [{}] was added to dashboard [{}]": [
-        "图表 [{}] 已经添加到看板 [{}]"
+        "图表 [{}] 已经添加到仪表盘 [{}]"
       ],
       "Chart cache timeout": ["图表缓存超时"],
       "Chart changes": ["图表变化"],
@@ -975,7 +975,7 @@
       ],
       "Check out this chart in dashboard:": ["在仪表盘中查看此图表"],
       "Check out this chart: ": ["看看这张图表："],
-      "Check out this dashboard: ": ["查看此看板："],
+      "Check out this dashboard: ": ["查看此仪表盘："],
       "Check to apply filters instantly as they change instead of displaying [Apply] button": [
         "选中可在过滤条件更改时立即应用过滤，而不是使用 [应用] 按钮"
       ],
@@ -993,7 +993,7 @@
       ],
       "Choose File": ["选择文件"],
       "Choose a chart or dashboard not both": [
-        "选择图表或看板，不能都全部选择"
+        "选择图表或仪表盘，不能都全部选择"
       ],
       "Choose a database...": ["选择数据库"],
       "Choose a dataset": ["选择数据源"],
@@ -1353,29 +1353,29 @@
       "Dark": ["暗色"],
       "Dark Cyan": ["深青色"],
       "Dark mode": ["黑暗模式"],
-      "Dashboard": ["看板"],
+      "Dashboard": ["仪表盘"],
       "Dashboard [%s] just got created and chart [%s] was added to it": [
-        "看板 [%s] 刚刚被创建，并且图表 [%s] 已被添加到其中"
+        "仪表盘 [%s] 刚刚被创建，并且图表 [%s] 已被添加到其中"
       ],
       "Dashboard [{}] just got created and chart [{}] was added to it": [
-        "看板 [{}] 刚刚被创建，并且图表 [{}] 已被添加到其中"
+        "仪表盘 [{}] 刚刚被创建，并且图表 [{}] 已被添加到其中"
       ],
-      "Dashboard could not be deleted.": ["看板无法被删除。"],
-      "Dashboard could not be updated.": ["看板无法更新。"],
-      "Dashboard does not exist": ["看板不存在"],
-      "Dashboard imported": ["看板已导入"],
-      "Dashboard parameters are invalid.": ["看板参数无效。"],
-      "Dashboard properties": ["看板属性"],
-      "Dashboard properties updated": ["看板属性已更新"],
+      "Dashboard could not be deleted.": ["仪表盘无法被删除。"],
+      "Dashboard could not be updated.": ["仪表盘无法更新。"],
+      "Dashboard does not exist": ["仪表盘不存在"],
+      "Dashboard imported": ["仪表盘已导入"],
+      "Dashboard parameters are invalid.": ["仪表盘参数无效。"],
+      "Dashboard properties": ["仪表盘属性"],
+      "Dashboard properties updated": ["仪表盘属性已更新"],
       "Dashboard scheme": ["仪表盘模式"],
       "Dashboard time range filters apply to temporal columns defined in\n          the filter section of each chart. Add temporal columns to the chart\n          filters to have this dashboard filter impact those charts.": [
         "仪表板时间范围过滤器适用于每个图表的过滤器部分中定义的时间列。将时间列添加到图表过滤器可以让图表跟随仪表板过滤器变化。"
       ],
-      "Dashboard title": ["看板标题"],
-      "Dashboard usage": ["看板使用"],
+      "Dashboard title": ["仪表盘标题"],
+      "Dashboard usage": ["仪表盘使用"],
       "Dashboards": ["仪表盘"],
       "Dashboards added to": ["仪表盘已添加到"],
-      "Dashboards could not be created.": ["看板无法被创建"],
+      "Dashboards could not be created.": ["仪表盘无法被创建"],
       "Dashboards do not exist": ["仪表盘"],
       "Dashed": ["虚线"],
       "Data": ["数据"],
@@ -1584,7 +1584,7 @@
       "Deleted %(num)d annotation layer": ["选择一个注释图层"],
       "Deleted %(num)d chart": ["删除了 %(num)d 个图表"],
       "Deleted %(num)d css template": ["删除了 %(num)d 个css模板"],
-      "Deleted %(num)d dashboard": ["删除了 %(num)d 个看板"],
+      "Deleted %(num)d dashboard": ["删除了 %(num)d 个仪表盘"],
       "Deleted %(num)d dataset": ["已经删除 %(num)d 个数据集"],
       "Deleted %(num)d report schedule": ["已经删除了 %(num)d 个报告时间表"],
       "Deleted %(num)d rules": ["删除了 %(num)d 个规则"],
@@ -1614,7 +1614,7 @@
         "确定如何计算箱须和离群值。"
       ],
       "Determines whether or not this dashboard is visible in the list of all dashboards": [
-        "确定此看板在所有看板列表中是否可见"
+        "确定此仪表盘在所有仪表盘列表中是否可见"
       ],
       "Diamond": ["下钻"],
       "Did you mean:": ["您的意思是："],
@@ -1757,7 +1757,7 @@
       "Edit Chart": ["编辑图表"],
       "Edit Chart Properties": ["编辑图表属性"],
       "Edit Column": ["编辑列"],
-      "Edit Dashboard": ["编辑看板"],
+      "Edit Dashboard": ["编辑仪表盘"],
       "Edit Database": ["编辑数据库"],
       "Edit Dataset ": ["编辑数据集"],
       "Edit Log": ["编辑日志"],
@@ -1799,7 +1799,7 @@
       "Email reports active": ["激活邮件报告"],
       "Embed": ["嵌入"],
       "Embed code": ["嵌入代码"],
-      "Embed dashboard": ["嵌入看板"],
+      "Embed dashboard": ["嵌入仪表盘"],
       "Embedding deactivated.": ["嵌入已停用"],
       "Emit Filter Events": ["发出过滤器事件"],
       "Emphasis": ["重点"],
@@ -1929,7 +1929,7 @@
         "在数据探索视图中探索结果集"
       ],
       "Export": ["导出"],
-      "Export dashboards?": ["导出看板?"],
+      "Export dashboards?": ["导出仪表盘?"],
       "Export query": ["导出查询"],
       "Export to .CSV": ["导出为CSV"],
       "Export to .JSON": ["导出为JSON"],
@@ -2227,15 +2227,15 @@
       "Impersonate the logged on user": ["模拟登录用户"],
       "Import": ["导入"],
       "Import %s": ["导入 %s"],
-      "Import Dashboard(s)": ["导入看板"],
-      "Import Dashboards": ["导入看板"],
+      "Import Dashboard(s)": ["导入仪表盘"],
+      "Import Dashboards": ["导入仪表盘"],
       "Import a table definition": ["导入一个已定义的表"],
       "Import chart failed for an unknown reason": ["导入图表失败，原因未知"],
       "Import charts": ["导入图表"],
       "Import dashboard failed for an unknown reason": [
-        "因为未知原因导入看板失败"
+        "因为未知原因导入仪表盘失败"
       ],
-      "Import dashboards": ["导入看板"],
+      "Import dashboards": ["导入仪表盘"],
       "Import database failed for an unknown reason": [
         "导入数据库失败，原因未知"
       ],
@@ -2754,8 +2754,8 @@
       "No compatible columns found": ["找不到兼容的列"],
       "No compatible datasets found": ["找不到兼容的数据集"],
       "No compatible schema found": ["找不到兼容的schema"],
-      "No dashboards": ["没有看板"],
-      "No dashboards yet": ["没有看板"],
+      "No dashboards": ["没有仪表盘"],
+      "No dashboards yet": ["没有仪表盘"],
       "No data": ["没有数据"],
       "No data after filtering or data is NULL for the latest time record": [
         "过滤后没有数据，或者最新时间记录的数据为NULL"
@@ -2770,13 +2770,13 @@
         "暂无收藏的图表，去点击星星吧！"
       ],
       "No favorite dashboards yet, go click on stars!": [
-        "暂无收藏的看板，去点击星星吧！"
+        "暂无收藏的仪表盘，去点击星星吧！"
       ],
       "No filter": ["无筛选"],
       "No filter is selected.": ["未选择过滤条件。"],
       "No filters": ["无筛选"],
       "No filters are currently added to this dashboard.": [
-        "此看板中没有过滤条件。"
+        "此仪表盘中没有过滤条件。"
       ],
       "No form settings were maintained": ["没有任何表单设置"],
       "No global filters are currently added": ["目前未添加全局过滤器"],
@@ -2822,7 +2822,7 @@
       "Normalize column names": ["标准化列名"],
       "Normalized": ["标准化"],
       "Not Time Series": ["美誉时间序列"],
-      "Not added to any dashboard": ["没有添加到任何看板"],
+      "Not added to any dashboard": ["没有添加到任何仪表盘"],
       "Not available": ["不可用"],
       "Not defined": ["未定义"],
       "Not equal to (≠)": ["不等于 (≠)"],
@@ -2986,7 +2986,7 @@
       "Override time range": ["覆盖时间范围"],
       "Overwrite": ["覆盖"],
       "Overwrite & Explore": ["覆写和浏览"],
-      "Overwrite Dashboard [%s]": ["覆盖看板 [%s]"],
+      "Overwrite Dashboard [%s]": ["覆盖仪表盘 [%s]"],
       "Overwrite Duplicate Columns": ["覆盖重复的列"],
       "Overwrite existing": ["覆盖现有"],
       "Overwrite text in the editor with a query on this table": [
@@ -2997,10 +2997,10 @@
       "Owners": ["所有者"],
       "Owners are invalid": ["所有者无效"],
       "Owners is a list of users who can alter the dashboard.": [
-        "所有者是可以更改看板的用户列表。"
+        "所有者是可以更改仪表盘的用户列表。"
       ],
       "Owners is a list of users who can alter the dashboard. Searchable by name or username.": [
-        "所有者是可以更改看板的用户列表。可按名称或用户名搜索。"
+        "所有者是可以更改仪表盘的用户列表。可按名称或用户名搜索。"
       ],
       "PDF download failed, please refresh and try again.": [
         "PDF下载失败，请刷新并重试。"
@@ -3262,14 +3262,14 @@
       ],
       "Recent activity": ["近期活动"],
       "Recently created charts, dashboards, and saved queries will appear here": [
-        "最近创建的图表、看板和保存的查询将显示在此处"
+        "最近创建的图表、仪表盘和保存的查询将显示在此处"
       ],
       "Recently edited charts, dashboards, and saved queries will appear here": [
-        "最近编辑的图表、看板和保存的查询将显示在此处"
+        "最近编辑的图表、仪表盘和保存的查询将显示在此处"
       ],
       "Recently modified": ["最近修改"],
       "Recently viewed charts, dashboards, and saved queries will appear here": [
-        "最近查看的图表、看板和保存的查询将显示在此处"
+        "最近查看的图表、仪表盘和保存的查询将显示在此处"
       ],
       "Recents": ["最近"],
       "Recipients are separated by \",\" or \";\"": [
@@ -3292,7 +3292,7 @@
       ],
       "Refetch results": ["重新获取结果"],
       "Refresh": ["刷新间隔"],
-      "Refresh dashboard": ["刷新看板"],
+      "Refresh dashboard": ["刷新仪表盘"],
       "Refresh frequency": ["刷新频率"],
       "Refresh interval": ["刷新间隔"],
       "Refresh interval saved": ["刷新间隔已保存"],
@@ -3489,7 +3489,7 @@
       "Saturday": ["星期六"],
       "Save": ["保存"],
       "Save & Explore": ["保存和浏览"],
-      "Save & go to dashboard": ["保存并转到看板"],
+      "Save & go to dashboard": ["保存并转到仪表盘"],
       "Save (Overwrite)": ["保存（覆盖）"],
       "Save as": ["另存为"],
       "Save as Dataset": ["保存为数据集"],
@@ -3499,7 +3499,7 @@
       "Save as:": ["另存为："],
       "Save changes": ["保存更改"],
       "Save chart": ["图表保存"],
-      "Save dashboard": ["保存看板"],
+      "Save dashboard": ["保存仪表盘"],
       "Save dataset": ["保存数据集"],
       "Save for this session": ["保存此会话"],
       "Save or Overwrite Dataset": ["保存或覆盖数据集"],
@@ -3587,7 +3587,7 @@
         "选择要上传到数据库的Excel文件。"
       ],
       "Select a column": ["反选所有"],
-      "Select a dashboard": ["看板"],
+      "Select a dashboard": ["仪表盘"],
       "Select a database table and create dataset": [
         "选择一个数据库表创建数据集"
       ],
@@ -3624,7 +3624,7 @@
       "Select color scheme": ["线性颜色方案"],
       "Select column": ["时间列"],
       "Select current page": ["选择当前页"],
-      "Select dashboards": ["选择看板"],
+      "Select dashboards": ["选择仪表盘"],
       "Select database or type to search databases": ["选择数据库或搜索数据库"],
       "Select databases require additional fields to be completed in the Advanced tab to successfully connect the database. Learn what requirements your databases has ": [
         "选择数据库需要在Advanced选项卡中完成额外的字段才能成功连接数据库了解数据库的需求"
@@ -3723,7 +3723,7 @@
       "Show CSS Template": ["查看CSS模板"],
       "Show Chart": ["显示图表"],
       "Show Column": ["显示列"],
-      "Show Dashboard": ["显示看板"],
+      "Show Dashboard": ["显示仪表盘"],
       "Show Database": ["显示数据库"],
       "Show Labels": ["显示标签"],
       "Show Less...": ["显示. ."],
@@ -3839,7 +3839,7 @@
         "抱歉，获取数据库信息时出错：%s"
       ],
       "Sorry there was an error fetching saved charts: ": [
-        "抱歉，这个看板在获取图表时发生错误："
+        "抱歉，这个仪表盘在获取图表时发生错误："
       ],
       "Sorry, An error occurred": ["抱歉，发生错误"],
       "Sorry, an error occurred": ["抱歉，发生错误"],
@@ -3853,10 +3853,10 @@
       ],
       "Sorry, there appears to be no data": ["抱歉，似乎没有数据"],
       "Sorry, there was an error saving this %s: %s": [
-        "抱歉，这个看板在获取图表时发生错误：%s"
+        "抱歉，这个仪表盘在获取图表时发生错误：%s"
       ],
       "Sorry, there was an error saving this dashboard: %s": [
-        "抱歉，这个看板在获取图表时发生错误：%s"
+        "抱歉，这个仪表盘在获取图表时发生错误：%s"
       ],
       "Sorry, your browser does not support copying.": [
         "抱歉，您的浏览器不支持复制操作。使用 Ctrl / Cmd + C！"
@@ -3988,7 +3988,7 @@
       "Superset Chart": ["选择图表"],
       "Superset Embedded SDK documentation.": ["SuperSet嵌入式SDK文档"],
       "Superset chart": ["选择图表"],
-      "Superset dashboard": ["看板"],
+      "Superset dashboard": ["仪表盘"],
       "Superset encountered an error while running a command.": [
         "警报在执行查询时发现错误。"
       ],
@@ -4079,7 +4079,7 @@
         "来自 %s 的 API响应与 IDatabaseTable 接口不匹配"
       ],
       "The CSS for individual dashboards can be altered here, or in the dashboard view where changes are immediately visible": [
-        "可以在这里或者在看板视图修改单个看板的CSS样式"
+        "可以在这里或者在仪表盘视图修改单个仪表盘的CSS样式"
       ],
       "The CTAS (create table as select) doesn't have a SELECT statement at the end. Please make sure your query has a SELECT as its last statement. Then, try running your query again.": [
         "The CTAS（create table as select）只能与最后一条语句为SELECT的查询一起运行。请确保查询的最后一个语句是SELECT。然后再次尝试运行查询。"
@@ -4119,7 +4119,7 @@
       "The country code standard that Superset should expect to find in the [country] column": [
         "Superset 希望能够在 [国家] 栏中找到的 国家 / 地区 的标准代码"
       ],
-      "The dashboard has been saved": ["该看板已成功保存。"],
+      "The dashboard has been saved": ["该仪表盘已成功保存。"],
       "The data source seems to have been deleted": ["数据源已经被删除"],
       "The data type that was inferred by the database. It may be necessary to input a type manually for expression-defined columns in some cases. In most case users should not need to alter this.": [
         "由数据库推断的数据类型。在某些情况下，可能需要为表达式定义的列手工输入一个类型。在大多数情况下，用户不需要修改这个数据类型。"
@@ -4142,7 +4142,7 @@
       "The database was deleted.": ["数据集已保存"],
       "The database was not found.": ["数据库没有找到"],
       "The dataset %s is linked to %s charts that appear on %s dashboards. Are you sure you want to continue? Deleting the dataset will break those objects.": [
-        "数据集 %s 已经链接到 %s 图表和 %s 看板内。确定要继续吗？删除数据集将破坏这些对象。"
+        "数据集 %s 已经链接到 %s 图表和 %s 仪表盘内。确定要继续吗？删除数据集将破坏这些对象。"
       ],
       "The dataset associated with this chart no longer exists": [
         "这个图表所链接的数据集可能被删除了。"
@@ -4408,10 +4408,10 @@
       "There are associated alerts or reports: %(report_names)s": [
         "存在关联的警报或报告：%s(report_names)s"
       ],
-      "There are no charts added to this dashboard": ["没有图表添加到此看板"],
+      "There are no charts added to this dashboard": ["没有图表添加到此仪表盘"],
       "There are no components added to this tab": ["没有组件添加到此Tab页"],
       "There are no databases available": ["没有可用的数据库"],
-      "There are no filters in this dashboard.": ["此看板中没有过滤条件。"],
+      "There are no filters in this dashboard.": ["此仪表盘中没有过滤条件。"],
       "There are unsaved changes.": ["您有一些未保存的修改。"],
       "There is a syntax error in the SQL query. Perhaps there was a misspelling or a typo.": [
         "Issue 1003 - SQL查询中存在语法错误。可能是拼写错误或是打错关键字。"
@@ -4427,7 +4427,7 @@
         "加载数据集对象时出现错误"
       ],
       "There was an error fetching the favorite status: %s": [
-        "获取此看板的收藏夹状态时出现问题：%s。"
+        "获取此仪表盘的收藏夹状态时出现问题：%s。"
       ],
       "There was an error fetching your recent activity:": [
         "获取您最近的活动时出错："
@@ -4437,11 +4437,11 @@
         "加载数据集元数据时出现错误"
       ],
       "There was an error loading the schemas": [
-        "抱歉，这个看板在获取图表时发生错误："
+        "抱歉，这个仪表盘在获取图表时发生错误："
       ],
       "There was an error loading the tables": ["您的请求有错误"],
       "There was an error saving the favorite status: %s": [
-        "获取此看板的收藏夹状态时出现问题: %s"
+        "获取此仪表盘的收藏夹状态时出现问题: %s"
       ],
       "There was an error with your request": ["您的请求有错误"],
       "There was an issue deleting %s: %s": ["删除 %s 时出现问题：%s"],
@@ -4476,17 +4476,17 @@
         "复制所选数据集时出现问题：%s"
       ],
       "There was an issue favoriting this dashboard.": [
-        "收藏看板时候出现问题。"
+        "收藏仪表盘时候出现问题。"
       ],
       "There was an issue fetching reports attached to this dashboard.": [
-        "获取此看板的收藏夹状态时出现问题。"
+        "获取此仪表盘的收藏夹状态时出现问题。"
       ],
       "There was an issue fetching the favorite status of this dashboard.": [
-        "获取此看板的收藏夹状态时出现问题。"
+        "获取此仪表盘的收藏夹状态时出现问题。"
       ],
       "There was an issue fetching your chart: %s": ["加载图表时出现问题：%s"],
       "There was an issue fetching your dashboards: %s": [
-        "加载看板时出现问题：%s"
+        "加载仪表盘时出现问题：%s"
       ],
       "There was an issue fetching your recent activity: %s": [
         "获取您最近的活动时出错：%s"
@@ -4513,7 +4513,7 @@
         "这些参数是在浏览视图中单击保存或覆盖按钮时动态生成的。这个JSON对象在这里公开以供参考，并提供给可能希望更改特定参数的高级用户使用。"
       ],
       "This JSON object is generated dynamically when clicking the save or overwrite button in the dashboard view. It is exposed here for reference and for power users who may want to alter specific parameters.": [
-        "这个JSON对象描述了部件在看板中的位置。它是动态生成的，可以通过拖放，在看板中调整整部件的大小和位置"
+        "这个JSON对象描述了部件在仪表盘中的位置。它是动态生成的，可以通过拖放，在仪表盘中调整整部件的大小和位置"
       ],
       "This action will permanently delete %s.": ["此操作将永久删除 %s 。"],
       "This action will permanently delete the layer.": [
@@ -4562,26 +4562,26 @@
         "这控制当前视图中的时间粒度字段是否应向下传递到包含注释数据的图表。"
       ],
       "This dashboard is currently auto refreshing; the next auto refresh will be in %s.": [
-        "此看板当前正在强制刷新；下一次强制刷新将在 %s 内执行。"
+        "此仪表盘当前正在强制刷新；下一次强制刷新将在 %s 内执行。"
       ],
       "This dashboard is managed externally, and can't be edited in Superset": [
         "该仪表板由外部管理，无法在SuperSet中编辑"
       ],
       "This dashboard is not published which means it will not show up in the list of dashboards. Favorite it to see it there or access it by using the URL directly.": [
-        "此看板未发布，这意味着它不会显示在仪表板列表中。您可以进行收藏并在收藏栏中查看或直接使用URL访问它。"
+        "此仪表盘未发布，这意味着它不会显示在仪表板列表中。您可以进行收藏并在收藏栏中查看或直接使用URL访问它。"
       ],
       "This dashboard is not published, it will not show up in the list of dashboards. Click here to publish this dashboard.": [
-        "此看板未发布，它将不会显示在看板列表中。单击此处以发布此看板。"
+        "此仪表盘未发布，它将不会显示在仪表盘列表中。单击此处以发布此仪表盘。"
       ],
-      "This dashboard is now hidden": ["无法修改该看板"],
-      "This dashboard is now published": ["当前看板 ${nowPublished}"],
+      "This dashboard is now hidden": ["无法修改该仪表盘"],
+      "This dashboard is now published": ["当前仪表盘 ${nowPublished}"],
       "This dashboard is published. Click to make it a draft.": [
-        "此看板已发布。单击以使其成为草稿。"
+        "此仪表盘已发布。单击以使其成为草稿。"
       ],
       "This dashboard is ready to embed. In your application, pass the following id to the SDK:": [
         "该仪表板已准备好嵌入。在您的应用程序中，将以下 id 传递给 SDK："
       ],
-      "This dashboard was saved successfully.": ["该看板已成功保存"],
+      "This dashboard was saved successfully.": ["该仪表盘已成功保存"],
       "This database is managed externally, and can't be edited in Superset": [
         "该数据库由外部管理，无法在SuperSet中编辑"
       ],
@@ -4617,7 +4617,7 @@
         "这是将会添加到WHERE子句的条件。例如，要仅返回特定客户端的行，可以使用子句 `client_id = 9` 定义常规过滤。若要在用户不属于RLS过滤角色的情况下不显示行，可以使用子句 `1 = 0`（始终为false）创建基本过滤。"
       ],
       "This json object describes the positioning of the widgets in the dashboard. It is dynamically generated when adjusting the widgets size and positions by using drag & drop in the dashboard view": [
-        "这个JSON对象描述了部件在看板中的位置。它是动态生成的，可以通过拖放，在看板中调整整部件的大小和位置"
+        "这个JSON对象描述了部件在仪表盘中的位置。它是动态生成的，可以通过拖放，在仪表盘中调整整部件的大小和位置"
       ],
       "This markdown component has an error.": ["此 markdown 组件有错误。"],
       "This markdown component has an error. Please revert your recent changes.": [
@@ -4765,7 +4765,7 @@
       "To filter on a metric, use Custom SQL tab.": [
         "若要在计量值上筛选，请使用自定义SQL选项卡。"
       ],
-      "To get a readable URL for your dashboard": ["为看板生成一个可读的 URL"],
+      "To get a readable URL for your dashboard": ["为仪表盘生成一个可读的 URL"],
       "Tools": ["工具"],
       "Tooltip": ["详细提示"],
       "Tooltip Contents": ["提示内容"],
@@ -5414,17 +5414,17 @@
         "您没有编辑此图表的权限"
       ],
       "You do not have permission to edit this dashboard": [
-        "您没有编辑此看板的权限"
+        "您没有编辑此仪表盘的权限"
       ],
       "You do not have permission to read tags": ["您没有权限读取标签"],
       "You do not have permissions to edit this dashboard.": [
-        "您没有编辑此看板的权限。"
+        "您没有编辑此仪表盘的权限。"
       ],
       "You don't have access to this chart.": ["您没有查看此图表的权限。"],
-      "You don't have access to this dashboard.": ["您没有查看此看板的权限。"],
+      "You don't have access to this dashboard.": ["您没有查看此仪表盘的权限。"],
       "You don't have access to this dataset.": ["您没有查看此数据集的权限。"],
       "You don't have access to this embedded dashboard config.": [
-        "您没有嵌入此看板的配置权限。"
+        "您没有嵌入此仪表盘的配置权限。"
       ],
       "You don't have any favorites yet!": ["您还没有任何的收藏！"],
       "You don't have permission to modify the value.": [
@@ -5437,13 +5437,13 @@
         "您没有权利修改这个图表。"
       ],
       "You don't have the rights to alter this dashboard": [
-        "您没有权利修改这个看板。"
+        "您没有权利修改这个仪表盘。"
       ],
       "You don't have the rights to alter this title.": [
         "您没有权利修改这个标题。"
       ],
       "You don't have the rights to create a chart": ["您没有权限创建图表"],
-      "You don't have the rights to create a dashboard": ["您没有权限创建看板"],
+      "You don't have the rights to create a dashboard": ["您没有权限创建仪表盘"],
       "You don't have the rights to download as csv": ["您没有权限下载为CSV"],
       "You have removed this filter.": ["您已删除此过滤条件。"],
       "You have unsaved changes.": ["您有一些未保存的修改。"],
@@ -5454,7 +5454,7 @@
         "您必须是数据集所有者才能进行编辑。请联系数据集所有者以请求修改或编辑访问权限。"
       ],
       "You must pick a name for the new dashboard": [
-        "您必须为新的看板选择一个名称"
+        "您必须为新的仪表盘选择一个名称"
       ],
       "You must run the query successfully first": ["必须先成功运行查询"],
       "You need to configure HTML sanitization to use CSS": [
@@ -5469,7 +5469,7 @@
       "Your chart is not up to date": ["您的图表不是最新的"],
       "Your chart is ready to go!": ["您的图表已准备就绪"],
       "Your dashboard is too large. Please reduce its size before saving it.": [
-        "您的看板太大了。保存前请缩小尺寸。"
+        "您的仪表盘太大了。保存前请缩小尺寸。"
       ],
       "Your query could not be saved": ["您的查询无法保存"],
       "Your query could not be scheduled": ["无法调度您的查询"],
@@ -5494,7 +5494,7 @@
       "[Missing Dataset]": ["丢失数据集"],
       "[Untitled]": ["无标题"],
       "[asc]": ["[升序]"],
-      "[dashboard name]": ["[看板名称]"],
+      "[dashboard name]": ["[仪表盘名称]"],
       "[desc]": ["[降序]"],
       "[optional] this secondary metric is used to define the color as a ratio against the primary metric. When omitted, the color is categorical and based on labels": [
         "次计量指标用来定义颜色与主度量的比率。如果两个度量匹配，则将颜色映射到级别组"
@@ -5575,8 +5575,8 @@
       "css_template": ["css模板"],
       "cumsum": ["累计量"],
       "cumulative": ["累计"],
-      "dashboard": ["看板"],
-      "dashboards": ["看板"],
+      "dashboard": ["仪表盘"],
+      "dashboards": ["仪表盘"],
       "database": ["数据库"],
       "dataset": ["数据集"],
       "dataset name": ["数据集名称"],

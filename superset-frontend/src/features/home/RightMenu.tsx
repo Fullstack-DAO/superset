@@ -149,7 +149,6 @@ const RightMenu = ({
   const [showDatabaseModal, setShowDatabaseModal] = useState<boolean>(false);
   const [engine, setEngine] = useState<string>('');
   const canSql = findPermission('can_sqllab', 'Superset', roles);
-  const canDashboard = findPermission('can_write', 'Dashboard', roles);
   const canChart = findPermission('can_write', 'Chart', roles);
   const canDatabase = findPermission('can_write', 'Database', roles);
   const canDataset = findPermission('can_write', 'Dataset', roles);
@@ -163,7 +162,7 @@ const RightMenu = ({
       ALLOWED_EXTENSIONS,
     );
 
-  const showActionDropdown = canSql || canChart || canDashboard;
+  const showActionDropdown = canSql || canChart;
   const [allowUploads, setAllowUploads] = useState<boolean>(false);
   const [nonExamplesDBConnected, setNonExamplesDBConnected] =
     useState<boolean>(false);
@@ -228,13 +227,6 @@ const RightMenu = ({
       icon: 'fa-fw fa-bar-chart',
       perm: 'can_write',
       view: 'Chart',
-    },
-    {
-      label: t('Dashboard'),
-      url: '/dashboard/new',
-      icon: 'fa-fw fa-dashboard',
-      perm: 'can_write',
-      view: 'Dashboard',
     },
   ];
 

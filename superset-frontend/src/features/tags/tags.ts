@@ -112,7 +112,7 @@ export function deleteTaggedObjects(
   }
   SupersetClient.delete({
     endpoint: `/api/v1/tag/${map_object_type_to_id(objectType)}/${objectId}/${
-      tag.name
+      encodeURIComponent(tag.name)
     }`,
   })
     .then(({ json }) =>

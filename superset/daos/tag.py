@@ -75,19 +75,20 @@ class TagDAO(BaseDAO[Tag]):
                 message=f"Tag with name {tag_name} does not exist."
             )
 
-        tagged_object = db.session.query(TaggedObject).filter(
+        tagged_objects = db.session.query(TaggedObject).filter(
             TaggedObject.tag_id == tag.id,
             TaggedObject.object_type == object_type,
             TaggedObject.object_id == object_id,
-        )
-        if not tagged_object:
+        ).all()
+        if not tagged_objects:
             raise DAODeleteFailedError(
                 message=f'Tagged object with object_id: {object_id} \
                     object_type: {object_type} \
                     and tag name: "{tag_name}" could not be found'
             )
         try:
-            db.session.delete(tagged_object.one())
+            for tagged_object in tagged_objects:
+                db.session.delete(tagged_object)
             db.session.commit()
         except SQLAlchemyError as ex:  # pragma: no cover
             db.session.rollback()

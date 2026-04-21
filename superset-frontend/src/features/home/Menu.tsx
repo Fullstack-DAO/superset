@@ -25,7 +25,6 @@ import {
   css,
   useTheme,
   SupersetTheme,
-  SupersetClient,
   t,
 } from '@superset-ui/core';
 import rison from 'rison';
@@ -75,7 +74,6 @@ import {
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
 import {
-  addDashboardToFolder,
   createDashboardFolder,
   DASHBOARD_FOLDER_QUERY_KEY,
   DashboardFolder,
@@ -228,9 +226,6 @@ const getDashboardListKeyFromFilters = (filters?: string | null) => {
 
   return DASHBOARDS_ROOT_KEY;
 };
-
-const normalizeDashboardUrl = (url: string | undefined, dashboardId: number) =>
-  url || `/superset/dashboard/${dashboardId}/`;
 
 const normalizeChartUrl = (url: string | undefined, chartId: number) =>
   url || `/explore/?slice_id=${chartId}`;
@@ -503,10 +498,7 @@ export function Menu({
   );
   const [deleteChartFolderTarget, setDeleteChartFolderTarget] =
     useState<ChartFolder | null>(null);
-  const [createDashboardTarget, setCreateDashboardTarget] =
-    useState<DashboardFolder | null>(null);
-  const [newDashboardName, setNewDashboardName] = useState('');
-  const { dashboardFolders, refreshDashboardFolders } = useDashboardFolders();
+  const { dashboardFolders } = useDashboardFolders();
   const { chartFolders } = useChartFolders();
   const canManageDashboardFolders = Object.keys(user.roles || {}).some(
     role => role.toLowerCase() === ADMIN_ROLE_NAME,
@@ -1203,9 +1195,9 @@ export function Menu({
       await createDashboardFolder(folderName);
       setShowCreateFolderModal(false);
       setNewFolderName('');
-      addSuccessToast(t('文件夹已创建'));
+      addSuccessToast(t('分类已创建'));
     } catch {
-      addDangerToast(t('创建文件夹失败'));
+      addDangerToast(t('创建分类失败'));
     }
   };
 
@@ -1449,7 +1441,7 @@ export function Menu({
       if (tagsUpdated) {
         addSuccessToast(t('分类已重命名'));
       } else {
-        addDangerToast(t('分类已重命名，但部分仪表盘标签同步失败'));
+        addDangerToast(t('分类已重命名'));
       }
     } catch {
       addDangerToast(t('重命名分类失败'));
@@ -1477,7 +1469,7 @@ export function Menu({
       if (tagsUpdated) {
         addSuccessToast(t('分类已重命名'));
       } else {
-        addDangerToast(t('分类已重命名，但部分图表标签同步失败'));
+        addDangerToast(t('分类已重命名'));
       }
     } catch {
       addDangerToast(t('重命名分类失败'));
@@ -1533,7 +1525,7 @@ export function Menu({
       if (tagsUpdated) {
         addSuccessToast(t('分类已删除'));
       } else {
-        addDangerToast(t('分类已删除，但部分仪表盘标签移除失败'));
+        addDangerToast(t('分类已删除'));
       }
     } catch {
       addDangerToast(t('删除分类失败'));
@@ -1555,79 +1547,10 @@ export function Menu({
       if (tagsUpdated) {
         addSuccessToast(t('分类已删除'));
       } else {
-        addDangerToast(t('分类已删除，但部分图表标签移除失败'));
+        addDangerToast(t('分类已删除'));
       }
     } catch {
       addDangerToast(t('删除分类失败'));
-    }
-  };
-
-  const openCreateDashboardModal = (folderId: string) => {
-    const folder = dashboardFolders.find(item => item.id === folderId);
-    if (!folder) {
-      return;
-    }
-
-    setCreateDashboardTarget(folder);
-    setNewDashboardName('');
-  };
-
-  const closeCreateDashboardModal = () => {
-    setCreateDashboardTarget(null);
-    setNewDashboardName('');
-  };
-
-  const createDashboardInFolder = async () => {
-    if (!createDashboardTarget) {
-      return;
-    }
-
-    const dashboardName = newDashboardName.trim();
-    if (!dashboardName) {
-      return;
-    }
-
-    try {
-      const { json } = await SupersetClient.post({
-        endpoint: '/api/v1/dashboard/',
-        jsonPayload: { dashboard_title: dashboardName },
-      });
-      const dashboard = json?.result || {};
-      const dashboardId = json?.id || dashboard?.id;
-
-      if (!dashboardId) {
-        throw new Error('dashboard id not found');
-      }
-
-      const newItem: DashboardFolderItem = {
-        id: String(dashboardId),
-        dashboardId,
-        name: dashboard?.dashboard_title || dashboardName,
-        url: normalizeDashboardUrl(dashboard?.url, dashboardId),
-      };
-
-      await addDashboardToFolder(createDashboardTarget.id, dashboardId);
-
-      let tagSynchronized = true;
-      if (createDashboardTarget.name.trim()) {
-        try {
-          await addDashboardFolderTag(dashboardId, createDashboardTarget.name.trim());
-        } catch {
-          tagSynchronized = false;
-        }
-      }
-
-      await refreshDashboardFolders();
-
-      closeCreateDashboardModal();
-      if (tagSynchronized) {
-        addSuccessToast(t('仪表盘已创建'));
-      } else {
-        addDangerToast(t('仪表盘已创建，但文件夹标签同步失败'));
-      }
-      window.location.href = newItem.url;
-    } catch {
-      addDangerToast(t('创建仪表盘失败'));
     }
   };
 
@@ -1868,15 +1791,6 @@ export function Menu({
                     ? 'menu-submenu-manual-selected'
                     : undefined,
                 actions: [
-                  renderActionButton({
-                    label: t('新建仪表盘'),
-                    icon: <PlusOutlined />,
-                    onClick: event => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      openCreateDashboardModal(folder.id);
-                    },
-                  }),
                   ...(canManageDashboardFolders
                     ? [
                         renderActionButton({
@@ -2043,25 +1957,9 @@ export function Menu({
         <Input
           autoFocus
           value={newFolderName}
-          placeholder={t('请输入文件夹名称')}
+          placeholder={t('请输入分类名称')}
           onChange={event => setNewFolderName(event.target.value)}
           onPressEnter={addFolder}
-        />
-      </Modal>
-      <Modal
-        show={!!createDashboardTarget}
-        onHide={closeCreateDashboardModal}
-        onHandledPrimaryAction={createDashboardInFolder}
-        primaryButtonName={t('创建')}
-        disablePrimaryButton={!newDashboardName.trim()}
-        title={<h4>{t('新建仪表盘')}</h4>}
-      >
-        <Input
-          autoFocus
-          value={newDashboardName}
-          placeholder={t('请输入仪表盘名称')}
-          onChange={event => setNewDashboardName(event.target.value)}
-          onPressEnter={createDashboardInFolder}
         />
       </Modal>
       <Modal

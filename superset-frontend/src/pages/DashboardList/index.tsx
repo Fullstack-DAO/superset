@@ -70,7 +70,9 @@ import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
+import { addTag, OBJECT_TYPES } from 'src/features/tags/tags';
 import {
+  addDashboardToFolder,
   DASHBOARD_FOLDER_QUERY_KEY,
   DashboardFolder,
   emitDashboardFoldersUpdated,
@@ -946,6 +948,64 @@ function DashboardList(props: DashboardListProps) {
     ],
   );
 
+  const addDashboardFolderTag = useCallback(
+    async (dashboardId: number, folderName: string) => {
+      if (
+        !folderName.trim() ||
+        !isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM)
+      ) {
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        addTag(
+          {
+            objectType: OBJECT_TYPES.DASHBOARD,
+            objectId: dashboardId,
+            includeTypes: false,
+          },
+          folderName,
+          () => resolve(),
+          response => reject(response),
+        );
+      });
+    },
+    [],
+  );
+
+  const createDashboard = useCallback(async () => {
+    try {
+      const { json } = await SupersetClient.post({
+        endpoint: '/api/v1/dashboard/',
+        jsonPayload: { dashboard_title: t('[ untitled dashboard ]') },
+      });
+
+      const dashboard = json?.result || {};
+      const dashboardId = json?.id || dashboard?.id;
+      const dashboardUrl =
+        dashboard?.url ||
+        (dashboardId ? `/superset/dashboard/${dashboardId}/` : undefined);
+
+      if (!dashboardId || !dashboardUrl) {
+        throw new Error('dashboard id not found');
+      }
+
+      if (isFolderView && selectedFolder) {
+        await addDashboardToFolder(selectedFolder.id, dashboardId);
+
+        try {
+          await addDashboardFolderTag(dashboardId, selectedFolder.name);
+        } catch {
+          addDangerToast(t('仪表盘已创建，但分类标签同步失败'));
+        }
+      }
+
+      window.location.assign(dashboardUrl);
+    } catch {
+      addDangerToast(t('创建仪表盘失败'));
+    }
+  }, [addDangerToast, addDashboardFolderTag, isFolderView, selectedFolder]);
+
   const subMenuButtons: SubMenuProps['buttons'] = [];
   if (canDelete || canExport) {
     subMenuButtons.push({
@@ -959,13 +1019,11 @@ function DashboardList(props: DashboardListProps) {
     subMenuButtons.push({
       name: (
         <>
-          <i className="fa fa-plus" /> {t('Dashboard')}
+          <i className="fa fa-plus" /> {t('仪表盘')}
         </>
       ),
       buttonStyle: 'primary',
-      onClick: () => {
-        window.location.assign('/dashboard/new');
-      },
+      onClick: createDashboard,
     });
 
     if (isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT)) {

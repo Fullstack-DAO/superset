@@ -234,10 +234,6 @@ function DashboardCard({
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isSavingFolderTags, setIsSavingFolderTags] = useState(false);
   const canManageFolders = canEdit;
-  const visibleTags =
-    dashboardTags.filter(
-      (tag: Tag) => tag.type === 'TagTypes.custom' || tag.type === 1,
-    ) || [];
   const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
 
   useEffect(() => {
@@ -261,6 +257,23 @@ function DashboardCard({
         value: folder.id,
       })),
     [dashboardFolders],
+  );
+
+  const visibleTags = useMemo(
+    () =>
+      currentFolders.map(folder => {
+        const existingTag = dashboardTags.find(tag => tag.name === folder.name);
+        return (
+          existingTag ||
+          ({
+            id: folder.id,
+            name: folder.name,
+            type: 1,
+            toolTipTitle: folder.name,
+          } as Tag)
+        );
+      }),
+    [currentFolders, dashboardTags],
   );
 
   const addDashboardFolderTag = useCallback(async (dashboardId: number, folderName: string) => {
@@ -338,6 +351,7 @@ function DashboardCard({
       new Set(selectedFolderIds.map(id => id.trim()).filter(Boolean)),
     );
     const previousFolderNames = currentFolders.map(folder => folder.name);
+    const currentMenuFolderNames = dashboardFolders.map(folder => folder.name);
     const nextFolderNames = dashboardFolders
       .filter(folder => normalizedNextFolderIds.includes(folder.id))
       .map(folder => folder.name);
@@ -347,6 +361,14 @@ function DashboardCard({
     const removedFolderNames = previousFolderNames.filter(
       name => !nextFolderNames.includes(name),
     );
+    const staleFolderTagNames = dashboardTags
+      .filter(
+        tag =>
+          (tag.type === 'TagTypes.custom' || tag.type === 1) &&
+          !currentMenuFolderNames.includes(tag.name),
+      )
+      .map(tag => tag.name);
+    const staleFolderTagNameSet = new Set(staleFolderTagNames);
 
     setIsSavingFolderTags(true);
 
@@ -364,11 +386,16 @@ function DashboardCard({
         ...removedFolderNames.map(folderName =>
           deleteDashboardFolderTag(dashboard.id, folderName),
         ),
+        ...staleFolderTagNames.map(folderName =>
+          deleteDashboardFolderTag(dashboard.id, folderName),
+        ),
       ]);
 
       const nextFolderTagNames = new Set(nextFolderNames);
       const nonFolderTags = dashboardTags.filter(
-        tag => !previousFolderNames.includes(tag.name),
+        tag =>
+          !previousFolderNames.includes(tag.name) &&
+          !staleFolderTagNameSet.has(tag.name),
       );
       const nextFolderTags = nextFolderNames.map(folderName => {
         const existingTag = dashboardTags.find(tag => tag.name === folderName);

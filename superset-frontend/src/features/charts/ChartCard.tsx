@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   isFeatureEnabled,
   FeatureFlag,
@@ -243,7 +243,6 @@ export default function ChartCard({
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isSavingFolders, setIsSavingFolders] = useState(false);
   const canManageFolders = canEdit;
-  const previousFolderNamesRef = useRef<string[]>([]);
 
   useEffect(() => {
     setChartTags(chart.tags || []);
@@ -284,30 +283,6 @@ export default function ChartCard({
   );
 
   const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
-
-  useEffect(() => {
-    const currentFolderNames = currentFolders.map(folder => folder.name);
-    const previousFolderNames = previousFolderNamesRef.current;
-
-    setChartTags(previousTags => {
-      const nextFolderTagNames = new Set(currentFolderNames);
-      const previousFolderTagNames = new Set(previousFolderNames);
-      const nonFolderTags = previousTags.filter(
-        tag => !previousFolderTagNames.has(tag.name),
-      );
-      const nextFolderTags = currentFolderNames.map(folderName => {
-        const existingTag = previousTags.find(tag => tag.name === folderName);
-        return existingTag || ({ name: folderName, type: 1 } as TagType);
-      });
-
-      return [
-        ...nonFolderTags.filter(tag => !nextFolderTagNames.has(tag.name)),
-        ...nextFolderTags,
-      ];
-    });
-
-    previousFolderNamesRef.current = currentFolderNames;
-  }, [currentFolders]);
 
   const openFolderModal = useCallback(async (event?: React.MouseEvent<HTMLElement>) => {
     event?.preventDefault();
@@ -374,6 +349,7 @@ export default function ChartCard({
       new Set(selectedFolderIds.map(id => id.trim()).filter(Boolean)),
     );
     const previousFolderNames = currentFolders.map(folder => folder.name);
+    const currentMenuFolderNames = chartFolders.map(folder => folder.name);
     const nextFolderNames = chartFolders
       .filter(folder => normalizedNextFolderIds.includes(folder.id))
       .map(folder => folder.name);
@@ -383,6 +359,14 @@ export default function ChartCard({
     const removedFolderNames = previousFolderNames.filter(
       name => !nextFolderNames.includes(name),
     );
+    const staleFolderTagNames = chartTags
+      .filter(
+        tag =>
+          (tag.type === 'TagTypes.custom' || tag.type === 1) &&
+          !currentMenuFolderNames.includes(tag.name),
+      )
+      .map(tag => tag.name);
+    const staleFolderTagNameSet = new Set(staleFolderTagNames);
 
     setIsSavingFolders(true);
 
@@ -400,11 +384,16 @@ export default function ChartCard({
         ...removedFolderNames.map(folderName =>
           deleteChartFolderTag(chart.id, folderName),
         ),
+        ...staleFolderTagNames.map(folderName =>
+          deleteChartFolderTag(chart.id, folderName),
+        ),
       ]);
 
       const nextFolderTagNames = new Set(nextFolderNames);
       const nonFolderTags = chartTags.filter(
-        tag => !previousFolderNames.includes(tag.name),
+        tag =>
+          !previousFolderNames.includes(tag.name) &&
+          !staleFolderTagNameSet.has(tag.name),
       );
       const nextFolderTags = nextFolderNames.map(folderName => {
         const existingTag = chartTags.find(tag => tag.name === folderName);

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useMemo } from 'react';
 import { hot } from 'react-hot-loader/root';
 import {
   BrowserRouter as Router,
@@ -26,6 +26,7 @@ import {
 } from 'react-router-dom';
 import { bindActionCreators } from 'redux';
 import { styled } from '@superset-ui/core';
+import SplitPane from 'react-split-pane';
 import { GlobalStyles } from 'src/GlobalStyles';
 import ErrorBoundary from 'src/components/ErrorBoundary';
 import Loading from 'src/components/Loading';
@@ -51,8 +52,34 @@ const bootstrapData = getBootstrapData();
 let lastLocationPathname: string;
 
 const HIDE_MENU_PATHS = new Set(['/superset/app/dashboard']);
+const MENU_WIDTH_STORAGE_KEY = 'superset.menu.width';
+const DEFAULT_MENU_WIDTH = 220;
+const MIN_MENU_WIDTH = 200;
+const MAX_MENU_WIDTH = 800;
 
 const boundActions = bindActionCreators({ logEvent }, store.dispatch);
+
+const normalizePathname = (pathname: string) =>
+  pathname.replace(/\/$/, '') || '/';
+
+const shouldHideMenu = (pathname: string) =>
+  HIDE_MENU_PATHS.has(normalizePathname(pathname));
+
+const getInitialMenuWidth = () => {
+  const savedWidth = Number(
+    window.localStorage.getItem(MENU_WIDTH_STORAGE_KEY),
+  );
+
+  if (
+    Number.isFinite(savedWidth) &&
+    savedWidth >= MIN_MENU_WIDTH &&
+    savedWidth <= MAX_MENU_WIDTH
+  ) {
+    return savedWidth;
+  }
+
+  return DEFAULT_MENU_WIDTH;
+};
 
 const LocationPathnameLogger = () => {
   const location = useLocation();
@@ -71,20 +98,12 @@ const LocationPathnameLogger = () => {
   return <></>;
 };
 
-const MenuWrapper = () => {
-  const location = useLocation();
-  const normalizedPathname = location.pathname.replace(/\/$/, '') || '/';
-
-  if (HIDE_MENU_PATHS.has(normalizedPathname)) {
-    return null;
-  }
-  return (
-    <Menu
-      data={bootstrapData.common.menu_data}
-      isFrontendRoute={isFrontendRoute}
-    />
-  );
-};
+const MenuWrapper = () => (
+  <Menu
+    data={bootstrapData.common.menu_data}
+    isFrontendRoute={isFrontendRoute}
+  />
+);
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -93,11 +112,104 @@ const LayoutContainer = styled.div`
   overflow: hidden;
 `;
 
+const SplitPaneWrapper = styled.div`
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+
+  .SplitPane {
+    position: relative !important;
+    height: 100% !important;
+  }
+
+  .Pane {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .Resizer {
+    background: ${({ theme }) => theme.colors.grayscale.light2};
+    box-sizing: border-box;
+    background-clip: padding-box;
+    z-index: 1;
+  }
+
+  .Resizer.vertical {
+    width: 8px;
+    margin: 0 -4px;
+    border-left: 3px solid transparent;
+    border-right: 4px solid transparent;
+    cursor: col-resize;
+    transition: border-color 0.2s ease;
+  }
+
+  .Resizer.vertical:hover {
+    border-left-color: ${({ theme }) => theme.colors.primary.light4};
+    border-right-color: ${({ theme }) => theme.colors.primary.light4};
+  }
+`;
+
 const MainContent = styled.div`
   flex: 1;
   height: 100%;
   overflow: auto;
+  min-width: 0;
 `;
+
+const RoutesView = () => (
+  <MainContent>
+    <Switch>
+      {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
+        <Route path={path} key={path}>
+          <Suspense fallback={<Fallback />}>
+            <ErrorBoundary>
+              <Component user={bootstrapData.user} {...props} />
+            </ErrorBoundary>
+          </Suspense>
+        </Route>
+      ))}
+    </Switch>
+  </MainContent>
+);
+
+const AppLayout = () => {
+  const location = useLocation();
+  const hideMenu = shouldHideMenu(location.pathname);
+  const initialMenuWidth = useMemo(() => getInitialMenuWidth(), []);
+
+  const handleMenuResizeFinished = (nextWidth: number) => {
+    const normalizedWidth = Math.max(
+      MIN_MENU_WIDTH,
+      Math.min(MAX_MENU_WIDTH, Number(nextWidth) || DEFAULT_MENU_WIDTH),
+    );
+
+    window.localStorage.setItem(MENU_WIDTH_STORAGE_KEY, `${normalizedWidth}`);
+  };
+
+  return (
+    <LayoutContainer>
+      {hideMenu ? (
+        <RoutesView />
+      ) : (
+        <SplitPaneWrapper>
+          <SplitPane
+            split="vertical"
+            primary="first"
+            minSize={MIN_MENU_WIDTH}
+            maxSize={MAX_MENU_WIDTH}
+            defaultSize={initialMenuWidth}
+            onDragFinished={handleMenuResizeFinished}
+            pane1Style={{ overflow: 'hidden' }}
+            pane2Style={{ overflow: 'hidden' }}
+          >
+            <MenuWrapper />
+            <RoutesView />
+          </SplitPane>
+        </SplitPaneWrapper>
+      )}
+    </LayoutContainer>
+  );
+};
 
 const App = () => (
   <Router>
@@ -105,22 +217,7 @@ const App = () => (
     <LocationPathnameLogger />
     <RootContextProviders>
       <GlobalStyles />
-      <LayoutContainer>
-        <MenuWrapper />
-        <MainContent>
-          <Switch>
-            {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
-              <Route path={path} key={path}>
-                <Suspense fallback={<Fallback />}>
-                  <ErrorBoundary>
-                    <Component user={bootstrapData.user} {...props} />
-                  </ErrorBoundary>
-                </Suspense>
-              </Route>
-            ))}
-          </Switch>
-        </MainContent>
-      </LayoutContainer>
+      <AppLayout />
       <ToastContainer />
     </RootContextProviders>
   </Router>

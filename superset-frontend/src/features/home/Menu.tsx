@@ -243,7 +243,7 @@ const StyledHeader = styled.header`
       margin-bottom: 2px;
       z-index: 1000;
       box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.05);
-      width: 220px;
+      width: 100%;
       flex-shrink: 0;
       height: 100vh;
       overflow-y: auto;
@@ -251,7 +251,8 @@ const StyledHeader = styled.header`
       .navbar-brand-container {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
+        padding-left: ${theme.gridUnit * 9}px;
       }
 
       .caret {
@@ -2134,6 +2135,21 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
   const newMenuData = {
     ...data,
   };
+  const isHiddenSettingsChild = (child: MenuObjectChildProps | string) => {
+    if (typeof child === 'string') {
+      return false;
+    }
+
+    const normalizedLabel = (child.label || '').trim().toLowerCase();
+    const normalizedUrl = (child.url || '').trim().toLowerCase();
+
+    return (
+      normalizedLabel === 'tags' ||
+      normalizedUrl.includes('/superset/tags') ||
+      normalizedUrl.includes('tagmodelview')
+    );
+  };
+
   // Menu items that should go into settings dropdown
   const settingsMenus = {
     Data: true,
@@ -2157,6 +2173,10 @@ export default function MenuWrapper({ data, ...rest }: MenuProps) {
     // Filter childs
     if (item.childs) {
       item.childs.forEach((child: MenuObjectChildProps | string) => {
+        if (settingsMenus.hasOwnProperty(item.name) && isHiddenSettingsChild(child)) {
+          return;
+        }
+
         if (typeof child === 'string') {
           children.push(child);
         } else if ((child as MenuObjectChildProps).label) {

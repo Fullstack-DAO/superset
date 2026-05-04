@@ -16,55 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { TreeSelect } from 'antd';
-import {
-  FeatureFlag,
-  isFeatureEnabled,
-  styled,
-  t,
-  useTheme,
-} from '@superset-ui/core';
-import { CardStyles } from 'src/views/CRUD/utils';
-import { AntdDropdown } from 'src/components';
-import { Menu } from 'src/components/Menu';
-import ListViewCard from 'src/components/ListViewCard';
-import Icons from 'src/components/Icons';
-import FacePile from 'src/components/FacePile';
-import FaveStar from 'src/components/FaveStar';
-import { Input } from 'src/components/Input';
-import { TagsList } from 'src/components/Tags';
-import { FormLabel } from 'src/components/Form';
-import Modal from 'src/components/Modal';
+import { FeatureFlag, isFeatureEnabled, styled, t } from '@superset-ui/core';
+
 import Button from 'src/components/Button';
+import { FormLabel } from 'src/components/Form';
+import { Input } from 'src/components/Input';
+import Modal from 'src/components/Modal';
+import { TagsList } from 'src/components/Tags';
 import Tag from 'src/types/TagType';
+import { Dashboard } from 'src/views/CRUD/types';
 import {
   addTag,
   deleteTaggedObjects,
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
-import { Dashboard } from 'src/views/CRUD/types';
 import {
+  DashboardFolder,
   syncDashboardFoldersForDashboard,
 } from 'src/features/dashboards/folders/api';
-import useDashboardFolders from 'src/features/dashboards/folders/useDashboardFolders';
 import {
   buildFolderTreeSelectData,
   buildFolderTreeSelectValues,
   getFolderExpandedKeys,
 } from 'src/features/folders/utils';
-
-const StyledCardStyles = styled(CardStyles)`
-  [data-test='styled-card'] {
-    border-radius: 12px;
-    box-shadow: 0px 4px 12px 0px rgba(57, 47, 113, 0.1);
-  }
-
-  [data-test='styled-card']:hover {
-    box-shadow: 0px 4px 12px 0px rgba(57, 47, 113, 0.1);
-  }
-`;
 
 type FolderSelectValue = {
   value: string;
@@ -86,6 +68,8 @@ const FolderTagSelect = styled(TreeSelect as any)`
 `;
 
 const FolderTagModalContent = styled.div`
+  min-width: 280px;
+
   .folder-tag-dashboard-name {
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   }
@@ -95,38 +79,14 @@ const FolderTagModalContent = styled.div`
   }
 `;
 
-const CardMetaRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${({ theme }) => theme.gridUnit * 2}px;
-  min-height: ${({ theme }) => theme.gridUnit * 7}px;
-  width: 100%;
-
-  .card-meta-left {
-    flex-shrink: 0;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .card-meta-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex: 1 1 auto;
-    min-width: 0;
-    margin-left: auto;
-    min-height: ${({ theme }) => theme.gridUnit * 5}px;
-    overflow: hidden;
-  }
+const TagCell = styled.div<{ clickable: boolean }>`
+  min-width: 0;
+  cursor: ${({ clickable }) => (clickable ? 'pointer' : 'default')};
 
   .tag-list {
     min-width: 0;
     overflow: hidden;
     align-items: center;
-    justify-content: flex-end;
     min-height: ${({ theme }) => theme.gridUnit * 5}px;
     flex-wrap: nowrap;
 
@@ -163,7 +123,9 @@ const EmptyFolderTagTrigger = styled.span<{ clickable: boolean }>`
     background-color: ${
       clickable ? theme.colors.primary.light5 : theme.colors.grayscale.light5
     };
-    color: ${clickable ? theme.colors.primary.base : theme.colors.grayscale.base};
+    color: ${
+      clickable ? theme.colors.primary.base : theme.colors.grayscale.base
+    };
     cursor: ${clickable ? 'pointer' : 'default'};
     font-size: ${theme.typography.sizes.s}px;
     white-space: nowrap;
@@ -180,28 +142,6 @@ const EmptyFolderTagTrigger = styled.span<{ clickable: boolean }>`
     }
   `}
 `;
-
-type DashboardPermissions = {
-  can_delete: boolean;
-  can_export: boolean;
-  can_write: boolean;
-};
-
-interface DashboardCardProps {
-  isChart?: boolean;
-  dashboard: Dashboard;
-  hasPerm: (name: string) => boolean;
-  permissions?: DashboardPermissions;
-  bulkSelectEnabled: boolean;
-  loading: boolean;
-  openDashboardEditModal?: (d: Dashboard) => void;
-  saveFavoriteStatus: (id: number, isStarred: boolean) => void;
-  favoriteStatus: boolean;
-  userId?: string | number;
-  showThumbnails?: boolean;
-  handleBulkDashboardExport: (dashboardsToExport: Dashboard[]) => void;
-  onDelete: (dashboard: Dashboard) => void;
-}
 
 type FolderTagModalFooterProps = {
   onCancel: () => void;
@@ -231,39 +171,48 @@ type DashboardWithTags = Dashboard & {
   tags?: Tag[];
 };
 
-function DashboardCard({
+interface DashboardFolderTagCellProps {
+  dashboard: DashboardWithTags;
+  canEdit: boolean;
+  dashboardFolders: DashboardFolder[];
+  refreshDashboardFolders: (force?: boolean) => Promise<DashboardFolder[]>;
+  onOpenRequest?: (dashboard: DashboardWithTags, canEdit: boolean) => void;
+  hideTrigger?: boolean;
+  openOnMount?: boolean;
+  onClose?: () => void;
+}
+
+export default function DashboardFolderTagCell({
   dashboard,
-  hasPerm,
-  permissions,
-  bulkSelectEnabled,
-  userId,
-  openDashboardEditModal,
-  favoriteStatus,
-  saveFavoriteStatus,
-  showThumbnails,
-  handleBulkDashboardExport,
-  onDelete,
-}: DashboardCardProps) {
-  const dashboardWithTags = dashboard as DashboardWithTags;
-  const history = useHistory();
+  canEdit,
+  dashboardFolders,
+  refreshDashboardFolders,
+  onOpenRequest,
+  hideTrigger = false,
+  openOnMount = false,
+  onClose,
+}: DashboardFolderTagCellProps) {
   const isTaggingEnabled = isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM);
-  const canEdit = permissions?.can_write ?? hasPerm('can_write');
-  const canDelete = permissions?.can_delete ?? hasPerm('can_write');
-  const canExport = permissions?.can_export ?? hasPerm('can_export');
+  const isMountedRef = useRef(true);
+  const didAutoOpenRef = useRef(false);
   const [dashboardTags, setDashboardTags] = useState<Tag[]>(
-    dashboardWithTags.tags || [],
+    dashboard.tags || [],
   );
-  const { dashboardFolders, refreshDashboardFolders } = useDashboardFolders();
   const [showFolderTagModal, setShowFolderTagModal] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [expandedFolderKeys, setExpandedFolderKeys] = useState<string[]>([]);
   const [isSavingFolderTags, setIsSavingFolderTags] = useState(false);
-  const canManageFolders = canEdit;
-  const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
 
   useEffect(() => {
-    setDashboardTags(dashboardWithTags.tags || []);
-  }, [dashboardWithTags.tags]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setDashboardTags(dashboard.tags || []);
+  }, [dashboard.tags]);
 
   const currentFolders = useMemo(
     () =>
@@ -277,6 +226,24 @@ function DashboardCard({
           fullPath: folder.fullPath,
         })),
     [dashboard.id, dashboardFolders],
+  );
+
+  const visibleTags = useMemo(
+    () =>
+      currentFolders.map(folder => {
+        const folderTagName = folder.fullPath || folder.name;
+        const existingTag = dashboardTags.find(
+          tag => tag.name === folderTagName || tag.name === folder.name,
+        );
+        return {
+          ...existingTag,
+          id: existingTag?.id ?? folder.id,
+          name: folderTagName,
+          type: existingTag?.type ?? 1,
+          toolTipTitle: folderTagName,
+        } as Tag;
+      }),
+    [currentFolders, dashboardTags],
   );
 
   const folderOptions = useMemo(
@@ -300,47 +267,95 @@ function DashboardCard({
     }
   }, [defaultExpandedFolderKeys, showFolderTagModal]);
 
-  const getFolderTagName = useCallback(
-    (folder: { name: string; fullPath?: string }) => folder.fullPath || folder.name,
-    [],
+  const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
+  const isInteractive = canEdit;
+
+  const syncLatestFolders = useCallback(async () => {
+    try {
+      const latestFolders = await refreshDashboardFolders();
+      if (!isMountedRef.current) {
+        return;
+      }
+      setSelectedFolderIds(
+        latestFolders
+          .filter(folder =>
+            folder.items.some(item => item.dashboardId === dashboard.id),
+          )
+          .map(folder => folder.id),
+      );
+    } catch {
+      // Keep the modal responsive even if folder refresh fails.
+    }
+  }, [dashboard.id, refreshDashboardFolders]);
+
+  const openFolderTagModal = useCallback(
+    async (event?: React.MouseEvent<HTMLElement>) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+
+      if (onOpenRequest) {
+        onOpenRequest(dashboard, canEdit);
+        return;
+      }
+
+      setShowFolderTagModal(true);
+      setSelectedFolderIds(currentFolders.map(folder => folder.id));
+      await syncLatestFolders();
+    },
+    [canEdit, currentFolders, dashboard, onOpenRequest, syncLatestFolders],
   );
 
-  const visibleTags = useMemo(
-    () =>
-      currentFolders.map(folder => {
-        const folderTagName = getFolderTagName(folder);
-        const existingTag = dashboardTags.find(
-          tag => tag.name === folderTagName || tag.name === folder.name,
-        );
-        return {
-          ...existingTag,
-          id: existingTag?.id ?? folder.id,
-          name: folderTagName,
-          type: existingTag?.type ?? 1,
-          toolTipTitle: folderTagName,
-        } as Tag;
-      }),
-    [currentFolders, dashboardTags, getFolderTagName],
-  );
-
-  const addDashboardFolderTag = useCallback(async (dashboardId: number, folderName: string) => {
-    if (!isTaggingEnabled || !folderName.trim()) {
+  useEffect(() => {
+    if (!openOnMount) {
+      didAutoOpenRef.current = false;
       return;
     }
 
-    await new Promise<void>((resolve, reject) => {
-      addTag(
-        {
-          objectType: OBJECT_TYPES.DASHBOARD,
-          objectId: dashboardId,
-          includeTypes: false,
-        },
-        folderName,
-        () => resolve(),
-        response => reject(response),
-      );
-    });
-  }, [isTaggingEnabled]);
+    if (didAutoOpenRef.current) {
+      return;
+    }
+
+    didAutoOpenRef.current = true;
+    setShowFolderTagModal(true);
+    setSelectedFolderIds(currentFolders.map(folder => folder.id));
+    syncLatestFolders();
+  }, [currentFolders, openOnMount, syncLatestFolders]);
+
+  const closeFolderTagModal = useCallback(() => {
+    setShowFolderTagModal(false);
+    setSelectedFolderIds(currentFolders.map(folder => folder.id));
+    onClose?.();
+  }, [currentFolders, onClose]);
+
+  const stopModalClickPropagation = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [],
+  );
+
+  const addDashboardFolderTag = useCallback(
+    async (dashboardId: number, folderName: string) => {
+      if (!isTaggingEnabled || !folderName.trim()) {
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        addTag(
+          {
+            objectType: OBJECT_TYPES.DASHBOARD,
+            objectId: dashboardId,
+            includeTypes: false,
+          },
+          folderName,
+          () => resolve(),
+          response => reject(response),
+        );
+      });
+    },
+    [isTaggingEnabled],
+  );
 
   const deleteDashboardFolderTag = useCallback(
     async (dashboardId: number, folderName: string) => {
@@ -363,51 +378,28 @@ function DashboardCard({
     [isTaggingEnabled],
   );
 
-  const openFolderTagModal = useCallback(
-    async (event?: React.MouseEvent<HTMLSpanElement>) => {
-      event?.preventDefault();
-      event?.stopPropagation();
-      const latestFolders = await refreshDashboardFolders();
-      setSelectedFolderIds(
-        latestFolders
-          .filter(folder =>
-            folder.items.some(item => item.dashboardId === dashboard.id),
-          )
-          .map(folder => folder.id),
-      );
-      setShowFolderTagModal(true);
-    },
-    [dashboard.id, refreshDashboardFolders],
-  );
-
-  const closeFolderTagModal = useCallback(() => {
-    setShowFolderTagModal(false);
-    setSelectedFolderIds(currentFolders.map(folder => folder.id));
-  }, [currentFolders]);
-
-  const stopModalClickPropagation = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [],
-  );
-
   const saveFolderTags = useCallback(async () => {
     const normalizedNextFolderIds = Array.from(
       new Set(selectedFolderIds.map(id => id.trim()).filter(Boolean)),
     );
-    const previousFolderNames = currentFolders.map(getFolderTagName);
-    const currentMenuFolderNames = dashboardFolders.map(getFolderTagName);
-    const existingDashboardTagNames = new Set(dashboardTags.map(tag => tag.name));
+    const previousFolderNames = currentFolders.map(
+      folder => folder.fullPath || folder.name,
+    );
+    const currentMenuFolderNames = dashboardFolders.map(
+      folder => folder.fullPath || folder.name,
+    );
+    const existingDashboardTagNames = new Set(
+      dashboardTags.map(tag => tag.name),
+    );
     const nextFolderNames = dashboardFolders
       .filter(folder => normalizedNextFolderIds.includes(folder.id))
-      .map(getFolderTagName);
+      .map(folder => folder.fullPath || folder.name);
     const addedFolderNames = nextFolderNames.filter(
       name => !previousFolderNames.includes(name),
     );
     const removedFolderNames = previousFolderNames.filter(
-      name => !nextFolderNames.includes(name) && existingDashboardTagNames.has(name),
+      name =>
+        !nextFolderNames.includes(name) && existingDashboardTagNames.has(name),
     );
     const staleFolderTagNames = dashboardTags
       .filter(
@@ -456,8 +448,9 @@ function DashboardCard({
         ...nextFolderTags,
       ]);
       setShowFolderTagModal(false);
+      onClose?.();
     } catch {
-      // ignore toast-less failures here; menu/list state remains unchanged
+      // Keep behavior aligned with card interactions.
     } finally {
       setIsSavingFolderTags(false);
     }
@@ -468,135 +461,61 @@ function DashboardCard({
     dashboardTags,
     dashboardFolders,
     deleteDashboardFolderTag,
-    getFolderTagName,
+    onClose,
     selectedFolderIds,
   ]);
 
-  const theme = useTheme();
-  const menu = (
-    <Menu>
-      {canDelete && (
-        <Menu.Item>
-          <div
-            role="button"
-            tabIndex={0}
-            className="action-button"
-            onClick={() => onDelete(dashboard)}
-            data-test="dashboard-card-option-delete-button"
-          >
-            <Icons.Trash iconSize="l" /> {t('Delete')}
-          </div>
-        </Menu.Item>
-      )}
-      {canExport && (
-        <Menu.Item>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => handleBulkDashboardExport([dashboard])}
-            className="action-button"
-            data-test="dashboard-card-option-export-button"
-          >
-            <Icons.Share iconSize="l" /> {t('Export')}
-          </div>
-        </Menu.Item>
-      )}
-      {canEdit && openDashboardEditModal && (
-        <Menu.Item>
-          <div
-            role="button"
-            tabIndex={0}
-            className="action-button"
-            onClick={() => openDashboardEditModal?.(dashboard)}
-            data-test="dashboard-card-option-edit-button"
-          >
-            <Icons.EditAlt iconSize="l" data-test="edit-alt" /> {t('Edit')}
-          </div>
-        </Menu.Item>
-      )}
-    </Menu>
-  );
   return (
-    <StyledCardStyles
-      onClick={() => {
-        if (!bulkSelectEnabled && !showFolderTagModal) {
-          history.push(dashboard.url);
-        }
-      }}
-    >
-      <ListViewCard
-        loading={dashboard.loading || false}
-        title={dashboard.dashboard_title}
-        certifiedBy={dashboard.certified_by}
-        certificationDetails={dashboard.certification_details}
-        // cover={
-        //   !isFeatureEnabled(FeatureFlag.THUMBNAILS) || !showThumbnails ? (
-        //     <></>
-        //   ) : null
-        // }
-        url={bulkSelectEnabled ? undefined : dashboard.url}
-        linkComponent={Link}
-        // imgURL={dashboard.thumbnail_url}
-        imgFallbackURL="/static/assets/images/dashboard-list-icon.svg"
-        description={
-          <CardMetaRow>
-            <span className="card-meta-left">
-              {`${dashboard.changed_on_delta_humanized}`}
-            </span>
-            <span className="card-meta-right">
-              {visibleTags.length ? (
-                <TagsList
-                  tags={visibleTags.map(tag => ({
-                    ...tag,
-                    onClick: canManageFolders ? openFolderTagModal : undefined,
-                  }))}
-                  maxTags={3}
-                />
-              ) : (
-                <EmptyFolderTagTrigger
-                  clickable={canManageFolders}
-                  role={canManageFolders ? 'button' : undefined}
-                  tabIndex={canManageFolders ? 0 : undefined}
-                  onClick={canManageFolders ? openFolderTagModal : undefined}
-                  onKeyDown={
-                    canManageFolders
-                      ? event => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            openFolderTagModal(
-                              event as unknown as React.MouseEvent<HTMLSpanElement>,
-                            );
-                          }
-                        }
-                      : undefined
+    <>
+      {!hideTrigger && (
+        <TagCell
+          clickable={isInteractive}
+          role={isInteractive ? 'button' : undefined}
+          tabIndex={isInteractive ? 0 : undefined}
+          onClick={isInteractive ? openFolderTagModal : undefined}
+          onKeyDown={
+            isInteractive
+              ? event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    openFolderTagModal(
+                      event as unknown as React.MouseEvent<HTMLElement>,
+                    );
                   }
-                >
-                  {emptyTagDisplay}
-                </EmptyFolderTagTrigger>
-              )}
-            </span>
-          </CardMetaRow>
-        }
-        coverLeft={<FacePile users={dashboard.owners || []} />}
-        actions={
-          <ListViewCard.Actions
-            onClick={e => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-          >
-            {userId && (
-              <FaveStar
-                itemId={dashboard.id}
-                saveFaveStar={saveFavoriteStatus}
-                isStarred={favoriteStatus}
-              />
-            )}
-            <AntdDropdown overlay={menu}>
-              <Icons.MoreHoriz iconColor={theme.colors.grayscale.base} iconSize="m" />
-            </AntdDropdown>
-          </ListViewCard.Actions>
-        }
-      />
+                }
+              : undefined
+          }
+        >
+          {visibleTags.length ? (
+            <TagsList
+              tags={visibleTags.map(tag => ({
+                ...tag,
+                onClick: canEdit ? openFolderTagModal : undefined,
+              }))}
+              maxTags={3}
+            />
+          ) : (
+            <EmptyFolderTagTrigger
+              clickable={canEdit}
+              role={canEdit ? 'button' : undefined}
+              tabIndex={canEdit ? 0 : undefined}
+              onClick={canEdit ? openFolderTagModal : undefined}
+              onKeyDown={
+                canEdit
+                  ? event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        openFolderTagModal(
+                          event as unknown as React.MouseEvent<HTMLElement>,
+                        );
+                      }
+                    }
+                  : undefined
+              }
+            >
+              {emptyTagDisplay}
+            </EmptyFolderTagTrigger>
+          )}
+        </TagCell>
+      )}
       <Modal
         title={t('编辑所属分类')}
         show={showFolderTagModal}
@@ -642,7 +561,9 @@ function DashboardCard({
               setSelectedFolderIds(
                 Array.from(
                   new Set(
-                    (Array.isArray(value) ? value : [value]).map(item => item.value),
+                    (Array.isArray(value) ? value : [value]).map(
+                      item => item.value,
+                    ),
                   ),
                 ),
               )
@@ -653,8 +574,6 @@ function DashboardCard({
           />
         </FolderTagModalContent>
       </Modal>
-    </StyledCardStyles>
+    </>
   );
 }
-
-export default DashboardCard;

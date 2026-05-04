@@ -65,6 +65,7 @@ import {
 import CertifiedBadge from 'src/components/CertifiedBadge';
 // import { loadTags } from 'src/components/Tags/utils';
 import DashboardCard from 'src/features/dashboards/DashboardCard';
+import DashboardFolderTagCell from 'src/features/dashboards/components/DashboardFolderTagCell';
 import { DashboardStatus } from 'src/features/dashboards/types';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
@@ -112,18 +113,16 @@ interface DashboardListProps {
   };
 }
 
-export interface Dashboard {
+export interface Dashboard extends CRUDDashboard {
   changed_by_name: string;
-  changed_on_delta_humanized: string;
+  changed_on_delta_humanized?: string;
   changed_by: string;
-  dashboard_title: string;
-  id: number;
-  published: boolean;
-  url: string;
-  thumbnail_url: string;
   owners: Owner[];
-  tags: Tag[];
-  created_by: object;
+  tags?: Tag[];
+  created_by?: object;
+  slug?: string;
+  json_metadata?: string;
+  status?: DashboardStatus;
 }
 
 type FolderDashboardsState = {
@@ -175,7 +174,7 @@ function DashboardList(props: DashboardListProps) {
     () => new URLSearchParams(location.search).get(DASHBOARD_FOLDER_QUERY_KEY),
     [location.search],
   );
-  const { dashboardFolders } = useDashboardFolders();
+  const { dashboardFolders, refreshDashboardFolders } = useDashboardFolders();
   const selectedFolder = useMemo<DashboardFolder | null>(
     () =>
       dashboardFolders.find(folder => folder.id === selectedFolderId) ?? null,
@@ -378,7 +377,7 @@ function DashboardList(props: DashboardListProps) {
   );
   const activeFetchData = isFolderView ? fetchFolderDashboards : fetchData;
   const activeRefreshData = useCallback(
-    (provideConfig?: FetchDataConfig) => {
+    (provideConfig?: FetchDataConfig | null) => {
       if (isFolderView) {
         if (folderState.lastFetchDataConfig) {
           return fetchFolderDashboards(folderState.lastFetchDataConfig);
@@ -389,7 +388,7 @@ function DashboardList(props: DashboardListProps) {
         return null;
       }
 
-      return refreshData(provideConfig);
+      return refreshData(provideConfig || undefined);
     },
     [fetchFolderDashboards, folderState.lastFetchDataConfig, isFolderView, refreshData],
   );
@@ -397,6 +396,10 @@ function DashboardList(props: DashboardListProps) {
   const [dashboardToEdit, setDashboardToEdit] = useState<Dashboard | null>(
     null,
   );
+  const [dashboardCategoryTarget, setDashboardCategoryTarget] = useState<{
+    dashboard: Dashboard;
+    canEdit: boolean;
+  } | null>(null);
   const [dashboardToDelete, setDashboardToDelete] =
     useState<CRUDDashboard | null>(null);
 
@@ -479,7 +482,7 @@ function DashboardList(props: DashboardListProps) {
     });
 
     history.replace(
-      `/dashboard/list/?pageIndex=0&sortColumn=changed_on_delta_humanized&sortOrder=desc&viewMode=card&filters=${favoriteQuery}`,
+      `/dashboard/list/?pageIndex=0&sortColumn=changed_on_delta_humanized&sortOrder=desc&viewMode=table&filters=${favoriteQuery}`,
     );
   }, [history, location.pathname, location.search, user?.userId]);
 
@@ -669,6 +672,27 @@ function DashboardList(props: DashboardListProps) {
         hidden: true,
       },
       {
+        Cell: ({ row: { original } }: any) => {
+          const permissions = getResourcePermissions(original.id);
+
+          return (
+            <DashboardFolderTagCell
+              dashboard={original}
+              canEdit={permissions.can_write}
+              dashboardFolders={dashboardFolders}
+              refreshDashboardFolders={refreshDashboardFolders}
+              onOpenRequest={(dashboard, canEdit) =>
+                setDashboardCategoryTarget({ dashboard, canEdit })
+              }
+            />
+          );
+        },
+        Header: t('分类'),
+        accessor: 'folder_tag',
+        disableSortBy: true,
+        size: 'xxl',
+      },
+      {
         Cell: ({
           row: {
             original: { owners = [] },
@@ -791,7 +815,10 @@ function DashboardList(props: DashboardListProps) {
       activeRefreshData,
       addSuccessToast,
       addDangerToast,
+      dashboardFolders,
       getResourcePermissions,
+      refreshDashboardFolders,
+      setDashboardCategoryTarget,
     ],
   );
 
@@ -941,7 +968,11 @@ function DashboardList(props: DashboardListProps) {
       bulkSelectEnabled,
       favoriteStatus,
       hasPerm,
+      handleBulkDashboardExport,
       loading,
+      getResourcePermissions,
+      openDashboardEditModal,
+      setDashboardToDelete,
       user?.userId,
       saveFavoriteStatus,
       userKey,
@@ -1135,13 +1166,7 @@ function DashboardList(props: DashboardListProps) {
                       : isFeatureEnabled(FeatureFlag.THUMBNAILS)
                   }
                   renderCard={renderCard}
-                  defaultViewMode={
-                    !screens.md
-                      ? 'card'
-                      : isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
-                      ? 'card'
-                      : 'table'
-                  }
+                  defaultViewMode="table"
                   enableBulkTag
                   bulkTagResourceName="dashboard"
                 />
@@ -1172,6 +1197,17 @@ function DashboardList(props: DashboardListProps) {
           setSSHTunnelPrivateKeyPasswordFields
         }
       />
+      {dashboardCategoryTarget && (
+        <DashboardFolderTagCell
+          dashboard={dashboardCategoryTarget.dashboard}
+          canEdit={dashboardCategoryTarget.canEdit}
+          dashboardFolders={dashboardFolders}
+          refreshDashboardFolders={refreshDashboardFolders}
+          hideTrigger
+          openOnMount
+          onClose={() => setDashboardCategoryTarget(null)}
+        />
+      )}
 
       {preparingExport && <Loading />}
     </>

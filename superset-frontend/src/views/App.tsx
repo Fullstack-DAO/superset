@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { Suspense, useEffect, useMemo } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { hot } from 'react-hot-loader/root';
 import {
   BrowserRouter as Router,
   Switch,
   Route,
   useLocation,
+  matchPath,
 } from 'react-router-dom';
 import { bindActionCreators } from 'redux';
 import { styled } from '@superset-ui/core';
@@ -31,6 +32,7 @@ import { GlobalStyles } from 'src/GlobalStyles';
 import ErrorBoundary from 'src/components/ErrorBoundary';
 import Loading from 'src/components/Loading';
 import Menu from 'src/features/home/Menu';
+import { URL_PARAMS } from 'src/constants';
 import getBootstrapData from 'src/utils/getBootstrapData';
 import ToastContainer from 'src/components/MessageToasts/ToastContainer';
 import setupApp from 'src/setup/setupApp';
@@ -39,6 +41,7 @@ import { routes, isFrontendRoute } from 'src/views/routes';
 import { Logger, LOG_ACTIONS_SPA_NAVIGATION } from 'src/logger/LogUtils';
 import setupExtensions from 'src/setup/setupExtensions';
 import { logEvent } from 'src/logger/actions';
+import { getUrlParam } from 'src/utils/urlUtils';
 import { store } from 'src/views/store';
 import { RootContextProviders } from './RootContextProviders';
 import { ScrollToTop } from './ScrollToTop';
@@ -53,9 +56,11 @@ let lastLocationPathname: string;
 
 const HIDE_MENU_PATHS = new Set(['/superset/app/dashboard']);
 const MENU_WIDTH_STORAGE_KEY = 'superset.menu.width';
+const MENU_COLLAPSED_STORAGE_KEY = 'superset.menu.collapsed';
 const DEFAULT_MENU_WIDTH = 220;
 const MIN_MENU_WIDTH = 200;
 const MAX_MENU_WIDTH = 800;
+const COLLAPSED_MENU_WIDTH = 72;
 
 const boundActions = bindActionCreators({ logEvent }, store.dispatch);
 
@@ -64,6 +69,13 @@ const normalizePathname = (pathname: string) =>
 
 const shouldHideMenu = (pathname: string) =>
   HIDE_MENU_PATHS.has(normalizePathname(pathname));
+
+const isDashboardDetailPath = (pathname: string) =>
+  !!matchPath(pathname, {
+    path: '/superset/dashboard/:idOrSlug/',
+    exact: true,
+    strict: false,
+  });
 
 const getInitialMenuWidth = () => {
   const savedWidth = Number(
@@ -80,6 +92,9 @@ const getInitialMenuWidth = () => {
 
   return DEFAULT_MENU_WIDTH;
 };
+
+const getInitialMenuCollapsed = () =>
+  window.localStorage.getItem(MENU_COLLAPSED_STORAGE_KEY) === 'true';
 
 const LocationPathnameLogger = () => {
   const location = useLocation();
@@ -98,10 +113,18 @@ const LocationPathnameLogger = () => {
   return <></>;
 };
 
-const MenuWrapper = () => (
+const MenuWrapper = ({
+  isCollapsed,
+  onToggleCollapse,
+}: {
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}) => (
   <Menu
     data={bootstrapData.common.menu_data}
     isFrontendRoute={isFrontendRoute}
+    isCollapsed={isCollapsed}
+    onToggleCollapse={onToggleCollapse}
   />
 );
 
@@ -174,8 +197,13 @@ const RoutesView = () => (
 
 const AppLayout = () => {
   const location = useLocation();
-  const hideMenu = shouldHideMenu(location.pathname);
+  const standalone = !!getUrlParam(URL_PARAMS.standalone);
+  const hideMenu =
+    shouldHideMenu(location.pathname) ||
+    (isDashboardDetailPath(location.pathname) && standalone);
   const initialMenuWidth = useMemo(() => getInitialMenuWidth(), []);
+  const [menuWidth, setMenuWidth] = useState(initialMenuWidth);
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(getInitialMenuCollapsed);
 
   const handleMenuResizeFinished = (nextWidth: number) => {
     const normalizedWidth = Math.max(
@@ -183,7 +211,16 @@ const AppLayout = () => {
       Math.min(MAX_MENU_WIDTH, Number(nextWidth) || DEFAULT_MENU_WIDTH),
     );
 
+    setMenuWidth(normalizedWidth);
     window.localStorage.setItem(MENU_WIDTH_STORAGE_KEY, `${normalizedWidth}`);
+  };
+
+  const toggleMenuCollapse = () => {
+    setIsMenuCollapsed(current => {
+      const next = !current;
+      window.localStorage.setItem(MENU_COLLAPSED_STORAGE_KEY, `${next}`);
+      return next;
+    });
   };
 
   return (
@@ -195,14 +232,18 @@ const AppLayout = () => {
           <SplitPane
             split="vertical"
             primary="first"
-            minSize={MIN_MENU_WIDTH}
-            maxSize={MAX_MENU_WIDTH}
-            defaultSize={initialMenuWidth}
+            minSize={isMenuCollapsed ? COLLAPSED_MENU_WIDTH : MIN_MENU_WIDTH}
+            maxSize={isMenuCollapsed ? COLLAPSED_MENU_WIDTH : MAX_MENU_WIDTH}
+            size={isMenuCollapsed ? COLLAPSED_MENU_WIDTH : menuWidth}
+            allowResize={!isMenuCollapsed}
             onDragFinished={handleMenuResizeFinished}
             pane1Style={{ overflow: 'hidden' }}
             pane2Style={{ overflow: 'hidden' }}
           >
-            <MenuWrapper />
+            <MenuWrapper
+              isCollapsed={isMenuCollapsed}
+              onToggleCollapse={toggleMenuCollapse}
+            />
             <RoutesView />
           </SplitPane>
         </SplitPaneWrapper>

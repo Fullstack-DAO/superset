@@ -31,6 +31,8 @@ export type ChartFolderItem = {
 export type ChartFolder = {
   id: string;
   name: string;
+  parentId: string | null;
+  fullPath: string;
   items: ChartFolderItem[];
 };
 
@@ -48,7 +50,14 @@ type ChartFolderApiItem = {
 type ChartFolderApi = {
   id: number;
   name: string;
+  parent_id: number | null;
+  full_path: string;
   items: ChartFolderApiItem[];
+};
+
+type ChartFolderPayload = {
+  name: string;
+  parentId?: string | null;
 };
 
 type FetchChartFoldersOptions = {
@@ -68,6 +77,8 @@ let chartFoldersRequest: Promise<ChartFolder[]> | null = null;
 const normalizeChartFolder = (folder: ChartFolderApi): ChartFolder => ({
   id: String(folder.id),
   name: folder.name,
+  parentId: folder.parent_id == null ? null : String(folder.parent_id),
+  fullPath: folder.full_path,
   items: (folder.items || []).map(item => ({
     id: String(item.id),
     chartId: item.chart_id,
@@ -151,12 +162,15 @@ export const refreshAndBroadcastChartFolders = async () =>
   fetchChartFolders({ force: true, broadcast: true });
 
 export const createChartFolder = async (
-  name: string,
+  { name, parentId = null }: ChartFolderPayload,
   options: MutateChartFolderOptions = {},
 ) => {
   await SupersetClient.post({
     endpoint: `${CHART_FOLDERS_API_ENDPOINT}folder`,
-    jsonPayload: { name },
+    jsonPayload: {
+      name,
+      parent_id: parentId ? parseFolderId(parentId) : null,
+    },
   });
   if (options.skipRefresh) {
     return getChartFoldersCache() || [];
@@ -166,12 +180,15 @@ export const createChartFolder = async (
 
 export const renameChartFolder = async (
   folderId: string,
-  name: string,
+  { name, parentId = null }: ChartFolderPayload,
   options: MutateChartFolderOptions = {},
 ) => {
   await SupersetClient.put({
     endpoint: `${CHART_FOLDERS_API_ENDPOINT}folder/${parseFolderId(folderId)}`,
-    jsonPayload: { name },
+    jsonPayload: {
+      name,
+      parent_id: parentId ? parseFolderId(parentId) : null,
+    },
   });
   if (options.skipRefresh) {
     return getChartFoldersCache() || [];

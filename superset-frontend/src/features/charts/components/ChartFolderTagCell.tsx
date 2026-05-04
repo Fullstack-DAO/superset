@@ -16,58 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TreeSelect } from 'antd';
-import {
-  isFeatureEnabled,
-  FeatureFlag,
-  styled,
-  t,
-  useTheme,
-} from '@superset-ui/core';
-import { Link, useHistory } from 'react-router-dom';
-import ConfirmStatusChange from 'src/components/ConfirmStatusChange';
-import Icons from 'src/components/Icons';
-import Chart from 'src/types/Chart';
+import { FeatureFlag, isFeatureEnabled, styled, t } from '@superset-ui/core';
 
-import ListViewCard from 'src/components/ListViewCard';
-import Label from 'src/components/Label';
-import { AntdDropdown } from 'src/components';
-import { Menu } from 'src/components/Menu';
-import FaveStar from 'src/components/FaveStar';
-import FacePile from 'src/components/FacePile';
-import Modal from 'src/components/Modal';
 import Button from 'src/components/Button';
 import { FormLabel } from 'src/components/Form';
 import { Input } from 'src/components/Input';
+import Modal from 'src/components/Modal';
 import { TagsList } from 'src/components/Tags';
+import Chart from 'src/types/Chart';
 import TagType from 'src/types/TagType';
 import {
   addTag,
   deleteTaggedObjects,
   OBJECT_TYPES,
 } from 'src/features/tags/tags';
-import { handleChartDelete, CardStyles } from 'src/views/CRUD/utils';
 import {
+  ChartFolder,
   syncChartFoldersForChart,
 } from 'src/features/charts/folders/api';
-import useChartFolders from 'src/features/charts/folders/useChartFolders';
 import {
   buildFolderTreeSelectData,
   buildFolderTreeSelectValues,
   getFolderExpandedKeys,
 } from 'src/features/folders/utils';
-
-const StyledCardStyles = styled(CardStyles)`
-  [data-test='styled-card'] {
-    border-radius: 12px;
-    box-shadow: 0px 4px 12px 0px rgba(57, 47, 113, 0.1);
-  }
-
-  [data-test='styled-card']:hover {
-    box-shadow: 0px 4px 12px 0px rgba(57, 47, 113, 0.1);
-  }
-`;
 
 type FolderSelectValue = {
   value: string;
@@ -89,6 +62,8 @@ const FolderSelect = styled(TreeSelect as any)`
 `;
 
 const FolderModalContent = styled.div`
+  min-width: 280px;
+
   .folder-chart-name {
     margin-bottom: ${({ theme }) => theme.gridUnit * 4}px;
   }
@@ -102,38 +77,14 @@ const FolderModalContent = styled.div`
   }
 `;
 
-const CardMetaRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${({ theme }) => theme.gridUnit * 2}px;
-  min-height: ${({ theme }) => theme.gridUnit * 7}px;
-  width: 100%;
-
-  .card-meta-left {
-    flex-shrink: 0;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .card-meta-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex: 1 1 auto;
-    min-width: 0;
-    margin-left: auto;
-    min-height: ${({ theme }) => theme.gridUnit * 5}px;
-    overflow: hidden;
-  }
+const TagCell = styled.div<{ clickable: boolean }>`
+  min-width: 0;
+  cursor: ${({ clickable }) => (clickable ? 'pointer' : 'default')};
 
   .tag-list {
     min-width: 0;
     overflow: hidden;
     align-items: center;
-    justify-content: flex-end;
     min-height: ${({ theme }) => theme.gridUnit * 5}px;
     flex-wrap: nowrap;
 
@@ -170,7 +121,9 @@ const EmptyFolderTrigger = styled.span<{ clickable: boolean }>`
     background-color: ${
       clickable ? theme.colors.primary.light5 : theme.colors.grayscale.light5
     };
-    color: ${clickable ? theme.colors.primary.base : theme.colors.grayscale.base};
+    color: ${
+      clickable ? theme.colors.primary.base : theme.colors.grayscale.base
+    };
     cursor: ${clickable ? 'pointer' : 'default'};
     font-size: ${theme.typography.sizes.s}px;
     white-space: nowrap;
@@ -187,12 +140,6 @@ const EmptyFolderTrigger = styled.span<{ clickable: boolean }>`
     }
   `}
 `;
-
-type ChartPermissions = {
-  can_delete: boolean;
-  can_export: boolean;
-  can_write: boolean;
-};
 
 type FolderModalFooterProps = {
   onCancel: () => void;
@@ -218,56 +165,42 @@ const FolderModalFooter = ({
   </div>
 );
 
-interface ChartCardProps {
+interface ChartFolderTagCellProps {
   chart: Chart;
-  hasPerm: (perm: string) => boolean;
-  permissions?: ChartPermissions;
-  openChartEditModal: (chart: Chart) => void;
-  bulkSelectEnabled: boolean;
-  addDangerToast: (msg: string) => void;
-  addSuccessToast: (msg: string) => void;
-  refreshData: () => void;
-  loading?: boolean;
-  saveFavoriteStatus: (id: number, isStarred: boolean) => void;
-  favoriteStatus: boolean;
-  chartFilter?: string;
-  userId?: string | number;
-  showThumbnails?: boolean;
-  handleBulkChartExport: (chartsToExport: Chart[]) => void;
+  canEdit: boolean;
+  chartFolders: ChartFolder[];
+  refreshChartFolders: (force?: boolean) => Promise<ChartFolder[]>;
+  onOpenRequest?: (chart: Chart, canEdit: boolean) => void;
+  hideTrigger?: boolean;
+  openOnMount?: boolean;
+  onClose?: () => void;
 }
 
-export default function ChartCard({
+export default function ChartFolderTagCell({
   chart,
-  hasPerm,
-  permissions,
-  openChartEditModal,
-  bulkSelectEnabled,
-  addDangerToast,
-  addSuccessToast,
-  refreshData,
-  loading,
-  showThumbnails,
-  saveFavoriteStatus,
-  favoriteStatus,
-  chartFilter,
-  userId,
-  handleBulkChartExport,
-}: ChartCardProps) {
-  const history = useHistory();
+  canEdit,
+  chartFolders,
+  refreshChartFolders,
+  onOpenRequest,
+  hideTrigger = false,
+  openOnMount = false,
+  onClose,
+}: ChartFolderTagCellProps) {
   const isTaggingEnabled = isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM);
-  const canEdit = permissions?.can_write ?? hasPerm('can_write');
-  const canDelete = permissions?.can_delete ?? hasPerm('can_write');
-  const canExport =
-    permissions?.can_export ??
-    (hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT));
-  const theme = useTheme();
-  const { chartFolders, refreshChartFolders } = useChartFolders();
+  const isMountedRef = useRef(true);
+  const didAutoOpenRef = useRef(false);
   const [chartTags, setChartTags] = useState<TagType[]>(chart.tags || []);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [expandedFolderKeys, setExpandedFolderKeys] = useState<string[]>([]);
   const [isSavingFolders, setIsSavingFolders] = useState(false);
-  const canManageFolders = canEdit;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setChartTags(chart.tags || []);
@@ -283,6 +216,24 @@ export default function ChartCard({
           fullPath: folder.fullPath,
         })),
     [chart.id, chartFolders],
+  );
+
+  const visibleTags = useMemo(
+    () =>
+      currentFolders.map(folder => {
+        const folderTagName = folder.fullPath || folder.name;
+        const existingTag = chartTags.find(
+          tag => tag.name === folderTagName || tag.name === folder.name,
+        );
+        return {
+          ...existingTag,
+          id: existingTag?.id ?? folder.id,
+          name: folderTagName,
+          type: existingTag?.type ?? 1,
+          toolTipTitle: folderTagName,
+        } as TagType;
+      }),
+    [chartTags, currentFolders],
   );
 
   const folderOptions = useMemo(
@@ -306,47 +257,64 @@ export default function ChartCard({
     }
   }, [defaultExpandedFolderKeys, showFolderModal]);
 
-  const getFolderTagName = useCallback(
-    (folder: { name: string; fullPath?: string }) => folder.fullPath || folder.name,
-    [],
-  );
-
-  const visibleTags = useMemo(
-    () =>
-      currentFolders.map(folder => {
-        const folderTagName = getFolderTagName(folder);
-        const existingTag = chartTags.find(
-          tag => tag.name === folderTagName || tag.name === folder.name,
-        );
-        return {
-          ...existingTag,
-          id: existingTag?.id ?? folder.id,
-          name: folderTagName,
-          type: existingTag?.type ?? 1,
-          toolTipTitle: folderTagName,
-        } as TagType;
-      }),
-    [chartTags, currentFolders, getFolderTagName],
-  );
-
+  const isInteractive = canEdit;
   const emptyTagDisplay = canEdit ? t('选择分类') : t('无分类');
 
-  const openFolderModal = useCallback(async (event?: React.MouseEvent<HTMLElement>) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    const latestFolders = await refreshChartFolders();
-    setSelectedFolderIds(
-      latestFolders
-        .filter(folder => folder.items.some(item => item.chartId === chart.id))
-        .map(folder => folder.id),
-    );
-    setShowFolderModal(true);
+  const syncLatestFolders = useCallback(async () => {
+    try {
+      const latestFolders = await refreshChartFolders();
+      if (!isMountedRef.current) {
+        return;
+      }
+      setSelectedFolderIds(
+        latestFolders
+          .filter(folder => folder.items.some(item => item.chartId === chart.id))
+          .map(folder => folder.id),
+      );
+    } catch {
+      // Keep the modal responsive even if folder refresh fails.
+    }
   }, [chart.id, refreshChartFolders]);
+
+  const openFolderModal = useCallback(
+    async (event?: React.MouseEvent<HTMLElement>) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+
+      if (onOpenRequest) {
+        onOpenRequest(chart, canEdit);
+        return;
+      }
+
+      setShowFolderModal(true);
+      setSelectedFolderIds(currentFolders.map(folder => folder.id));
+
+      await syncLatestFolders();
+    },
+    [canEdit, chart, currentFolders, onOpenRequest, syncLatestFolders],
+  );
+
+  useEffect(() => {
+    if (!openOnMount) {
+      didAutoOpenRef.current = false;
+      return;
+    }
+
+    if (didAutoOpenRef.current) {
+      return;
+    }
+
+    didAutoOpenRef.current = true;
+    setShowFolderModal(true);
+    setSelectedFolderIds(currentFolders.map(folder => folder.id));
+    syncLatestFolders();
+  }, [currentFolders, openOnMount, syncLatestFolders]);
 
   const closeFolderModal = useCallback(() => {
     setShowFolderModal(false);
     setSelectedFolderIds(currentFolders.map(folder => folder.id));
-  }, [currentFolders]);
+    onClose?.();
+  }, [currentFolders, onClose]);
 
   const addChartFolderTag = useCallback(
     async (chartId: number, folderName: string) => {
@@ -395,12 +363,16 @@ export default function ChartCard({
     const normalizedNextFolderIds = Array.from(
       new Set(selectedFolderIds.map(id => id.trim()).filter(Boolean)),
     );
-    const previousFolderNames = currentFolders.map(getFolderTagName);
-    const currentMenuFolderNames = chartFolders.map(getFolderTagName);
+    const previousFolderNames = currentFolders.map(
+      folder => folder.fullPath || folder.name,
+    );
+    const currentMenuFolderNames = chartFolders.map(
+      folder => folder.fullPath || folder.name,
+    );
     const existingChartTagNames = new Set(chartTags.map(tag => tag.name));
     const nextFolderNames = chartFolders
       .filter(folder => normalizedNextFolderIds.includes(folder.id))
-      .map(getFolderTagName);
+      .map(folder => folder.fullPath || folder.name);
     const addedFolderNames = nextFolderNames.filter(
       name => !previousFolderNames.includes(name),
     );
@@ -454,6 +426,7 @@ export default function ChartCard({
         ...nextFolderTags,
       ]);
       setShowFolderModal(false);
+      onClose?.();
     } finally {
       setIsSavingFolders(false);
     }
@@ -464,7 +437,7 @@ export default function ChartCard({
     chartTags,
     currentFolders,
     deleteChartFolderTag,
-    getFolderTagName,
+    onClose,
     selectedFolderIds,
   ]);
 
@@ -476,154 +449,61 @@ export default function ChartCard({
     [],
   );
 
-  const menu = (
-    <Menu>
-      {canDelete && (
-        <Menu.Item>
-          <ConfirmStatusChange
-            title={t('Please confirm')}
-            description={
-              <>
-                {t('Are you sure you want to delete')} <b>{chart.slice_name}</b>
-                ?
-              </>
-            }
-            onConfirm={() =>
-              handleChartDelete(
-                chart,
-                addSuccessToast,
-                addDangerToast,
-                refreshData,
-                chartFilter,
-                userId,
-              )
-            }
-          >
-            {confirmDelete => (
-              <div
-                data-test="chart-list-delete-option"
-                role="button"
-                tabIndex={0}
-                className="action-button"
-                onClick={confirmDelete}
-              >
-                <Icons.Trash iconSize="l" /> {t('Delete')}
-              </div>
-            )}
-          </ConfirmStatusChange>
-        </Menu.Item>
-      )}
-      {canExport && (
-        <Menu.Item>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => handleBulkChartExport([chart])}
-          >
-            <Icons.Share iconSize="l" /> {t('Export')}
-          </div>
-        </Menu.Item>
-      )}
-      {canEdit && (
-        <Menu.Item>
-          <div
-            data-test="chart-list-edit-option"
-            role="button"
-            tabIndex={0}
-            onClick={() => openChartEditModal(chart)}
-          >
-            <Icons.EditAlt iconSize="l" /> {t('Edit')}
-          </div>
-        </Menu.Item>
-      )}
-    </Menu>
-  );
   return (
-    <StyledCardStyles
-      onClick={() => {
-        if (!bulkSelectEnabled && !showFolderModal && chart.url) {
-          history.push(chart.url);
-        }
-      }}
-    >
-      <ListViewCard
-        loading={loading}
-        title={chart.slice_name}
-        certifiedBy={chart.certified_by}
-        certificationDetails={chart.certification_details}
-        // cover={
-        //   !isFeatureEnabled(FeatureFlag.THUMBNAILS) || !showThumbnails ? (
-        //     <></>
-        //   ) : null
-        // }
-        url={bulkSelectEnabled ? undefined : chart.url}
-        // imgURL={chart.thumbnail_url || ''}
-        imgFallbackURL="/static/assets/images/chart-list-icon.svg"
-        description={
-          <CardMetaRow>
-            <span className="card-meta-left">
-              {`${chart.changed_on_delta_humanized}`}
-            </span>
-            <span className="card-meta-right">
-              {visibleTags.length ? (
-                <TagsList
-                  tags={visibleTags.map(tag => ({
-                    ...tag,
-                    onClick: canManageFolders ? openFolderModal : undefined,
-                  }))}
-                  maxTags={3}
-                />
-              ) : (
-                <EmptyFolderTrigger
-                  clickable={canManageFolders}
-                  role={canManageFolders ? 'button' : undefined}
-                  tabIndex={canManageFolders ? 0 : undefined}
-                  onClick={canManageFolders ? openFolderModal : undefined}
-                  onKeyDown={
-                    canManageFolders
-                      ? event => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            openFolderModal(
-                              event as unknown as React.MouseEvent<HTMLElement>,
-                            );
-                          }
-                        }
-                      : undefined
+    <>
+      {!hideTrigger && (
+        <TagCell
+          clickable={isInteractive}
+          role={isInteractive ? 'button' : undefined}
+          tabIndex={isInteractive ? 0 : undefined}
+          onClick={isInteractive ? openFolderModal : undefined}
+          onKeyDown={
+            isInteractive
+              ? event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    openFolderModal(
+                      event as unknown as React.MouseEvent<HTMLElement>,
+                    );
                   }
-                >
-                  {emptyTagDisplay}
-                </EmptyFolderTrigger>
-              )}
-            </span>
-          </CardMetaRow>
-        }
-        coverLeft={<FacePile users={chart.owners || []} />}
-        coverRight={<Label type="secondary">{chart.datasource_name_text}</Label>}
-        linkComponent={Link}
-        actions={
-          <ListViewCard.Actions
-            onClick={e => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-          >
-            {userId && (
-              <FaveStar
-                itemId={chart.id}
-                saveFaveStar={saveFavoriteStatus}
-                isStarred={favoriteStatus}
-              />
-            )}
-            <AntdDropdown overlay={menu}>
-              <Icons.MoreHoriz iconColor={theme.colors.grayscale.base} iconSize="m" />
-            </AntdDropdown>
-          </ListViewCard.Actions>
-        }
-      />
+                }
+              : undefined
+          }
+        >
+          {visibleTags.length ? (
+            <TagsList
+              tags={visibleTags.map(tag => ({
+                ...tag,
+                onClick: canEdit ? openFolderModal : undefined,
+              }))}
+              maxTags={3}
+            />
+          ) : (
+            <EmptyFolderTrigger
+              clickable={canEdit}
+              role={canEdit ? 'button' : undefined}
+              tabIndex={canEdit ? 0 : undefined}
+              onClick={canEdit ? openFolderModal : undefined}
+              onKeyDown={
+                canEdit
+                  ? event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        openFolderModal(
+                          event as unknown as React.MouseEvent<HTMLElement>,
+                        );
+                      }
+                    }
+                  : undefined
+              }
+            >
+              {emptyTagDisplay}
+            </EmptyFolderTrigger>
+          )}
+        </TagCell>
+      )}
       <Modal
+        title={<h4>{t('编辑所属分类')}</h4>}
         show={showFolderModal}
         onHide={closeFolderModal}
-        title={<h4>{t('编辑所属分类')}</h4>}
         wrapProps={{ onClick: stopModalClickPropagation }}
         footer={
           <FolderModalFooter
@@ -666,9 +546,11 @@ export default function ChartCard({
                 setSelectedFolderIds(
                   Array.from(
                     new Set(
-                      (Array.isArray(value) ? value : [value]).map(item => item.value),
+                      (Array.isArray(value) ? value : [value]).map(
+                        item => item.value,
+                      ),
                     ),
-                  )
+                  ),
                 )
               }
               placeholder={
@@ -680,6 +562,6 @@ export default function ChartCard({
           </div>
         </FolderModalContent>
       </Modal>
-    </StyledCardStyles>
+    </>
   );
 }

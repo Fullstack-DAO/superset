@@ -334,6 +334,7 @@ const AdhocFilterEditPopoverSimpleTabContent: React.FC<Props> = props => {
     ariaLabel: t('Select subject'),
     value: subject ?? undefined,
     onChange: handleSubjectChange,
+    optionFilterProps: ['label', 'value', 'verboseName'],
     notFoundContent: t(
       'No such column found. To filter on a metric, try the Custom SQL tab.',
     ),
@@ -472,6 +473,8 @@ const AdhocFilterEditPopoverSimpleTabContent: React.FC<Props> = props => {
           ('saved_metric_name' in column && column.saved_metric_name) ||
           ('column_name' in column && column.column_name) ||
           ('label' in column && column.label),
+        verboseName:
+          ('verbose_name' in column && column.verbose_name) || undefined,
         key:
           ('id' in column && column.id) ||
           ('optionName' in column && column.optionName) ||

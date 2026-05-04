@@ -45,6 +45,7 @@ export interface RightMenuProps {
     text: string;
     color: string;
   };
+  isCollapsed?: boolean;
 }
 
 export enum GlobalMenuDataOptions {

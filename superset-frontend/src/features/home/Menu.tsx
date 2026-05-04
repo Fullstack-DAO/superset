@@ -65,9 +65,12 @@ import {
   RobotOutlined,
   PartitionOutlined,
   StarOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Cascader } from 'antd';
 import TagType from 'src/types/TagType';
+import collapsedBrandIcon from 'src/assets/images/bi_logo_s.png';
 import {
   addTag,
   deleteTaggedObjects,
@@ -77,7 +80,6 @@ import {
   createDashboardFolder,
   DASHBOARD_FOLDER_QUERY_KEY,
   DashboardFolder,
-  DashboardFolderItem,
   deleteDashboardFolder,
   renameDashboardFolder,
 } from 'src/features/dashboards/folders/api';
@@ -90,6 +92,13 @@ import {
   renameChartFolder as renameChartFolderApi,
 } from 'src/features/charts/folders/api';
 import useChartFolders from 'src/features/charts/folders/useChartFolders';
+import {
+  buildFolderCascaderOptions,
+  buildFolderTree,
+  getDescendantFolders,
+  getFolderAncestorMenuKeys,
+  getFolderPathIds,
+} from 'src/features/folders/utils';
 import RightMenu from './RightMenu';
 
 const bootstrapData = getBootstrapData();
@@ -108,6 +117,8 @@ const iconMap: Record<string, React.ReactNode> = {
 interface MenuProps {
   data: MenuData;
   isFrontendRoute?: (path?: string) => boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const CHARTS_ROOT_KEY = 'Charts';
@@ -133,6 +144,12 @@ const getPathnameFromUrl = (url?: string) => {
   } catch {
     return normalizePath(url.split('?')[0]);
   }
+};
+
+const getMenuViewMode = (search: string) => {
+  const viewMode = new URLSearchParams(search).get('viewMode');
+
+  return viewMode === 'card' || viewMode === 'table' ? viewMode : 'table';
 };
 
 const getDashboardFolderMenuKey = (folderId: string) =>
@@ -235,9 +252,11 @@ const DashboardMenuItemIcon = styled.img`
   height: ${({ theme }) => theme.gridUnit * 4.5}px;
   object-fit: contain;
   margin-bottom: 2px;
+  margin-right: 8px !important;
+  margin-left: -2px;
 `;
 
-const StyledHeader = styled.header`
+const StyledHeader = styled.header<{ $collapsed?: boolean }>`
   ${({ theme }) => `
       background-color: ${theme.colors.grayscale.light5};
       margin-bottom: 2px;
@@ -270,7 +289,7 @@ const StyledHeader = styled.header`
           ${theme.gridUnit * 2}px;
         max-width: ${theme.gridUnit * theme.brandIconMaxWidth}px;
         img {
-          height: 100%;
+          height: 80%;
           object-fit: contain;
         }
       }
@@ -449,9 +468,150 @@ const StyledHeader = styled.header`
         text-overflow: unset !important;
       }
   `}
+
+  ${({ theme, $collapsed }) =>
+    $collapsed
+      ? `
+        .navbar-brand-container {
+          justify-content: center;
+          padding-left: 0;
+        }
+
+        .navbar-brand {
+          max-width: 100%;
+          padding-left: ${theme.gridUnit * 2}px;
+          padding-right: ${theme.gridUnit * 2}px;
+        }
+
+        .main-nav.ant-menu-inline-collapsed {
+          width: 100%;
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title {
+          width: 100%;
+          height: ${theme.gridUnit * 8}px;
+          line-height: ${theme.gridUnit * 8}px;
+          padding: 0 !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item:hover,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title:hover {
+          background-color: ${theme.colors.primary.light5};
+          color: ${theme.colors.primary.base};
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item .menu-node-content,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .menu-node-content {
+          width: auto;
+          max-width: none;
+          justify-content: center;
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item .menu-node-label,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .menu-node-label {
+          justify-content: center;
+          flex: 0 0 auto;
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item .menu-node-label-text,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item .menu-node-actions,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item .ant-menu-title-content,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .menu-node-label-text,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .menu-node-actions,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-submenu-arrow,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content {
+          display: none !important;
+        }
+
+        .main-nav.ant-menu-inline-collapsed .ant-menu-item .anticon,
+        .main-nav.ant-menu-inline-collapsed .ant-menu-submenu-title .anticon,
+        .main-nav.ant-menu-inline-collapsed .ant-menu-item a .anticon,
+        .main-nav.ant-menu-inline-collapsed .ant-menu-submenu-title a .anticon {
+          width: ${theme.gridUnit * 4}px;
+          min-width: ${theme.gridUnit * 4}px;
+          margin: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item a {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          font-size: 0;
+        }
+
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item a span,
+        .main-nav.ant-menu-inline-collapsed > .ant-menu-item a .anticon {
+          font-size: ${theme.typography.sizes.l}px;
+        }
+      `
+      : ''}
 `;
 
-const globalStyles = (theme: SupersetTheme) => css``;
+const MenuCollapseFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: ${({ theme }) => theme.gridUnit * 9}px;
+  padding: ${({ theme }) => theme.gridUnit}px;
+  background: ${({ theme }) => theme.colors.grayscale.light4};
+  border-top: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
+`;
+
+const MenuCollapseButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: ${({ theme }) => theme.borderRadius}px;
+  background: transparent;
+  color: ${({ theme }) => theme.colors.grayscale.dark1};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.grayscale.light3};
+  }
+`;
+
+const FolderParentCascader = styled(Cascader)`
+  width: 100%;
+
+  .ant-select-selector,
+  .ant-cascader-picker {
+    border-radius: ${({ theme }) => theme.gridUnit}px;
+  }
+`;
+
+const globalStyles = (theme: SupersetTheme) => css`
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item-selected,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .menu-item-manual-selected,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item:has(.menu-link-manual-selected),
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item:has(.is-active) {
+    background-color: transparent !important;
+  }
+
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item-selected::after,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .menu-item-manual-selected::after,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item:has(.menu-link-manual-selected)::after,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item:has(.is-active)::after {
+    display: none !important;
+  }
+
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item-selected:hover,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .menu-item-manual-selected:hover,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item:has(.menu-link-manual-selected):hover,
+  .dashboard-menu-root.dashboard-menu-root-collapsed .ant-menu-item:has(.is-active):hover {
+    background-color: ${theme.colors.primary.light5} !important;
+  }
+`;
 const { SubMenu } = DropdownMenu;
 
 const { useBreakpoint } = Grid;
@@ -465,6 +625,8 @@ export function Menu({
     environment_tag: environmentTag,
   },
   isFrontendRoute = () => false,
+  isCollapsed = false,
+  onToggleCollapse,
 }: MenuProps) {
   const [showMenu, setMenu] = useState<MenuMode>('inline');
   const initialLocationKeyRef = useRef<string | null>(null);
@@ -484,16 +646,29 @@ export function Menu({
   const [menuOpen, setMenuOpen] = useState(true);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderParentPath, setNewFolderParentPath] = useState<string[]>([]);
+  const [isCreatingDashboardSubfolder, setIsCreatingDashboardSubfolder] =
+    useState(false);
   const [showCreateChartFolderModal, setShowCreateChartFolderModal] =
     useState(false);
   const [newChartFolderName, setNewChartFolderName] = useState('');
+  const [newChartFolderParentPath, setNewChartFolderParentPath] = useState<
+    string[]
+  >([]);
+  const [isCreatingChartSubfolder, setIsCreatingChartSubfolder] = useState(false);
   const [renameFolderTarget, setRenameFolderTarget] = useState<DashboardFolder | null>(
     null,
   );
   const [renameFolderName, setRenameFolderName] = useState('');
+  const [renameFolderParentPath, setRenameFolderParentPath] = useState<string[]>(
+    [],
+  );
   const [renameChartFolderTarget, setRenameChartFolderTarget] =
     useState<ChartFolder | null>(null);
   const [renameChartFolderName, setRenameChartFolderName] = useState('');
+  const [renameChartFolderParentPath, setRenameChartFolderParentPath] = useState<
+    string[]
+  >([]);
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<DashboardFolder | null>(
     null,
   );
@@ -503,6 +678,81 @@ export function Menu({
   const { chartFolders } = useChartFolders();
   const canManageDashboardFolders = Object.keys(user.roles || {}).some(
     role => role.toLowerCase() === ADMIN_ROLE_NAME,
+  );
+  const dashboardFolderTree = useMemo(
+    () => buildFolderTree(dashboardFolders),
+    [dashboardFolders],
+  );
+  const chartFolderTree = useMemo(
+    () => buildFolderTree(chartFolders),
+    [chartFolders],
+  );
+  const dashboardParentOptions = useMemo(
+    () => buildFolderCascaderOptions(dashboardFolders),
+    [dashboardFolders],
+  );
+  const chartParentOptions = useMemo(
+    () => buildFolderCascaderOptions(chartFolders),
+    [chartFolders],
+  );
+  const renameDashboardDisabledFolderIds = useMemo(
+    () =>
+      renameFolderTarget
+        ? getDescendantFolders(renameFolderTarget.id, dashboardFolders).map(
+            folder => folder.id,
+          )
+        : [],
+    [dashboardFolders, renameFolderTarget],
+  );
+  const renameChartDisabledFolderIds = useMemo(
+    () =>
+      renameChartFolderTarget
+        ? getDescendantFolders(renameChartFolderTarget.id, chartFolders).map(
+            folder => folder.id,
+          )
+        : [],
+    [chartFolders, renameChartFolderTarget],
+  );
+  const renameDashboardParentOptions = useMemo(
+    () => buildFolderCascaderOptions(dashboardFolders, renameDashboardDisabledFolderIds),
+    [dashboardFolders, renameDashboardDisabledFolderIds],
+  );
+  const renameChartParentOptions = useMemo(
+    () => buildFolderCascaderOptions(chartFolders, renameChartDisabledFolderIds),
+    [chartFolders, renameChartDisabledFolderIds],
+  );
+  const getParentIdFromPath = (path: string[]) => path[path.length - 1] || null;
+  const deleteDashboardFolderHasItems = useMemo(
+    () =>
+      deleteFolderTarget
+        ? getDescendantFolders(deleteFolderTarget.id, dashboardFolders).some(
+            folder => folder.items.length > 0,
+          )
+        : false,
+    [dashboardFolders, deleteFolderTarget],
+  );
+  const deleteDashboardFolderHasChildren = useMemo(
+    () =>
+      deleteFolderTarget
+        ? dashboardFolders.some(folder => folder.parentId === deleteFolderTarget.id)
+        : false,
+    [dashboardFolders, deleteFolderTarget],
+  );
+  const deleteChartFolderHasItems = useMemo(
+    () =>
+      deleteChartFolderTarget
+        ? getDescendantFolders(deleteChartFolderTarget.id, chartFolders).some(
+            folder => folder.items.length > 0,
+          )
+        : false,
+    [chartFolders, deleteChartFolderTarget],
+  );
+  const deleteChartFolderHasChildren = useMemo(
+    () =>
+      deleteChartFolderTarget
+        ? chartFolders.some(folder => folder.parentId === deleteChartFolderTarget.id)
+        : false,
+    [chartFolders, deleteChartFolderTarget],
   );
 
   useEffect(() => {
@@ -538,8 +788,9 @@ export function Menu({
     }
   }, [location.pathname, location.search]);
 
+  const currentViewMode = getMenuViewMode(location.search);
   const listQueryPrefix =
-    'pageIndex=0&sortColumn=changed_on_delta_humanized&sortOrder=desc&viewMode=card';
+    `pageIndex=0&sortColumn=changed_on_delta_humanized&sortOrder=desc&viewMode=${currentViewMode}`;
   const favoritesFilter = `(favorite:(label:${t('Yes')},value:!t))`;
   const draftsFilter = `(published:(label:${t('Draft')},value:!f))`;
 
@@ -558,7 +809,7 @@ export function Menu({
     }
 
     const searchParams = new URLSearchParams(search);
-    searchParams.set('viewMode', 'card');
+    searchParams.set('viewMode', currentViewMode);
 
     return `${pathname}?${searchParams.toString()}`;
   };
@@ -984,14 +1235,26 @@ export function Menu({
     if (currentChartKey) {
       return [
         CHARTS_ROOT_KEY,
-        currentChartFolder ? getChartFolderMenuKey(currentChartFolder.id) : null,
+        ...(currentChartFolder
+          ? getFolderAncestorMenuKeys(
+              currentChartFolder.id,
+              chartFolders,
+              getChartFolderMenuKey,
+            )
+          : []),
       ].filter(Boolean) as string[];
     }
 
     if (currentKey) {
       return [
         DASHBOARDS_ROOT_KEY,
-        currentFolder ? getDashboardFolderMenuKey(currentFolder.id) : null,
+        ...(currentFolder
+          ? getFolderAncestorMenuKeys(
+              currentFolder.id,
+              dashboardFolders,
+              getDashboardFolderMenuKey,
+            )
+          : []),
       ].filter(Boolean) as string[];
     }
 
@@ -1060,7 +1323,10 @@ export function Menu({
       if (latestOpenedKey === CHARTS_ROOT_KEY) {
         setOpenKeys(
           keys.filter(
-            key => key === CHARTS_ROOT_KEY || isChartFolderMenuKey(key),
+            key =>
+              key === CHARTS_ROOT_KEY ||
+              isChartFolderMenuKey(key) ||
+              (!isDashboardFolderMenuKey(key) && key !== DASHBOARDS_ROOT_KEY),
           ),
         );
         return;
@@ -1069,7 +1335,10 @@ export function Menu({
       if (latestOpenedKey === DASHBOARDS_ROOT_KEY) {
         setOpenKeys(
           keys.filter(
-            key => key === DASHBOARDS_ROOT_KEY || isDashboardFolderMenuKey(key),
+            key =>
+              key === DASHBOARDS_ROOT_KEY ||
+              isDashboardFolderMenuKey(key) ||
+              (!isChartFolderMenuKey(key) && key !== CHARTS_ROOT_KEY),
           ),
         );
         return;
@@ -1080,7 +1349,7 @@ export function Menu({
           keys.filter(
             key =>
               key === CHARTS_ROOT_KEY ||
-              key === latestOpenedKey ||
+              isChartFolderMenuKey(key) ||
               (!isChartFolderMenuKey(key) && !isDashboardFolderMenuKey(key)),
           ),
         );
@@ -1092,7 +1361,7 @@ export function Menu({
           keys.filter(
             key =>
               key === DASHBOARDS_ROOT_KEY ||
-              key === latestOpenedKey ||
+              isDashboardFolderMenuKey(key) ||
               (!isChartFolderMenuKey(key) && !isDashboardFolderMenuKey(key)),
           ),
         );
@@ -1116,6 +1385,12 @@ export function Menu({
 
   const standalone = getUrlParam(URL_PARAMS.standalone);
   if (standalone || uiConfig.hideNav) return <></>;
+
+  const isDesktopCollapsed = screens.md && isCollapsed;
+  const brandIcon = isDesktopCollapsed ? collapsedBrandIcon : brand.icon;
+  const popupClassName = isDesktopCollapsed
+    ? 'dashboard-menu-root dashboard-menu-root-collapsed'
+    : 'dashboard-menu-root';
 
   const renderActionButton = ({
     label,
@@ -1151,14 +1426,16 @@ export function Menu({
     onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
     className?: string;
   }) => {
+    const visibleActions = screens.md && isCollapsed ? undefined : actions;
+
     const content = (
       <span className="menu-node-label">
         <span className="menu-node-label-text">{label}</span>
       </span>
     );
 
-    const actionNodes = actions?.length ? (
-      <span className="menu-node-actions">{actions}</span>
+    const actionNodes = visibleActions?.length ? (
+      <span className="menu-node-actions">{visibleActions}</span>
     ) : null;
 
     if (onClick) {
@@ -1175,7 +1452,7 @@ export function Menu({
     }
 
     return (
-      <div className={`menu-node-content${className ? ` ${className}` : ''}`}>
+      <div style={{display: 'inline-flex', width: 'calc(100% - 24px)'}} className={`menu-node-content${className ? ` ${className}` : ''}`}>
         {content}
         {actionNodes}
       </div>
@@ -1193,27 +1470,37 @@ export function Menu({
     }
 
     try {
-      await createDashboardFolder(folderName);
+      await createDashboardFolder({
+        name: folderName,
+        parentId: getParentIdFromPath(newFolderParentPath),
+      });
       setShowCreateFolderModal(false);
       setNewFolderName('');
+      setNewFolderParentPath([]);
       addSuccessToast(t('分类已创建'));
     } catch {
       addDangerToast(t('创建分类失败'));
     }
   };
 
-  const openCreateFolderModal = () => {
+  const openCreateFolderModal = (parentId?: string | null) => {
     if (!canManageDashboardFolders) {
       return;
     }
 
     setNewFolderName('');
+    setIsCreatingDashboardSubfolder(!!parentId);
+    setNewFolderParentPath(
+      parentId ? getFolderPathIds(parentId, dashboardFolders) : [],
+    );
     setShowCreateFolderModal(true);
   };
 
   const closeCreateFolderModal = () => {
     setShowCreateFolderModal(false);
     setNewFolderName('');
+    setNewFolderParentPath([]);
+    setIsCreatingDashboardSubfolder(false);
   };
 
   const addChartFolder = async () => {
@@ -1227,27 +1514,37 @@ export function Menu({
     }
 
     try {
-      await createChartFolder(folderName);
+      await createChartFolder({
+        name: folderName,
+        parentId: getParentIdFromPath(newChartFolderParentPath),
+      });
       setShowCreateChartFolderModal(false);
       setNewChartFolderName('');
+      setNewChartFolderParentPath([]);
       addSuccessToast(t('分类已创建'));
     } catch {
       addDangerToast(t('创建分类失败'));
     }
   };
 
-  const openCreateChartFolderModal = () => {
+  const openCreateChartFolderModal = (parentId?: string | null) => {
     if (!canManageDashboardFolders) {
       return;
     }
 
     setNewChartFolderName('');
+    setIsCreatingChartSubfolder(!!parentId);
+    setNewChartFolderParentPath(
+      parentId ? getFolderPathIds(parentId, chartFolders) : [],
+    );
     setShowCreateChartFolderModal(true);
   };
 
   const closeCreateChartFolderModal = () => {
     setShowCreateChartFolderModal(false);
     setNewChartFolderName('');
+    setNewChartFolderParentPath([]);
+    setIsCreatingChartSubfolder(false);
   };
 
   const addDashboardFolderTag = async (dashboardId: number, folderName: string) => {
@@ -1328,27 +1625,48 @@ export function Menu({
   };
 
   const syncFolderTags = async ({
-    items,
-    previousName,
-    nextName,
+    previousFolders,
+    nextFolders = [],
+    rootFolderId,
   }: {
-    items: DashboardFolderItem[];
-    previousName?: string;
-    nextName?: string;
+    previousFolders: DashboardFolder[];
+    nextFolders?: DashboardFolder[];
+    rootFolderId: string;
   }) => {
-    if (!isTaggingEnabled || !items.length) {
+    if (!isTaggingEnabled) {
       return true;
     }
 
+    const previousFolderMap = new Map(
+      getDescendantFolders(rootFolderId, previousFolders).map(folder => [folder.id, folder]),
+    );
+    const nextFolderMap = new Map(
+      getDescendantFolders(rootFolderId, nextFolders).map(folder => [folder.id, folder]),
+    );
+    const folderIds = Array.from(
+      new Set([...previousFolderMap.keys(), ...nextFolderMap.keys()]),
+    );
+
     const results = await Promise.allSettled(
-      items.map(async item => {
-        if (previousName && previousName !== nextName) {
-          await deleteDashboardFolderTag(item.dashboardId, previousName);
+      folderIds.flatMap(folderId => {
+        const previousFolder = previousFolderMap.get(folderId);
+        const nextFolder = nextFolderMap.get(folderId);
+        const operations: Promise<void>[] = [];
+
+        if (previousFolder?.fullPath !== nextFolder?.fullPath) {
+          previousFolder?.items.forEach(item => {
+            operations.push(
+              deleteDashboardFolderTag(item.dashboardId, previousFolder.fullPath),
+            );
+          });
+          nextFolder?.items.forEach(item => {
+            operations.push(
+              addDashboardFolderTag(item.dashboardId, nextFolder.fullPath),
+            );
+          });
         }
 
-        if (nextName && previousName !== nextName) {
-          await addDashboardFolderTag(item.dashboardId, nextName);
-        }
+        return operations;
       }),
     );
 
@@ -1356,27 +1674,44 @@ export function Menu({
   };
 
   const syncChartFolderTags = async ({
-    items,
-    previousName,
-    nextName,
+    previousFolders,
+    nextFolders = [],
+    rootFolderId,
   }: {
-    items: ChartFolder['items'];
-    previousName?: string;
-    nextName?: string;
+    previousFolders: ChartFolder[];
+    nextFolders?: ChartFolder[];
+    rootFolderId: string;
   }) => {
-    if (!isTaggingEnabled || !items.length) {
+    if (!isTaggingEnabled) {
       return true;
     }
 
+    const previousFolderMap = new Map(
+      getDescendantFolders(rootFolderId, previousFolders).map(folder => [folder.id, folder]),
+    );
+    const nextFolderMap = new Map(
+      getDescendantFolders(rootFolderId, nextFolders).map(folder => [folder.id, folder]),
+    );
+    const folderIds = Array.from(
+      new Set([...previousFolderMap.keys(), ...nextFolderMap.keys()]),
+    );
+
     const results = await Promise.allSettled(
-      items.map(async item => {
-        if (previousName && previousName !== nextName) {
-          await deleteChartFolderTag(item.chartId, previousName);
+      folderIds.flatMap(folderId => {
+        const previousFolder = previousFolderMap.get(folderId);
+        const nextFolder = nextFolderMap.get(folderId);
+        const operations: Promise<void>[] = [];
+
+        if (previousFolder?.fullPath !== nextFolder?.fullPath) {
+          previousFolder?.items.forEach(item => {
+            operations.push(deleteChartFolderTag(item.chartId, previousFolder.fullPath));
+          });
+          nextFolder?.items.forEach(item => {
+            operations.push(addChartFolderTag(item.chartId, nextFolder.fullPath));
+          });
         }
 
-        if (nextName && previousName !== nextName) {
-          await addChartFolderTag(item.chartId, nextName);
-        }
+        return operations;
       }),
     );
 
@@ -1395,11 +1730,15 @@ export function Menu({
 
     setRenameFolderTarget(folder);
     setRenameFolderName(folder.name);
+    setRenameFolderParentPath(
+      folder.parentId ? getFolderPathIds(folder.parentId, dashboardFolders) : [],
+    );
   };
 
   const closeRenameFolderModal = () => {
     setRenameFolderTarget(null);
     setRenameFolderName('');
+    setRenameFolderParentPath([]);
   };
 
   const openRenameChartFolderModal = (folderId: string) => {
@@ -1414,11 +1753,15 @@ export function Menu({
 
     setRenameChartFolderTarget(folder);
     setRenameChartFolderName(folder.name);
+    setRenameChartFolderParentPath(
+      folder.parentId ? getFolderPathIds(folder.parentId, chartFolders) : [],
+    );
   };
 
   const closeRenameChartFolderModal = () => {
     setRenameChartFolderTarget(null);
     setRenameChartFolderName('');
+    setRenameChartFolderParentPath([]);
   };
 
   const renameFolder = async () => {
@@ -1432,11 +1775,14 @@ export function Menu({
     }
 
     try {
-      await renameDashboardFolder(renameFolderTarget.id, folderName);
+      const updatedFolders = await renameDashboardFolder(renameFolderTarget.id, {
+        name: folderName,
+        parentId: getParentIdFromPath(renameFolderParentPath),
+      });
       const tagsUpdated = await syncFolderTags({
-        items: renameFolderTarget.items,
-        previousName: renameFolderTarget.name,
-        nextName: folderName,
+        previousFolders: dashboardFolders,
+        nextFolders: updatedFolders,
+        rootFolderId: renameFolderTarget.id,
       });
       closeRenameFolderModal();
       if (tagsUpdated) {
@@ -1460,11 +1806,14 @@ export function Menu({
     }
 
     try {
-      await renameChartFolderApi(renameChartFolderTarget.id, folderName);
+      const updatedFolders = await renameChartFolderApi(renameChartFolderTarget.id, {
+        name: folderName,
+        parentId: getParentIdFromPath(renameChartFolderParentPath),
+      });
       const tagsUpdated = await syncChartFolderTags({
-        items: renameChartFolderTarget.items,
-        previousName: renameChartFolderTarget.name,
-        nextName: folderName,
+        previousFolders: chartFolders,
+        nextFolders: updatedFolders,
+        rootFolderId: renameChartFolderTarget.id,
       });
       closeRenameChartFolderModal();
       if (tagsUpdated) {
@@ -1516,11 +1865,16 @@ export function Menu({
       return;
     }
 
+    if (deleteDashboardFolderHasChildren) {
+      addDangerToast(t('请先删除子分类，再删除当前分类'));
+      return;
+    }
+
     try {
       await deleteDashboardFolder(deleteFolderTarget.id);
       const tagsUpdated = await syncFolderTags({
-        items: deleteFolderTarget.items,
-        previousName: deleteFolderTarget.name,
+        previousFolders: dashboardFolders,
+        rootFolderId: deleteFolderTarget.id,
       });
       closeDeleteFolderModal();
       if (tagsUpdated) {
@@ -1538,11 +1892,16 @@ export function Menu({
       return;
     }
 
+    if (deleteChartFolderHasChildren) {
+      addDangerToast(t('请先删除子分类，再删除当前分类'));
+      return;
+    }
+
     try {
       await deleteChartFolder(deleteChartFolderTarget.id);
       const tagsUpdated = await syncChartFolderTags({
-        items: deleteChartFolderTarget.items,
-        previousName: deleteChartFolderTarget.name,
+        previousFolders: chartFolders,
+        rootFolderId: deleteChartFolderTarget.id,
       });
       closeDeleteChartFolderModal();
       if (tagsUpdated) {
@@ -1554,6 +1913,186 @@ export function Menu({
       addDangerToast(t('删除分类失败'));
     }
   };
+
+  const renderChartFolderSubMenu = (folder: ChartFolder & { children?: any[] }) => (
+    <SubMenu
+      key={getChartFolderMenuKey(folder.id)}
+      popupClassName={popupClassName}
+      className={`dashboard-folder-submenu${
+        chartSelection === getChartFolderMenuKey(folder.id)
+          ? ' menu-submenu-manual-selected'
+          : ''
+      }`}
+      title={renderMenuNodeContent({
+        label: folder.name,
+        className:
+          chartSelection === getChartFolderMenuKey(folder.id)
+            ? 'menu-submenu-manual-selected'
+            : undefined,
+        actions: canManageDashboardFolders
+          ? [
+              renderActionButton({
+                label: t('新建子分类'),
+                icon: <PlusOutlined />,
+                onClick: event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openCreateChartFolderModal(folder.id);
+                },
+              }),
+              renderActionButton({
+                label: t('重命名分类'),
+                icon: <EditOutlined />,
+                onClick: event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openRenameChartFolderModal(folder.id);
+                },
+              }),
+              renderActionButton({
+                label: t('删除分类'),
+                icon: <DeleteOutlined />,
+                onClick: event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openDeleteChartFolderModal(folder.id);
+                },
+              }),
+            ]
+          : undefined,
+      })}
+      icon={<FolderOutlined />}
+      onTitleClick={handleSubMenuTitleClick(
+        getChartFolderMenuKey(folder.id),
+        getFolderChartUrl(folder.id),
+      )}
+    >
+      {(folder.children || []).map(child => renderChartFolderSubMenu(child))}
+      {folder.items.map(item => {
+        const chartUrl = normalizeChartUrl(item.url, item.chartId);
+
+        return (
+          <DropdownMenu.Item
+            key={getChartFolderItemMenuKey(item.id)}
+            className="dashboard-folder-item"
+            icon={
+              <DashboardMenuItemIcon
+                src="/static/assets/images/chart-list-icon.svg"
+                alt=""
+              />
+            }
+          >
+            {renderMenuNodeContent({
+              label: (
+                <a
+                  href={chartUrl}
+                  onClick={event =>
+                    onFrontendLinkClick(
+                      event,
+                      chartUrl,
+                      { fromMenu: true },
+                      getChartFolderItemMenuKey(item.id),
+                    )
+                  }
+                >
+                  {item.name}
+                </a>
+              ),
+            })}
+          </DropdownMenu.Item>
+        );
+      })}
+    </SubMenu>
+  );
+
+  const renderDashboardFolderSubMenu = (
+    folder: DashboardFolder & { children?: any[] },
+  ) => (
+    <SubMenu
+      key={getDashboardFolderMenuKey(folder.id)}
+      popupClassName={popupClassName}
+      className={`dashboard-folder-submenu${
+        dashboardSelection === getDashboardFolderMenuKey(folder.id)
+          ? ' menu-submenu-manual-selected'
+          : ''
+      }`}
+      title={renderMenuNodeContent({
+        label: folder.name,
+        className:
+          dashboardSelection === getDashboardFolderMenuKey(folder.id)
+            ? 'menu-submenu-manual-selected'
+            : undefined,
+        actions: canManageDashboardFolders
+          ? [
+              renderActionButton({
+                label: t('新建子分类'),
+                icon: <PlusOutlined />,
+                onClick: event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openCreateFolderModal(folder.id);
+                },
+              }),
+              renderActionButton({
+                label: t('重命名分类'),
+                icon: <EditOutlined />,
+                onClick: event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openRenameFolderModal(folder.id);
+                },
+              }),
+              renderActionButton({
+                label: t('删除分类'),
+                icon: <DeleteOutlined />,
+                onClick: event => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openDeleteFolderModal(folder.id);
+                },
+              }),
+            ]
+          : undefined,
+      })}
+      icon={<FolderOutlined />}
+      onTitleClick={handleSubMenuTitleClick(
+        getDashboardFolderMenuKey(folder.id),
+        getFolderDashboardUrl(folder.id),
+      )}
+    >
+      {(folder.children || []).map(child => renderDashboardFolderSubMenu(child))}
+      {folder.items.map(item => (
+        <DropdownMenu.Item
+          key={getDashboardFolderItemMenuKey(item.id)}
+          className="dashboard-folder-item"
+          icon={
+            <DashboardMenuItemIcon
+              src="/static/assets/images/dashboard-list-icon.svg"
+              alt=""
+            />
+          }
+        >
+          {renderMenuNodeContent({
+            label: (
+              <a
+                href={item.url}
+                onClick={event =>
+                  onFrontendLinkClick(
+                    event,
+                    item.url,
+                    { fromMenu: true },
+                    getDashboardFolderItemMenuKey(item.id),
+                  )
+                }
+              >
+                {item.name}
+              </a>
+            ),
+          })}
+        </DropdownMenu.Item>
+      ))}
+    </SubMenu>
+  );
 
   const renderSubMenu = ({
     name,
@@ -1592,7 +2131,7 @@ export function Menu({
       return (
         <SubMenu
           key={CHARTS_ROOT_KEY}
-          popupClassName="dashboard-menu-root"
+          popupClassName={popupClassName}
           className={isChartRootSelected ? 'menu-submenu-manual-selected' : ''}
           title={renderMenuNodeContent({
             label,
@@ -1624,83 +2163,7 @@ export function Menu({
               {t('我的收藏')}
             </a>
           </DropdownMenu.Item>
-          {chartFolders.map(folder => (
-            <SubMenu
-              key={getChartFolderMenuKey(folder.id)}
-              popupClassName="dashboard-menu-root"
-              className={`dashboard-folder-submenu${
-                chartSelection === getChartFolderMenuKey(folder.id)
-                  ? ' menu-submenu-manual-selected'
-                  : ''
-              }`}
-              title={renderMenuNodeContent({
-                label: folder.name,
-                className:
-                  chartSelection === getChartFolderMenuKey(folder.id)
-                    ? 'menu-submenu-manual-selected'
-                    : undefined,
-                actions: canManageDashboardFolders
-                  ? [
-                      renderActionButton({
-                        label: t('重命名分类'),
-                        icon: <EditOutlined />,
-                        onClick: event => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openRenameChartFolderModal(folder.id);
-                        },
-                      }),
-                      renderActionButton({
-                        label: t('删除分类'),
-                        icon: <DeleteOutlined />,
-                        onClick: event => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          openDeleteChartFolderModal(folder.id);
-                        },
-                      }),
-                    ]
-                  : undefined,
-              })}
-              icon={<FolderOutlined />}
-              onTitleClick={handleSubMenuTitleClick(
-                getChartFolderMenuKey(folder.id),
-                getFolderChartUrl(folder.id),
-              )}
-            >
-              {folder.items.map(item => {
-                const chartUrl = normalizeChartUrl(item.url, item.chartId);
-
-                return (
-                  <DropdownMenu.Item
-                    key={getChartFolderItemMenuKey(item.id)}
-                    className="dashboard-folder-item"
-                    icon={
-                      <DashboardMenuItemIcon
-                        src="/static/assets/images/chart-list-icon.svg"
-                        alt=""
-                      />
-                    }
-                  >
-                    {renderMenuNodeContent({
-                      label: (
-                        <a
-                          href={chartUrl}
-                          onClick={event =>
-                            onFrontendLinkClick(event, chartUrl, {
-                              fromMenu: true,
-                            }, getChartFolderItemMenuKey(item.id))
-                          }
-                        >
-                          {item.name}
-                        </a>
-                      ),
-                    })}
-                  </DropdownMenu.Item>
-                );
-              })}
-            </SubMenu>
-          ))}
+          {chartFolderTree.map(folder => renderChartFolderSubMenu(folder))}
         </SubMenu>
       );
     }
@@ -1723,7 +2186,7 @@ export function Menu({
       return (
         <SubMenu
           key={DASHBOARDS_ROOT_KEY}
-          popupClassName="dashboard-menu-root"
+          popupClassName={popupClassName}
           className={isDashboardRootSelected ? 'menu-submenu-manual-selected' : ''}
           title={renderMenuNodeContent({
             label,
@@ -1776,81 +2239,7 @@ export function Menu({
               {t('我的草稿')}
             </a>
           </DropdownMenu.Item>
-          {dashboardFolders.map(folder => (
-            <SubMenu
-              key={getDashboardFolderMenuKey(folder.id)}
-              popupClassName="dashboard-menu-root"
-              className={`dashboard-folder-submenu${
-                dashboardSelection === getDashboardFolderMenuKey(folder.id)
-                  ? ' menu-submenu-manual-selected'
-                  : ''
-              }`}
-              title={renderMenuNodeContent({
-                label: folder.name,
-                className:
-                  dashboardSelection === getDashboardFolderMenuKey(folder.id)
-                    ? 'menu-submenu-manual-selected'
-                    : undefined,
-                actions: [
-                  ...(canManageDashboardFolders
-                    ? [
-                        renderActionButton({
-                          label: t('重命名分类'),
-                          icon: <EditOutlined />,
-                          onClick: event => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            openRenameFolderModal(folder.id);
-                          },
-                        }),
-                        renderActionButton({
-                          label: t('删除分类'),
-                          icon: <DeleteOutlined />,
-                          onClick: event => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            openDeleteFolderModal(folder.id);
-                          },
-                        }),
-                      ]
-                    : []),
-                ],
-              })}
-              icon={<FolderOutlined />}
-              onTitleClick={handleSubMenuTitleClick(
-                getDashboardFolderMenuKey(folder.id),
-                getFolderDashboardUrl(folder.id),
-              )}
-            >
-              {folder.items.map(item => (
-                <DropdownMenu.Item
-                  key={getDashboardFolderItemMenuKey(item.id)}
-                  className="dashboard-folder-item"
-                  icon={
-                    <DashboardMenuItemIcon
-                      src="/static/assets/images/dashboard-list-icon.svg"
-                      alt=""
-                    />
-                  }
-                >
-                  {renderMenuNodeContent({
-                    label: (
-                      <a
-                        href={item.url}
-                        onClick={event =>
-                          onFrontendLinkClick(event, item.url, {
-                            fromMenu: true,
-                          }, getDashboardFolderItemMenuKey(item.id))
-                        }
-                      >
-                        {item.name}
-                      </a>
-                    ),
-                  })}
-                </DropdownMenu.Item>
-              ))}
-            </SubMenu>
-          ))}
+          {dashboardFolderTree.map(folder => renderDashboardFolderSubMenu(folder))}
         </SubMenu>
       );
     }
@@ -1937,7 +2326,7 @@ export function Menu({
         onHandledPrimaryAction={addChartFolder}
         primaryButtonName={t('创建')}
         disablePrimaryButton={!newChartFolderName.trim()}
-        title={<h4>{t('新建分类')}</h4>}
+        title={<h4>{t(isCreatingChartSubfolder ? '新建子分类' : '新建分类')}</h4>}
       >
         <Input
           autoFocus
@@ -1946,6 +2335,20 @@ export function Menu({
           onChange={event => setNewChartFolderName(event.target.value)}
           onPressEnter={addChartFolder}
         />
+        {isCreatingChartSubfolder && (
+          <div style={{ marginTop: theme.gridUnit * 3 }}>
+            <div style={{ marginBottom: theme.gridUnit }}>{t('上级分类')}</div>
+            <FolderParentCascader
+              options={chartParentOptions}
+              value={newChartFolderParentPath as unknown as (string | number)[]}
+              onChange={() => undefined}
+              changeOnSelect
+              disabled
+              placeholder={t('请选择上级分类，可留空')}
+              displayRender={labels => labels.join('-')}
+            />
+          </div>
+        )}
       </Modal>
       <Modal
         show={showCreateFolderModal}
@@ -1953,7 +2356,7 @@ export function Menu({
         onHandledPrimaryAction={addFolder}
         primaryButtonName={t('创建')}
         disablePrimaryButton={!newFolderName.trim()}
-        title={<h4>{t('新建分类')}</h4>}
+        title={<h4>{t(isCreatingDashboardSubfolder ? '新建子分类' : '新建分类')}</h4>}
       >
         <Input
           autoFocus
@@ -1962,6 +2365,20 @@ export function Menu({
           onChange={event => setNewFolderName(event.target.value)}
           onPressEnter={addFolder}
         />
+        {isCreatingDashboardSubfolder && (
+          <div style={{ marginTop: theme.gridUnit * 3 }}>
+            <div style={{ marginBottom: theme.gridUnit }}>{t('上级分类')}</div>
+            <FolderParentCascader
+              options={dashboardParentOptions}
+              value={newFolderParentPath as unknown as (string | number)[]}
+              onChange={() => undefined}
+              changeOnSelect
+              disabled
+              placeholder={t('请选择上级分类，可留空')}
+              displayRender={labels => labels.join('-')}
+            />
+          </div>
+        )}
       </Modal>
       <Modal
         show={!!renameChartFolderTarget}
@@ -1978,6 +2395,22 @@ export function Menu({
           onChange={event => setRenameChartFolderName(event.target.value)}
           onPressEnter={renameChartFolder}
         />
+        <div style={{ marginTop: theme.gridUnit * 3 }}>
+          <div style={{ marginBottom: theme.gridUnit }}>{t('上级分类')}</div>
+          <FolderParentCascader
+            options={renameChartParentOptions}
+            value={renameChartFolderParentPath as unknown as (string | number)[]}
+            onChange={value =>
+              setRenameChartFolderParentPath(
+                ((value as unknown as string[]) || []).filter(Boolean),
+              )
+            }
+            changeOnSelect
+            allowClear
+            placeholder={t('请选择上级分类，可留空')}
+            displayRender={labels => labels.join('-')}
+          />
+        </div>
       </Modal>
       <Modal
         show={!!renameFolderTarget}
@@ -1994,6 +2427,22 @@ export function Menu({
           onChange={event => setRenameFolderName(event.target.value)}
           onPressEnter={renameFolder}
         />
+        <div style={{ marginTop: theme.gridUnit * 3 }}>
+          <div style={{ marginBottom: theme.gridUnit }}>{t('上级分类')}</div>
+          <FolderParentCascader
+            options={renameDashboardParentOptions}
+            value={renameFolderParentPath as unknown as (string | number)[]}
+            onChange={value =>
+              setRenameFolderParentPath(
+                ((value as unknown as string[]) || []).filter(Boolean),
+              )
+            }
+            changeOnSelect
+            allowClear
+            placeholder={t('请选择上级分类，可留空')}
+            displayRender={labels => labels.join('-')}
+          />
+        </div>
       </Modal>
       <Modal
         show={!!deleteChartFolderTarget}
@@ -2004,7 +2453,9 @@ export function Menu({
         title={<h4>{t('删除分类')}</h4>}
       >
         <div>
-          {deleteChartFolderTarget?.items.length
+          {deleteChartFolderHasChildren
+            ? t('当前分类下存在子分类，请先删除子分类。')
+            : deleteChartFolderHasItems
             ? t('删除分类仅会移除左侧菜单快捷方式，不会删除其中的图表。是否继续？')
             : t('确认删除该分类吗？')}
         </div>
@@ -2018,14 +2469,21 @@ export function Menu({
         title={<h4>{t('删除分类')}</h4>}
       >
         <div>
-          {deleteFolderTarget?.items.length
+          {deleteDashboardFolderHasChildren
+            ? t('当前分类下存在子分类，请先删除子分类。')
+            : deleteDashboardFolderHasItems
             ? t(
                 '删除分类仅会移除左侧菜单快捷方式，不会删除其中的仪表盘。是否继续？',
               )
             : t('确认删除该分类吗？')}
         </div>
       </Modal>
-      <StyledHeader className="top" id="main-menu" role="navigation">
+      <StyledHeader
+        className="top"
+        id="main-menu"
+        role="navigation"
+        $collapsed={screens.md && isCollapsed}
+      >
         <Global styles={globalStyles(theme)} />
         <div
           style={{
@@ -2043,11 +2501,11 @@ export function Menu({
             >
               {isFrontendRoute(window.location.pathname) ? (
                 <GenericLink className="navbar-brand" to={brandPath}>
-                  <img src={brand.icon} alt={brand.alt} />
+                  <img src={brandIcon} alt={brand.alt} />
                 </GenericLink>
               ) : (
                 <a className="navbar-brand" href={brandPath}>
-                  <img src={brand.icon} alt={brand.alt} />
+                  <img src={brandIcon} alt={brand.alt} />
                 </a>
               )}
             </Tooltip>
@@ -2069,17 +2527,20 @@ export function Menu({
 
           <DropdownMenu
             mode={showMenu}
+            inlineCollapsed={screens.md && isCollapsed}
+            triggerSubMenuAction="hover"
             data-test="navbar-top"
             className="main-nav"
             style={{
               maxHeight: !screens.md && !menuOpen ? '0' : 'none',
               flex: 1,
               overflowY: 'auto',
+              overflowX: 'visible',
               borderRight: 'none',
             }}
             selectedKeys={activeMenuKeys}
-            openKeys={openKeys}
             onOpenChange={keys => handleOpenKeysChange(keys as string[])}
+            {...(!(screens.md && isCollapsed) ? { openKeys } : {})}
           >
             {menu.map((item, index) => {
               const props = {
@@ -2122,8 +2583,27 @@ export function Menu({
               navbarRight={navbarRight}
               isFrontendRoute={isFrontendRoute}
               environmentTag={environmentTag}
+              isCollapsed={screens.md && isCollapsed}
             />
           </div>
+
+          {screens.md && onToggleCollapse && (
+            <MenuCollapseFooter>
+              <Tooltip
+                id="menu-collapse-toggle"
+                title={isCollapsed ? t('展开菜单') : t('收起菜单')}
+                placement="right"
+              >
+                <MenuCollapseButton
+                  type="button"
+                  aria-label={isCollapsed ? t('展开菜单') : t('收起菜单')}
+                  onClick={onToggleCollapse}
+                >
+                  {isCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                </MenuCollapseButton>
+              </Tooltip>
+            </MenuCollapseFooter>
+          )}
         </div>
       </StyledHeader>
     </>

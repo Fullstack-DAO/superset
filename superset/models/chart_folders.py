@@ -23,9 +23,21 @@ from superset import security_manager
 
 class ChartMenuFolder(Model):
     __tablename__ = "chart_menu_folders"
-    __table_args__ = (UniqueConstraint("name", name="uq_chart_menu_folders_name"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "parent_id",
+            "name",
+            name="uq_chart_menu_folders_parent_id_name",
+        ),
+    )
 
     id = Column(Integer, primary_key=True)
+    parent_id = Column(
+        Integer,
+        ForeignKey("chart_menu_folders.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     user_id = Column(
         Integer,
         ForeignKey("ab_user.id", ondelete="CASCADE"),
@@ -35,6 +47,19 @@ class ChartMenuFolder(Model):
     name = Column(String(255), nullable=False)
 
     user = relationship(security_manager.user_model, foreign_keys=[user_id])
+    parent = relationship(
+        "ChartMenuFolder",
+        remote_side=[id],
+        back_populates="children",
+        foreign_keys=[parent_id],
+    )
+    children = relationship(
+        "ChartMenuFolder",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="ChartMenuFolder.id",
+    )
     items = relationship(
         "ChartMenuItem",
         back_populates="folder",

@@ -334,7 +334,9 @@ export function useListViewState({
         : 'replace';
 
     setQuery(queryParams, method);
+  }, [internalFilters, pageIndex, query.folder, query.pageIndex, renderCard, setQuery, sortBy, viewMode]);
 
+  useEffect(() => {
     fetchData({ pageIndex, pageSize, sortBy, filters });
   }, [fetchData, pageIndex, pageSize, sortBy, filters]);
 

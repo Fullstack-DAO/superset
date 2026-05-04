@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { Fragment, useState, useEffect } from 'react';
+import React, { Fragment, Key, useState, useEffect } from 'react';
 import rison from 'rison';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
@@ -72,7 +72,7 @@ const styledDisabled = (theme: SupersetTheme) => css`
   }
 `;
 
-const StyledDiv = styled.div<{ align: string }>`
+const StyledDiv = styled.div<{ align: string; $collapsed?: boolean }>`
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -88,6 +88,57 @@ const StyledDiv = styled.div<{ align: string }>`
       padding-left: 24px !important;
     }
   }
+
+  ${({ theme, $collapsed }) =>
+    $collapsed
+      ? `
+        .ant-menu-inline-collapsed {
+          width: 100%;
+        }
+
+        .ant-menu-root.ant-menu-vertical {
+          > .ant-menu-item,
+          > .ant-menu-submenu > .ant-menu-submenu-title {
+            padding-left: 0 !important;
+          }
+        }
+
+        .ant-menu-inline-collapsed > .ant-menu-item,
+        .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title {
+          width: 100%;
+          height: ${theme.gridUnit * 8}px;
+          line-height: ${theme.gridUnit * 8}px;
+          padding: 0 !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .ant-menu-inline-collapsed > .ant-menu-item:hover,
+        .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title:hover {
+          background-color: ${theme.colors.primary.light5};
+          color: ${theme.colors.primary.base};
+        }
+
+        .ant-menu-inline-collapsed > .ant-menu-item .ant-menu-title-content,
+        .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-submenu-arrow,
+        .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content {
+          display: none;
+        }
+
+        .ant-menu-inline-collapsed .ant-menu-item .anticon,
+        .ant-menu-inline-collapsed .ant-menu-submenu-title .anticon,
+        .ant-menu-inline-collapsed .ant-menu-item .fa,
+        .ant-menu-inline-collapsed .ant-menu-submenu-title .fa {
+          width: ${theme.gridUnit * 4}px;
+          min-width: ${theme.gridUnit * 4}px;
+          margin: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+      `
+      : ''}
 `;
 
 const StyledMenuItemWithIcon = styled.div`
@@ -121,6 +172,7 @@ const RightMenu = ({
   navbarRight,
   isFrontendRoute,
   environmentTag,
+  isCollapsed = false,
   setQuery,
 }: RightMenuProps & {
   setQuery: ({
@@ -328,22 +380,21 @@ const RightMenu = ({
       </Menu.Item>
     );
 
-  const onMenuOpen = (openKeys: string[]) => {
+  const onMenuOpen = (openKeys: Key[]) => {
     // We should query the API only if opening Data submenus
     // because the rest don't need this information. Not using
     // "Data" directly since we might change the label later on?
     if (
       openKeys.length > 1 &&
       !isEmpty(
-        openKeys?.filter((key: string) =>
-          key.includes(`sub2_${dropdownItems?.[0]?.label}`),
+        openKeys?.filter(key =>
+          String(key).includes(`sub2_${dropdownItems?.[0]?.label}`),
         ),
       )
     ) {
       if (canUploadData) checkAllowUploads();
       if (canDatabase || canDataset) existsNonExamplesDatabases();
     }
-    return null;
   };
   const RightMenuExtension = extensionsRegistry.get('navbar.right');
   const RightMenuItemIconExtension = extensionsRegistry.get(
@@ -355,7 +406,7 @@ const RightMenu = ({
   // const theme = useTheme();
 
   return (
-    <StyledDiv align={align}>
+    <StyledDiv align={align} $collapsed={isCollapsed}>
       {canDatabase && (
         <DatabaseModal
           onHide={handleOnHideModal}
@@ -385,9 +436,10 @@ const RightMenu = ({
       )} */}
       <Menu
         selectable={false}
-        mode="vertical"
+        mode={isCollapsed ? 'inline' : 'vertical'}
         onClick={handleMenuSelection}
         onOpenChange={onMenuOpen}
+        {...(isCollapsed ? { inlineCollapsed: true } : {})}
       >
         {RightMenuExtension && <RightMenuExtension />}
         {!navbarRight.user_is_anonymous && showActionDropdown && (

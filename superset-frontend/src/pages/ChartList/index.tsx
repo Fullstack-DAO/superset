@@ -75,11 +75,11 @@ import { GenericLink } from 'src/components/GenericLink/GenericLink';
 // import { loadTags } from 'src/components/Tags/utils';
 import FacePile from 'src/components/FacePile';
 import ChartCard from 'src/features/charts/ChartCard';
+import ChartFolderTagCell from 'src/features/charts/components/ChartFolderTagCell';
 // import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 // import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
-import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 import { FetchDataConfig } from 'src/components/ListView/types';
 import {
   CHART_FOLDER_QUERY_KEY,
@@ -285,7 +285,6 @@ function ChartList(props: ChartListProps) {
     addSuccessToast,
     user: { userId },
   } = props;
-  const screens = useBreakpoint();
   const history = useHistory();
   const location = useLocation();
 
@@ -313,7 +312,7 @@ function ChartList(props: ChartListProps) {
     () => new URLSearchParams(location.search).get(CHART_FOLDER_QUERY_KEY),
     [location.search],
   );
-  const { chartFolders } = useChartFolders();
+  const { chartFolders, refreshChartFolders } = useChartFolders();
   const selectedFolder = useMemo<ChartFolder | null>(
     () => chartFolders.find(folder => folder.id === selectedFolderId) ?? null,
     [chartFolders, selectedFolderId],
@@ -352,6 +351,10 @@ function ChartList(props: ChartListProps) {
   } = useChartEditModal(setCharts, charts);
 
   const [importingChart, showImportModal] = useState<boolean>(false);
+  const [chartCategoryTarget, setChartCategoryTarget] = useState<{
+    chart: Chart;
+    canEdit: boolean;
+  } | null>(null);
   const [passwordFields, setPasswordFields] = useState<string[]>([]);
   const [preparingExport, setPreparingExport] = useState<boolean>(false);
   const [sshTunnelPasswordFields, setSSHTunnelPasswordFields] = useState<
@@ -681,54 +684,53 @@ function ChartList(props: ChartListProps) {
       ),
     );
   }
-  const fetchDashboards = async (
-    filterValue = '',
-    page: number,
-    pageSize: number,
-  ) => {
-    // add filters if filterValue
-    const filters = filterValue
-      ? {
-          filters: [
-            {
-              col: 'dashboard_title',
-              opr: FilterOperator.startsWith,
-              value: filterValue,
-            },
-          ],
-        }
-      : {};
-    const queryParams = rison.encode({
-      columns: ['dashboard_title', 'id'],
-      keys: ['none'],
-      order_column: 'dashboard_title',
-      order_direction: 'asc',
-      page,
-      page_size: pageSize,
-      ...filters,
-    });
-    const response: void | JsonResponse = await SupersetClient.get({
-      endpoint: `/api/v1/dashboard/?q=${queryParams}`,
-    }).catch(() =>
-      addDangerToast(t('An error occurred while fetching dashboards')),
-    );
-    const dashboards = response?.json?.result?.map(
-      ({
-        dashboard_title: dashboardTitle,
-        id,
-      }: {
-        dashboard_title: string;
-        id: number;
-      }) => ({
-        label: dashboardTitle,
-        value: id,
-      }),
-    );
-    return {
-      data: uniqBy<SelectOption>(dashboards, 'value'),
-      totalCount: response?.json?.count,
-    };
-  };
+  const fetchDashboards = useCallback(
+    async (filterValue = '', page: number, pageSize: number) => {
+      const filters = filterValue
+        ? {
+            filters: [
+              {
+                col: 'dashboard_title',
+                opr: FilterOperator.startsWith,
+                value: filterValue,
+              },
+            ],
+          }
+        : {};
+      const queryParams = rison.encode({
+        columns: ['dashboard_title', 'id'],
+        keys: ['none'],
+        order_column: 'dashboard_title',
+        order_direction: 'asc',
+        page,
+        page_size: pageSize,
+        ...filters,
+      });
+      const response: void | JsonResponse = await SupersetClient.get({
+        endpoint: `/api/v1/dashboard/?q=${queryParams}`,
+      }).catch(() =>
+        addDangerToast(t('An error occurred while fetching dashboards')),
+      );
+      const dashboards = response?.json?.result?.map(
+        ({
+          dashboard_title: dashboardTitle,
+          id,
+        }: {
+          dashboard_title: string;
+          id: number;
+        }) => ({
+          label: dashboardTitle,
+          value: id,
+        }),
+      );
+
+      return {
+        data: uniqBy<SelectOption>(dashboards, 'value'),
+        totalCount: response?.json?.count,
+      };
+    },
+    [addDangerToast],
+  );
 
   const columns = useMemo(
     () => [
@@ -846,6 +848,27 @@ function ChartList(props: ChartListProps) {
         accessor: 'tags',
         disableSortBy: true,
         hidden: true,
+      },
+      {
+        Cell: ({ row: { original } }: any) => {
+          const permissions = getResourcePermissions(original.id);
+
+          return (
+            <ChartFolderTagCell
+              chart={original}
+              canEdit={permissions.can_write}
+              chartFolders={chartFolders}
+              refreshChartFolders={refreshChartFolders}
+              onOpenRequest={(chart, canEdit) =>
+                setChartCategoryTarget({ chart, canEdit })
+              }
+            />
+          );
+        },
+        Header: t('分类'),
+        accessor: 'folder_tag',
+        disableSortBy: true,
+        size: 'xxl',
       },
       {
         Cell: ({
@@ -979,7 +1002,11 @@ function ChartList(props: ChartListProps) {
       addSuccessToast,
       addDangerToast,
       chartPermissions,
+      chartFolders,
       getResourcePermissions,
+      openChartEditModal,
+      refreshChartFolders,
+      setChartCategoryTarget,
     ],
   );
 
@@ -1126,7 +1153,7 @@ function ChartList(props: ChartListProps) {
       // },
     ] as Filters;
     return filters_list;
-  }, [addDangerToast, favoritesFilter, props.user]);
+  }, [favoritesFilter, fetchDashboards, userId]);
 
   const visibleFilters: Filters = useMemo(
     () => filters.filter(filter => filter.key !== 'favorite'),
@@ -1177,6 +1204,11 @@ function ChartList(props: ChartListProps) {
       hasPerm,
       activeLoading,
       activeRefreshData,
+      getResourcePermissions,
+      openChartEditModal,
+      saveFavoriteStatus,
+      userId,
+      userSettings,
     ],
   );
 
@@ -1352,13 +1384,7 @@ function ChartList(props: ChartListProps) {
                     ? userSettings.thumbnails
                     : isFeatureEnabled(FeatureFlag.THUMBNAILS)
                 }
-                defaultViewMode={
-                  !screens.md
-                    ? 'card'
-                    : isFeatureEnabled(FeatureFlag.LISTVIEWS_DEFAULT_CARD_VIEW)
-                    ? 'card'
-                    : 'table'
-                }
+                defaultViewMode="table"
               />
             </ListViewContainer>
           );
@@ -1386,6 +1412,17 @@ function ChartList(props: ChartListProps) {
           setSSHTunnelPrivateKeyPasswordFields
         }
       />
+      {chartCategoryTarget && (
+        <ChartFolderTagCell
+          chart={chartCategoryTarget.chart}
+          canEdit={chartCategoryTarget.canEdit}
+          chartFolders={chartFolders}
+          refreshChartFolders={refreshChartFolders}
+          hideTrigger
+          openOnMount
+          onClose={() => setChartCategoryTarget(null)}
+        />
+      )}
       {preparingExport && <Loading />}
     </>
   );

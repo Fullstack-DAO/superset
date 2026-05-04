@@ -58,6 +58,16 @@ class DashboardMenuRestApi(BaseSupersetApi):
         return name.strip()
 
     @staticmethod
+    def _get_parent_id_from_payload() -> int | None:
+        payload = request.json or {}
+        parent_id = payload.get("parent_id")
+        if parent_id in (None, ""):
+            return None
+        if not isinstance(parent_id, int):
+            raise ValueError("parent_id must be an integer")
+        return parent_id
+
+    @staticmethod
     def _get_dashboard_id_from_payload() -> int:
         payload = request.json or {}
         dashboard_id = payload.get("dashboard_id")
@@ -86,13 +96,31 @@ class DashboardMenuRestApi(BaseSupersetApi):
             for item in folder.items
             if (serialized_item := cls._serialize_item(item)) is not None
         ]
-        return {"id": folder.id, "name": folder.name, "items": items}
+        return {
+            "id": folder.id,
+            "name": folder.name,
+            "parent_id": folder.parent_id,
+            "full_path": cls._get_folder_path(folder),
+            "items": items,
+        }
+
+    @classmethod
+    def _get_folder_path(cls, folder: DashboardMenuFolder) -> str:
+        names: list[str] = []
+        current: DashboardMenuFolder | None = folder
+        while current is not None:
+            names.append(current.name)
+            current = current.parent
+        return "-".join(reversed(names))
 
     @classmethod
     def _get_folders(cls) -> list[DashboardMenuFolder]:
         return (
             db.session.query(DashboardMenuFolder)
-            .options(joinedload(DashboardMenuFolder.items))
+            .options(
+                joinedload(DashboardMenuFolder.items),
+                joinedload(DashboardMenuFolder.parent),
+            )
             .order_by(DashboardMenuFolder.id.asc())
             .all()
         )
@@ -101,22 +129,62 @@ class DashboardMenuRestApi(BaseSupersetApi):
     def _get_folder(cls, folder_id: int) -> DashboardMenuFolder | None:
         return (
             db.session.query(DashboardMenuFolder)
-            .options(joinedload(DashboardMenuFolder.items))
+            .options(
+                joinedload(DashboardMenuFolder.items),
+                joinedload(DashboardMenuFolder.parent),
+            )
             .filter(DashboardMenuFolder.id == folder_id)
             .one_or_none()
         )
 
     @classmethod
+    def _validate_parent_folder(
+        cls,
+        parent_id: int | None,
+        current_folder_id: int | None = None,
+    ) -> DashboardMenuFolder | None:
+        if parent_id is None:
+            return None
+
+        parent = cls._get_folder(parent_id)
+        if not parent:
+            raise ValueError("Parent folder does not exist")
+
+        if current_folder_id is None:
+            return parent
+
+        if parent.id == current_folder_id:
+            raise ValueError("Folder cannot be its own parent")
+
+        current = parent.parent
+        while current is not None:
+            if current.id == current_folder_id:
+                raise ValueError("Folder cannot be moved under its descendant")
+            current = current.parent
+
+        return parent
+
+    @classmethod
     def _folder_name_exists(
         cls,
         name: str,
+        parent_id: int | None,
         exclude_folder_id: int | None = None,
     ) -> bool:
-        query = db.session.query(DashboardMenuFolder).filter(
-            DashboardMenuFolder.name == name,
-        )
+        query = db.session.query(DashboardMenuFolder).filter(DashboardMenuFolder.name == name)
+        if parent_id is None:
+            query = query.filter(DashboardMenuFolder.parent_id.is_(None))
+        else:
+            query = query.filter(DashboardMenuFolder.parent_id == parent_id)
         if exclude_folder_id is not None:
             query = query.filter(DashboardMenuFolder.id != exclude_folder_id)
+        return db.session.query(query.exists()).scalar()
+
+    @classmethod
+    def _has_child_folders(cls, folder_id: int) -> bool:
+        query = db.session.query(DashboardMenuFolder.id).filter(
+            DashboardMenuFolder.parent_id == folder_id,
+        )
         return db.session.query(query.exists()).scalar()
 
     @staticmethod
@@ -157,19 +225,25 @@ class DashboardMenuRestApi(BaseSupersetApi):
 
         try:
             name = self._get_name_from_payload()
+            parent_id = self._get_parent_id_from_payload()
         except ValueError as ex:
             return self.response_400(message=str(ex))
 
         try:
-            folder_name_exists = self._folder_name_exists(name)
+            self._validate_parent_folder(parent_id)
+            folder_name_exists = self._folder_name_exists(name, parent_id)
         except SQLAlchemyError as ex:
             db.session.rollback()
             return self.response_500(message=str(ex))
+        except ValueError as ex:
+            return self.response_400(message=str(ex))
 
         if folder_name_exists:
-            return self.response_400(message="Folder name already exists")
+            return self.response_400(message="Folder name already exists at this level")
 
-        db.session.add(DashboardMenuFolder(user_id=g.user.id, name=name))
+        db.session.add(
+            DashboardMenuFolder(user_id=g.user.id, name=name, parent_id=parent_id)
+        )
         response = self._commit_or_500()
         if response:
             return response
@@ -195,22 +269,28 @@ class DashboardMenuRestApi(BaseSupersetApi):
 
         try:
             name = self._get_name_from_payload()
+            parent_id = self._get_parent_id_from_payload()
         except ValueError as ex:
             return self.response_400(message=str(ex))
 
         try:
+            self._validate_parent_folder(parent_id, current_folder_id=folder.id)
             folder_name_exists = self._folder_name_exists(
                 name,
+                parent_id,
                 exclude_folder_id=folder.id,
             )
         except SQLAlchemyError as ex:
             db.session.rollback()
             return self.response_500(message=str(ex))
+        except ValueError as ex:
+            return self.response_400(message=str(ex))
 
         if folder_name_exists:
-            return self.response_400(message="Folder name already exists")
+            return self.response_400(message="Folder name already exists at this level")
 
         folder.name = name
+        folder.parent_id = parent_id
         response = self._commit_or_500()
         if response:
             return response
@@ -232,6 +312,15 @@ class DashboardMenuRestApi(BaseSupersetApi):
 
         if not folder:
             return self.response_404()
+
+        try:
+            has_child_folders = self._has_child_folders(folder.id)
+        except SQLAlchemyError as ex:
+            db.session.rollback()
+            return self.response_500(message=str(ex))
+
+        if has_child_folders:
+            return self.response_400(message="Please delete child folders first")
 
         db.session.delete(folder)
         response = self._commit_or_500()

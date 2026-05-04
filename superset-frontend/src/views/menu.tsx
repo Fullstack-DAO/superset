@@ -19,7 +19,7 @@
 
 // Menu App. Used in views that do not already include the Menu component in the layout.
 // eg, backend rendered views
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import ReactDOM from 'react-dom';
 import { Route, BrowserRouter } from 'react-router-dom';
@@ -38,9 +38,11 @@ const store = setupStore({ disableDebugger: true });
 const bootstrapData = getBootstrapData();
 const menu = { ...bootstrapData.common.menu_data };
 const MENU_WIDTH_STORAGE_KEY = 'superset.menu.width';
+const MENU_COLLAPSED_STORAGE_KEY = 'superset.menu.collapsed';
 const DEFAULT_MENU_WIDTH = 220;
 const MIN_MENU_WIDTH = 200;
 const MAX_MENU_WIDTH = 800;
+const COLLAPSED_MENU_WIDTH = 72;
 
 const emotionCache = createCache({
   key: 'menu',
@@ -62,12 +64,17 @@ const getInitialMenuWidth = () => {
   return DEFAULT_MENU_WIDTH;
 };
 
-const MenuShell = styled.div`
+const getInitialMenuCollapsed = () =>
+  window.localStorage.getItem(MENU_COLLAPSED_STORAGE_KEY) === 'true';
+
+const MenuShell = styled.div<{ $collapsed?: boolean }>`
   position: relative;
   width: 100%;
   height: 100%;
-  min-width: ${MIN_MENU_WIDTH}px;
-  max-width: ${MAX_MENU_WIDTH}px;
+  min-width: ${({ $collapsed }) =>
+    $collapsed ? `${COLLAPSED_MENU_WIDTH}px` : `${MIN_MENU_WIDTH}px`};
+  max-width: ${({ $collapsed }) =>
+    $collapsed ? `${COLLAPSED_MENU_WIDTH}px` : `${MAX_MENU_WIDTH}px`};
   overflow: visible;
   will-change: width;
 `;
@@ -101,12 +108,16 @@ const StandaloneMenuLayout = () => {
   const startXRef = useRef(0);
   const startWidthRef = useRef(DEFAULT_MENU_WIDTH);
   const initialWidth = useMemo(() => getInitialMenuWidth(), []);
+  const [menuWidth, setMenuWidth] = useState(initialWidth);
+  const [isCollapsed, setIsCollapsed] = useState(getInitialMenuCollapsed);
 
   useEffect(() => {
     if (shellRef.current) {
-      shellRef.current.style.width = `${initialWidth}px`;
+      shellRef.current.style.width = isCollapsed
+        ? `${COLLAPSED_MENU_WIDTH}px`
+        : `${menuWidth}px`;
     }
-  }, [initialWidth]);
+  }, [isCollapsed, menuWidth]);
 
   useEffect(
     () => () => {
@@ -123,6 +134,8 @@ const StandaloneMenuLayout = () => {
       Math.min(MAX_MENU_WIDTH, nextWidth),
     );
 
+    setMenuWidth(normalizedWidth);
+
     if (frameRef.current) {
       window.cancelAnimationFrame(frameRef.current);
     }
@@ -137,6 +150,10 @@ const StandaloneMenuLayout = () => {
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (isCollapsed) {
+      return;
+    }
+
     const shell = shellRef.current;
 
     if (!shell) {
@@ -166,10 +183,22 @@ const StandaloneMenuLayout = () => {
     window.addEventListener('pointerup', handlePointerUp, { once: true });
   };
 
+  const toggleMenuCollapse = () => {
+    setIsCollapsed(current => {
+      const next = !current;
+      window.localStorage.setItem(MENU_COLLAPSED_STORAGE_KEY, `${next}`);
+      return next;
+    });
+  };
+
   return (
-    <MenuShell ref={shellRef}>
-      <Menu data={menu} />
-      <MenuResizeHandle onPointerDown={handlePointerDown} />
+    <MenuShell ref={shellRef} $collapsed={isCollapsed}>
+      <Menu
+        data={menu}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={toggleMenuCollapse}
+      />
+      {!isCollapsed && <MenuResizeHandle onPointerDown={handlePointerDown} />}
     </MenuShell>
   );
 };

@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Modal from 'src/components/Modal';
 import { Input, TextArea } from 'src/components/Input';
 import Button from 'src/components/Button';
-import { AsyncSelect, Row, Col, AntdForm } from 'src/components';
+import { Row, Col, AntdForm } from 'src/components';
 import { SelectValue } from 'antd/lib/select';
 // import rison from 'rison';
 // import { Checkbox } from 'antd';
@@ -28,20 +28,10 @@ import {
   t,
   SupersetClient,
   styled,
-  isFeatureEnabled,
-  FeatureFlag,
 } from '@superset-ui/core';
 import Chart, { Slice } from 'src/types/Chart';
 import { getClientErrorObject } from 'src/utils/getClientErrorObject';
 import withToasts from 'src/components/MessageToasts/withToasts';
-import { loadTags } from 'src/components/Tags/utils';
-import {
-  addTag,
-  deleteTaggedObjects,
-  fetchTags,
-  OBJECT_TYPES,
-} from 'src/features/tags/tags';
-import TagType from 'src/types/TagType';
 import CollaboratorModal from './CollaboratorModal'; // 新增的管理协作者弹窗组件
 
 export type PropertiesModalProps = {
@@ -86,7 +76,6 @@ function PropertiesModal({
     { value: number; label: string }[] | { value: number; label: string } | null
   >(null);
 
-  const [tags, setTags] = useState<TagType[]>([]);
   const [showCollaboratorModal, setShowCollaboratorModal] = useState(false);
 
   const handleOpenCollaboratorModal = () => setShowCollaboratorModal(true);
@@ -100,15 +89,6 @@ function PropertiesModal({
   // const [rolePermissions, setRolePermissions] = useState<
   //   { roleId: number; roleName: string; permissions: ('read' | 'edit')[] }[]
   // >([]);
-
-  const tagsAsSelectValues = useMemo(() => {
-    const selectTags = tags.map(tag => ({
-      value: tag.name,
-      label: tag.name,
-      key: tag.name,
-    }));
-    return selectTags;
-  }, [tags.length]);
 
   function showError({ error, statusText, message }: any) {
     let errorText = error || statusText || t('An error has occurred');
@@ -198,41 +178,6 @@ function PropertiesModal({
   //   [],
   // );
 
-  const updateTags = (oldTags: TagType[], newTags: TagType[]) => {
-    // update the tags for this object
-    // add tags that are in new tags, but not in old tags
-    // eslint-disable-next-line array-callback-return
-    newTags.map((tag: TagType) => {
-      if (!oldTags.some(t => t.name === tag.name)) {
-        addTag(
-          {
-            objectType: OBJECT_TYPES.CHART,
-            objectId: slice.slice_id,
-            includeTypes: false,
-          },
-          tag.name,
-          () => {},
-          () => {},
-        );
-      }
-    });
-    // delete tags that are in old tags, but not in new tags
-    // eslint-disable-next-line array-callback-return
-    oldTags.map((tag: TagType) => {
-      if (!newTags.some(t => t.name === tag.name)) {
-        deleteTaggedObjects(
-          {
-            objectType: OBJECT_TYPES.CHART,
-            objectId: slice.slice_id,
-          },
-          tag,
-          () => {},
-          () => {},
-        );
-      }
-    });
-  };
-
   const onSubmit = async (values: {
     certified_by?: string;
     certification_details?: string;
@@ -264,25 +209,6 @@ function PropertiesModal({
       payload.owners = [selectedOwners.value];
     } else {
       payload.owners = [];
-    }
-
-    if (isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM)) {
-      // update tags
-      try {
-        fetchTags(
-          {
-            objectType: OBJECT_TYPES.CHART,
-            objectId: slice.slice_id,
-            includeTypes: false,
-          },
-          (currentTags: TagType[]) => updateTags(currentTags, tags),
-          error => {
-            showError(error);
-          },
-        );
-      } catch (error) {
-        showError(error);
-      }
     }
 
     // if (userPermissions.length > 0) {
@@ -319,7 +245,6 @@ function PropertiesModal({
       const updatedChart = {
         ...payload,
         ...res.json.result,
-        tags,
         id: slice.slice_id,
         owners: selectedOwners,
       };
@@ -347,37 +272,6 @@ function PropertiesModal({
   useEffect(() => {
     setName(slice.slice_name || '');
   }, [slice.slice_name]);
-
-  useEffect(() => {
-    if (!isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM)) return;
-    try {
-      fetchTags(
-        {
-          objectType: OBJECT_TYPES.CHART,
-          objectId: slice.slice_id,
-          includeTypes: false,
-        },
-        (tags: TagType[]) => setTags(tags),
-        error => {
-          showError(error);
-        },
-      );
-    } catch (error) {
-      showError(error);
-    }
-  }, [slice.slice_id]);
-
-  const handleChangeTags = (values: { label: string; value: number }[]) => {
-    // triggered whenever a new tag is selected or a tag was deselected
-    // on new tag selected, add the tag
-
-    const uniqueTags = [...new Set(values.map(v => v.label))];
-    setTags([...uniqueTags.map(t => ({ name: t }))]);
-  };
-
-  const handleClearTags = () => {
-    setTags([]);
-  };
 
   return (
     <Modal
@@ -497,25 +391,6 @@ function PropertiesModal({
               </StyledHelpBlock>
             </FormItem>
 
-            {isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && (
-              <h3 css={{ marginTop: '1em' }}>{t('Tags')}</h3>
-            )}
-            {isFeatureEnabled(FeatureFlag.TAGGING_SYSTEM) && (
-              <FormItem>
-                <AsyncSelect
-                  ariaLabel="Tags"
-                  mode="multiple"
-                  value={tagsAsSelectValues}
-                  options={loadTags}
-                  onChange={handleChangeTags}
-                  onClear={handleClearTags}
-                  allowClear
-                />
-                <StyledHelpBlock className="help-block">
-                  {t('A list of tags that have been applied to this chart.')}
-                </StyledHelpBlock>
-              </FormItem>
-            )}
           </Col>
         </Row>
         {/* <Row gutter={16} style={{ marginTop: '1em' }}>

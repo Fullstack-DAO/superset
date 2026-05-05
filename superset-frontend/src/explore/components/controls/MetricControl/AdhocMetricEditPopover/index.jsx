@@ -341,6 +341,7 @@ export default class AdhocMetricEditPopover extends React.PureComponent {
       placeholder: t('%s saved metric(s)', savedMetricsOptions?.length ?? 0),
       value: savedMetric?.metric_name,
       onChange: this.onSavedMetricChange,
+      optionFilterProps: ['label', 'value', 'verbose_name'],
       allowClear: true,
       autoFocus: true,
     };
@@ -387,6 +388,7 @@ export default class AdhocMetricEditPopover extends React.PureComponent {
                     savedMetric => ({
                       value: savedMetric.metric_name,
                       label: savedMetric.metric_name,
+                      verbose_name: savedMetric.verbose_name,
                       customLabel: this.renderMetricOption(savedMetric),
                       key: savedMetric.id,
                     }),

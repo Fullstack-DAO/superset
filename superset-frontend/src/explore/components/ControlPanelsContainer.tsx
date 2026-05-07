@@ -46,7 +46,6 @@ import {
   ControlState,
   CustomControlItem,
   Dataset,
-  ExpandedControlItem,
   isTemporalColumn,
   sections,
 } from '@superset-ui/chart-controls';
@@ -74,7 +73,7 @@ import { CLAUSES } from './controls/FilterControl/types';
 
 const { confirm } = Modal;
 
-export type ControlPanelsContainerProps = {
+export type ExploreControlPanelsContainerProps = {
   exploreState: ExplorePageState['explore'];
   actions: ExploreActions;
   datasource_type: DatasourceType;
@@ -87,14 +86,10 @@ export type ControlPanelsContainerProps = {
   onStop: () => void;
   canStopQuery: boolean;
   chartIsStale: boolean;
+  onToggleCollapse?: () => void;
 };
 
-export type ExpandedControlPanelSectionConfig = Omit<
-  ControlPanelSectionConfig,
-  'controlSetRows'
-> & {
-  controlSetRows: ExpandedControlItem[][];
-};
+export type ControlPanelsContainerProps = ExploreControlPanelsContainerProps;
 
 const iconStyles = css`
   &.anticon {
@@ -162,8 +157,18 @@ const ControlPanelsTabs = styled(Tabs)`
     .ant-tabs-nav {
       margin-bottom: 0;
     }
+    .ant-tabs-nav-wrap {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
     .ant-tabs-nav-list {
-      width: ${fullWidth ? '100%' : '50%'};
+      width: ${fullWidth ? `calc(100% - ${theme.gridUnit * 8}px)` : '50%'};
+    }
+    .ant-tabs-extra-content {
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
+      margin-bottom: 3px;
     }
     .ant-tabs-tabpane {
       height: 100%;
@@ -267,7 +272,9 @@ function useResetOnChangeRef(initialValue: () => any, resetOnChangeValue: any) {
   return value;
 }
 
-export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
+export const ControlPanelsContainer = (
+  props: ExploreControlPanelsContainerProps,
+) => {
   const { colors } = useTheme();
   const pluginContext = useContext(PluginContext);
 
@@ -473,7 +480,7 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
     };
 
     const isVisible = visibility
-      ? visibility.call(config, props, controlData)
+      ? visibility.call(config, props as any, controlData)
       : undefined;
 
     const label =
@@ -524,9 +531,7 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
     form_data.viz_type,
   );
 
-  const renderControlPanelSection = (
-    section: ExpandedControlPanelSectionConfig,
-  ) => {
+  const renderControlPanelSection = (section: ControlPanelSectionConfig) => {
     const { controls } = props;
     const { label, description } = section;
 
@@ -632,11 +637,12 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
                 return controlItem;
               }
               if (
-                controlItem.name &&
-                controlItem.config &&
+                typeof controlItem === 'object' &&
+                'name' in controlItem &&
+                'config' in controlItem &&
                 controlItem.name !== 'datasource'
               ) {
-                return renderControl(controlItem);
+                return renderControl(controlItem as CustomControlItem);
               }
               return null;
             })
@@ -734,6 +740,29 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
     props.errorMessage,
   ]);
 
+  const collapseButton = useMemo(() => {
+    if (!props.onToggleCollapse) {
+      return null;
+    }
+
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        className="action-button"
+        onClick={props.onToggleCollapse}
+      >
+        <Tooltip title={t('收起配置面板')}>
+          <Icons.Expand
+            className="collapse-icon"
+            iconColor={colors.primary.base}
+            iconSize="l"
+          />
+        </Tooltip>
+      </span>
+    );
+  }, [colors.primary.base, props.onToggleCollapse]);
+
   const controlPanelRegistry = getChartControlPanelRegistry();
   if (!controlPanelRegistry.has(form_data.viz_type) && pluginContext.loading) {
     return <Loading />;
@@ -748,6 +777,7 @@ export const ControlPanelsContainer = (props: ControlPanelsContainerProps) => {
         data-test="control-tabs"
         fullWidth={showCustomizeTab}
         allowOverflow={false}
+        tabBarExtraContent={collapseButton}
       >
         <Tabs.TabPane key="query" tab={dataTabTitle}>
           <Collapse

@@ -35,6 +35,7 @@ export enum LocalStorageKeys {
   chart_split_sizes = 'chart_split_sizes',
   controls_width = 'controls_width',
   datasource_width = 'datasource_width',
+  is_control_panel_open = 'is_control_panel_open',
   is_datapanel_open = 'is_datapanel_open',
   homepage_chart_filter = 'homepage_chart_filter',
   homepage_dashboard_filter = 'homepage_dashboard_filter',
@@ -64,6 +65,7 @@ export type LocalStorageValues = {
   chart_split_sizes: [number, number];
   controls_width: number;
   datasource_width: number;
+  is_control_panel_open: boolean;
   is_datapanel_open: boolean;
   homepage_chart_filter: TableTab;
   homepage_dashboard_filter: TableTab;

@@ -124,10 +124,20 @@ const ExplorePanelContainer = styled.div`
       flex: 1;
       min-width: ${theme.gridUnit * 128}px;
       border-left: 1px solid ${theme.colors.grayscale.light2};
+      position: relative;
       padding: 0 ${theme.gridUnit * 4}px;
       .panel {
         margin-bottom: 0;
       }
+    }
+    .control-panel-trigger {
+      position: absolute;
+      top: ${theme.gridUnit * 2 + 1}px;
+      left: ${theme.gridUnit * 2}px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .controls-column {
       align-self: flex-start;
@@ -248,7 +258,10 @@ function ExploreViewContainer(props) {
     props.controls,
   );
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDatasourceCollapsed, setIsDatasourceCollapsed] = useState(false);
+  const [isControlPanelCollapsed, setIsControlPanelCollapsed] = useState(
+    () => !getItem(LocalStorageKeys.is_control_panel_open, true),
+  );
   const [shouldForceUpdate, setShouldForceUpdate] = useState(-1);
   const tabId = useTabId();
 
@@ -346,9 +359,17 @@ function ExploreViewContainer(props) {
     }
   }
 
-  function toggleCollapse() {
-    setIsCollapsed(!isCollapsed);
+  function toggleDatasourceCollapse() {
+    setIsDatasourceCollapsed(!isDatasourceCollapsed);
   }
+
+  function toggleControlPanelCollapse() {
+    setIsControlPanelCollapsed(!isControlPanelCollapsed);
+  }
+
+  useEffect(() => {
+    setItem(LocalStorageKeys.is_control_panel_open, !isControlPanelCollapsed);
+  }, [isControlPanelCollapsed]);
 
   useComponentDidMount(() => {
     props.actions.logEvent(LOG_ACTIONS_MOUNT_EXPLORER);
@@ -611,7 +632,9 @@ function ExploreViewContainer(props) {
           maxWidth="33%"
           enable={{ right: true }}
           className={
-            isCollapsed ? 'no-show' : 'explore-column data-source-selection'
+            isDatasourceCollapsed
+              ? 'no-show'
+              : 'explore-column data-source-selection'
           }
         >
           <div className="title-container">
@@ -620,13 +643,15 @@ function ExploreViewContainer(props) {
               role="button"
               tabIndex={0}
               className="action-button"
-              onClick={toggleCollapse}
+              onClick={toggleDatasourceCollapse}
             >
-              <Icons.Expand
-                className="collapse-icon"
-                iconColor={theme.colors.primary.base}
-                iconSize="l"
-              />
+              <Tooltip title={t('收起数据源tab')}>
+                <Icons.Expand
+                  className="collapse-icon"
+                  iconColor={theme.colors.primary.base}
+                  iconSize="l"
+                />
+              </Tooltip>
             </span>
           </div>
           <DataSourcePanel
@@ -638,10 +663,10 @@ function ExploreViewContainer(props) {
             user={props.user}
           />
         </Resizable>
-        {isCollapsed ? (
+        {isDatasourceCollapsed ? (
           <div
             className="sidebar"
-            onClick={toggleCollapse}
+            onClick={toggleDatasourceCollapse}
             data-test="open-datasource-tab"
             role="button"
             tabIndex={0}
@@ -668,7 +693,10 @@ function ExploreViewContainer(props) {
           minWidth={defaultSidebarsWidth[LocalStorageKeys.controls_width]}
           maxWidth="33%"
           enable={{ right: true }}
-          className="col-sm-3 explore-column controls-column"
+          className={cx(
+            'col-sm-3 explore-column controls-column',
+            isControlPanelCollapsed && 'no-show',
+          )}
         >
           <ConnectedControlPanelsContainer
             exploreState={props.exploreState}
@@ -683,14 +711,36 @@ function ExploreViewContainer(props) {
             canStopQuery={props.can_add || props.can_overwrite}
             errorMessage={errorMessage}
             chartIsStale={chartIsStale}
+            onToggleCollapse={toggleControlPanelCollapse}
           />
         </Resizable>
         <div
           className={cx(
             'main-explore-content',
-            isCollapsed ? 'col-sm-9' : 'col-sm-7',
+            isDatasourceCollapsed && isControlPanelCollapsed
+              ? 'col-sm-12'
+              : isDatasourceCollapsed || isControlPanelCollapsed
+              ? 'col-sm-9'
+              : 'col-sm-7',
           )}
         >
+          {isControlPanelCollapsed ? (
+            <span
+              className="control-panel-trigger"
+              onClick={toggleControlPanelCollapse}
+              data-test="open-control-panel-tab"
+              role="button"
+              tabIndex={0}
+            >
+              <Tooltip title={t('打开配置面板')}>
+                <Icons.Collapse
+                  className="collapse-icon"
+                  iconColor={theme.colors.primary.base}
+                  iconSize="l"
+                />
+              </Tooltip>
+            </span>
+          ) : null}
           {renderChartContainer()}
         </div>
       </ExplorePanelContainer>

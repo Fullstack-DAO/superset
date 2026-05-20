@@ -280,7 +280,7 @@ const StyledDashboardContent = styled.div<{
       }px);`}
 
       @media (max-width: 768px) {
-        margin: ${theme.gridUnit * 2}px ${theme.gridUnit * 4}px;
+        margin: ${theme.gridUnit * 6}px ${theme.gridUnit * 4}px 0;
         background-color: transparent;
         padding: 0;
 

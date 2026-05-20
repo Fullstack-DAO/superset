@@ -1,7 +1,7 @@
 import logging
 from flask import request, jsonify, g, redirect
 from flask_appbuilder import expose
-from flask_login import login_user
+from flask_login import login_user, logout_user
 # from superset.views.base import BaseSupersetView
 from flask_appbuilder import BaseView as BaseSupersetView
 from superset import security_manager
@@ -23,7 +23,8 @@ class PseudoLoginView(BaseSupersetView):
         user = security_manager.find_user(email=email)
         if not user:
             return jsonify({"status": "error", "message": "User not found"}), 404
-            
+
+        logout_user()
         login_user(user)
         return jsonify({
             "status": "success", 

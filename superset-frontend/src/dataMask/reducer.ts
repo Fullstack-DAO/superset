@@ -75,7 +75,7 @@ function getRelativeDefault(filter: Filter): Partial<DataMask> {
       ? lastMonth.getMonth() + 1
       : lastMonth.getFullYear();
   return {
-    extraFormData: { filters: [{ col, op: 'IN', val: [val] }] },
+    extraFormData: { filters: [{ col, op: 'IN' as const, val: [val] }] },
     filterState: { value: [val] },
   };
 }
@@ -92,14 +92,15 @@ function fillNativeFilters(
     // Check if initialDataMask actually contains data masks (has extraFormData)
     // vs filter configs (has filterType). If it's filter configs, ignore it.
     const isDataMask = dataMask[filter.id]?.extraFormData !== undefined;
-    const hasExplicitValue = isDataMask && dataMask[filter.id]?.filterState?.value !== undefined;
+    const hasExplicitValue =
+      isDataMask && dataMask[filter.id]?.filterState?.value !== undefined;
 
     mergedDataMask[filter.id] = {
       ...getInitialDataMask(filter.id),
       ...filter.defaultDataMask,
       ...(!hasExplicitValue ? getRelativeDefault(filter) : {}),
       ...(isDataMask ? dataMask[filter.id] : {}),
-    };
+    } as DataMaskWithId;
     if (
       currentFilters &&
       !areObjectsEqual(

@@ -181,7 +181,7 @@ const FilterBar: React.FC<FiltersBarProps> = ({
             extraFormData: {
               ...dataMask.extraFormData,
               filters: [
-                { col: colName, op: 'IN', val: availableFactories },
+                { col: colName, op: 'IN' as const, val: availableFactories },
               ],
             },
           }

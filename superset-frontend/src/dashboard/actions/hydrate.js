@@ -384,17 +384,18 @@ export const hydrateDashboard =
         dataMask: {
           // Merge preselectNativeFilters (role-based factory defaults) into the
           // initial dataMask so fillNativeFilters applies them on first load.
-          ...Object.entries(
-            dashboard.preselectNativeFilters || {},
-          ).reduce((acc, [filterId, preselect]) => {
-            acc[filterId] = {
-              id: filterId,
-              extraFormData: preselect.extraFormData || {},
-              filterState: preselect.filterState || {},
-              ownState: {},
-            };
-            return acc;
-          }, {}),
+          ...Object.entries(dashboard.preselectNativeFilters || {}).reduce(
+            (acc, [filterId, preselect]) => {
+              acc[filterId] = {
+                id: filterId,
+                extraFormData: preselect.extraFormData || {},
+                filterState: preselect.filterState || {},
+                ownState: {},
+              };
+              return acc;
+            },
+            {},
+          ),
           ...dataMask,
         },
         dashboardFilters,

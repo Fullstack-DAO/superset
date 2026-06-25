@@ -1527,7 +1527,9 @@ const FiltersConfigForm = (
                       ]);
                       forceUpdate();
                     }}
-                  />
+                  >
+                    <span />
+                  </CollapsibleControl>
                 </CleanFormItem>
               </>
             )}

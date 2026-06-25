@@ -80,6 +80,11 @@ test-changelog.md
 # Ignore package-lock in packages
 plugins/*/package-lock.json
 packages/*/package-lock.json
+superset-frontend/plugins/*/package-lock.json
+superset-frontend/packages/*/package-lock.json
+superset-frontend/tools/*/package-lock.json
+/package-lock.json
+/docs/package-lock.json
 
 # For country map geojson conversion script
 .ipynb_checkpoints/

@@ -36,6 +36,7 @@ import {
   NativeFilterType,
   styled,
   SupersetApiError,
+  SupersetClient,
   t,
 } from '@superset-ui/core';
 import { isEqual } from 'lodash';
@@ -52,6 +53,7 @@ import { PluginFilterSelectCustomizeProps } from 'src/filters/components/Select/
 import { useSelector } from 'react-redux';
 import { getChartDataRequest } from 'src/components/Chart/chartAction';
 import { Input, TextArea } from 'src/components/Input';
+import Button from 'src/components/Button';
 import { Select, FormInstance } from 'src/components';
 import Collapse from 'src/components/Collapse';
 import BasicErrorAlert from 'src/components/ErrorMessage/BasicErrorAlert';
@@ -551,6 +553,116 @@ const FiltersConfigForm = (
 
   const [hasDefaultValue, isRequired, defaultValueTooltip, setHasDefaultValue] =
     useDefaultValue(formFilter, filterToEdit);
+
+  // T6: role→factory rows for preheat config
+  const [roleRows, setRoleRows] = useState<
+    Array<{ role: string; factories: string[] }>
+  >(() =>
+    Object.entries((filterToEdit as any)?.preheatRoleDefaults || {}).map(
+      ([role, vals]) => ({
+        role,
+        factories: Array.isArray(vals) ? (vals as string[]) : [vals as string],
+      }),
+    ),
+  );
+  const updateRoleRows = (rows: typeof roleRows) => {
+    setRoleRows(rows);
+    form.setFields([
+      { name: ['filters', filterId, 'preheatRoleDefaultsList'], value: rows },
+    ]);
+  };
+
+  // Sync existing filterToEdit data into the AntD form on mount via
+  // registered leaf paths so validateFields() picks them up correctly.
+  useEffect(() => {
+    const existingRows = Object.entries(
+      (filterToEdit as any)?.preheatRoleDefaults || {},
+    ).map(([role, vals]) => ({
+      role,
+      factories: Array.isArray(vals) ? (vals as string[]) : [vals as string],
+    }));
+    const existingRelative = (filterToEdit as any)?.preheatRelative;
+    const fields: Parameters<typeof form.setFields>[0] = [];
+    if (existingRows.length > 0) {
+      fields.push({
+        name: ['filters', filterId, 'preheatRoleDefaultsList'],
+        value: existingRows,
+      });
+    }
+    if (existingRelative) {
+      fields.push({
+        name: ['filters', filterId, 'preheatRelative'],
+        value: existingRelative,
+      });
+    }
+    if (fields.length) form.setFields(fields);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // System roles for role selector (name is used for matching in backend)
+  const [systemRoles, setSystemRoles] = useState<
+    { value: string; label: string }[]
+  >([]);
+  useEffect(() => {
+    const q = rison.encode({ filter: '', page: 0, page_size: 1000 });
+    SupersetClient.get({
+      endpoint: `/api/v1/dashboard/related/roles?q=${q}`,
+    })
+      .then(({ json }) => {
+        setSystemRoles(
+          (json.result || []).map((r: { text: string }) => ({
+            value: r.text,
+            label: r.text,
+          })),
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  // Column options derived from chart data (for factory value selector)
+  const colOptions = useMemo<{ value: string; label: string }[]>(() => {
+    const colName =
+      formFilter?.column ?? filterToEdit?.targets?.[0]?.column?.name;
+    if (!colName) return [];
+    const rows: Record<string, unknown>[] =
+      formFilter?.defaultValueQueriesData?.[0]?.data ?? [];
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [];
+    rows.forEach(row => {
+      const v = String(row[colName] ?? '');
+      if (v && !seen.has(v)) {
+        seen.add(v);
+        opts.push({ value: v, label: v });
+      }
+    });
+    return opts;
+  }, [
+    formFilter?.column,
+    formFilter?.defaultValueQueriesData,
+    filterToEdit?.targets,
+  ]);
+
+  // Mutual-exclusion state for the three "default value" modes
+  const [roleFactoryEnabled, setRoleFactoryEnabled] = useState(
+    () =>
+      Object.keys((filterToEdit as any)?.preheatRoleDefaults || {}).length > 0,
+  );
+  const [relativeEnabled, setRelativeEnabled] = useState(
+    () => !!(filterToEdit as any)?.preheatRelative,
+  );
+
+  // Load column values when role-factory section is open (independent of default-value checkbox)
+  useEffect(() => {
+    if (
+      roleFactoryEnabled &&
+      hasDataset &&
+      formFilter?.dataset?.value &&
+      !formFilter?.defaultValueQueriesData
+    ) {
+      refreshHandler();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleFactoryEnabled, formFilter?.dataset?.value]);
 
   const showDataset =
     !datasetId || datasetDetails || formFilter?.dataset?.label;
@@ -1177,10 +1289,27 @@ const FiltersConfigForm = (
               hidden
               initialValue={null}
             />
+            <CleanFormItem
+              name={['filters', filterId, 'preheatRoleDefaultsList']}
+              hidden
+              initialValue={Object.entries(
+                (filterToEdit as any)?.preheatRoleDefaults || {},
+              ).map(([role, vals]) => ({
+                role,
+                factories: Array.isArray(vals)
+                  ? (vals as string[])
+                  : [vals as string],
+              }))}
+            />
+            <CleanFormItem
+              name={['filters', filterId, 'preheatRelative']}
+              hidden
+              initialValue={(filterToEdit as any)?.preheatRelative ?? undefined}
+            />
             <CleanFormItem name={['filters', filterId, 'defaultValue']}>
               <CollapsibleControl
                 checked={hasDefaultValue}
-                disabled={isRequired || defaultToFirstItem}
+                disabled={isRequired || defaultToFirstItem || relativeEnabled}
                 initialValue={hasDefaultValue}
                 title={t('Filter has default value')}
                 tooltip={defaultValueTooltip}
@@ -1287,6 +1416,121 @@ const FiltersConfigForm = (
                 )}
               </CollapsibleControl>
             </CleanFormItem>
+            {formFilter?.filterType === 'filter_select' && (
+              <>
+                {/* 角色工厂配置 — mutually exclusive with default value and relative date */}
+                <CleanFormItem>
+                  <CollapsibleControl
+                    title={t('角色工厂配置')}
+                    checked={roleFactoryEnabled}
+                    disabled={relativeEnabled}
+                    onChange={value => {
+                      setRoleFactoryEnabled(value);
+                      if (!value) updateRoleRows([]);
+                    }}
+                  >
+                    {roleRows.map((row, idx) => (
+                      // eslint-disable-next-line react/no-array-index-key
+                      <div
+                        key={idx}
+                        style={{ display: 'flex', marginBottom: 4 }}
+                      >
+                        <div style={{ width: 160 }}>
+                          <Select
+                            placeholder={t('选择角色')}
+                            value={row.role || undefined}
+                            options={systemRoles}
+                            onChange={val =>
+                              updateRoleRows(
+                                roleRows.map((r, i) =>
+                                  i === idx ? { ...r, role: val as string } : r,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        <div style={{ width: 240, margin: '0 8px' }}>
+                          <Select
+                            {...(formFilter?.controlValues?.multiSelect && {
+                              mode: 'multiple' as const,
+                              allowNewOptions: true,
+                            })}
+                            placeholder={t('选择工厂值')}
+                            value={
+                              formFilter?.controlValues?.multiSelect
+                                ? row.factories
+                                : row.factories?.[0] || undefined
+                            }
+                            options={colOptions}
+                            onChange={val =>
+                              updateRoleRows(
+                                roleRows.map((r, i) =>
+                                  i === idx
+                                    ? {
+                                        ...r,
+                                        factories: formFilter?.controlValues
+                                          ?.multiSelect
+                                          ? (val as string[])
+                                          : val
+                                          ? [val as string]
+                                          : [],
+                                      }
+                                    : r,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          style={{ cursor: 'pointer', lineHeight: '32px' }}
+                          onClick={() =>
+                            updateRoleRows(roleRows.filter((_, i) => i !== idx))
+                          }
+                          onKeyDown={() => {}}
+                        >
+                          ✕
+                        </span>
+                      </div>
+                    ))}
+                    <Button
+                      buttonStyle="link"
+                      onClick={() =>
+                        updateRoleRows([
+                          ...roleRows,
+                          { role: '', factories: [] },
+                        ])
+                      }
+                    >
+                      + {t('添加角色')}
+                    </Button>
+                  </CollapsibleControl>
+                </CleanFormItem>
+                {/* 默认值相对日期 — mutually exclusive with default value and role factory */}
+                <CleanFormItem>
+                  <CollapsibleControl
+                    title={t('默认值相对日期（上个月）')}
+                    checked={relativeEnabled}
+                    disabled={hasDefaultValue || roleFactoryEnabled}
+                    onChange={value => {
+                      setRelativeEnabled(value);
+                      const v = value ? 'last_month' : undefined;
+                      setNativeFilterFieldValues(form, filterId, {
+                        preheatRelative: v,
+                      });
+                      form.setFields([
+                        {
+                          name: ['filters', filterId, 'preheatRelative'],
+                          value: v,
+                        },
+                      ]);
+                      forceUpdate();
+                    }}
+                  />
+                </CleanFormItem>
+              </>
+            )}
             {Object.keys(controlItems)
               .sort(
                 (a, b) =>

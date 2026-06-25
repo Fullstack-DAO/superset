@@ -164,6 +164,29 @@ const FilterBar: React.FC<FiltersBarProps> = ({
       filter: Pick<Filter, 'id'> & Partial<Filter>,
       dataMask: Partial<DataMask>,
     ) => {
+      // If the user cleared all selections and this filter has role-based
+      // availableFactories, re-apply them as the minimum extraFormData restriction
+      // so the chart never shows data outside the role's scope.
+      const availableFactories = (filter as any).preselect?.availableFactories;
+      const colName = (filter.targets?.[0]?.column as any)?.name;
+      const userCleared =
+        availableFactories?.length &&
+        colName &&
+        dataMask.filterState?.value !== undefined &&
+        !dataMask.filterState?.value?.length;
+
+      const finalDataMask = userCleared
+        ? {
+            ...dataMask,
+            extraFormData: {
+              ...dataMask.extraFormData,
+              filters: [
+                { col: colName, op: 'IN', val: availableFactories },
+              ],
+            },
+          }
+        : dataMask;
+
       setDataMaskSelected(draft => {
         // force instant updating on initialization for filters with `requiredFirst` is true or instant filters
         if (
@@ -173,11 +196,11 @@ const FilterBar: React.FC<FiltersBarProps> = ({
             undefined &&
           filter.requiredFirst
         ) {
-          dispatch(updateDataMask(filter.id, dataMask));
+          dispatch(updateDataMask(filter.id, finalDataMask));
         }
         draft[filter.id] = {
           ...(getInitialDataMask(filter.id) as DataMaskWithId),
-          ...dataMask,
+          ...finalDataMask,
         };
       });
     },

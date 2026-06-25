@@ -47,6 +47,8 @@ export interface NativeFiltersFormItem {
   granularity_sqla?: string;
   type: typeof NativeFilterType.NATIVE_FILTER;
   description: string;
+  preheatRoleDefaultsList?: Array<{ role: string; factories: string[] }>;
+  preheatRelative?: string;
 }
 export interface NativeFilterDivider {
   id: string;

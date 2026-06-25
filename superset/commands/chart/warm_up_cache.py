@@ -44,15 +44,19 @@ class ChartWarmUpCacheCommand(BaseCommand):
         dashboard_id: Optional[int],
         extra_filters: Optional[str],
         warm_up: bool = True,
+        override_values: Optional[dict[str, list]] = None,
     ):
         self._chart_or_id = chart_or_id
         self._dashboard_id = dashboard_id
         self._extra_filters = extra_filters
         self._warm_up = warm_up
+        self._override_values = override_values
 
     @staticmethod
     def _get_native_filter_extras(
-        chart_id: int, dashboard_id: int
+        chart_id: int,
+        dashboard_id: int,
+        override_values: Optional[dict[str, list]] = None,
     ) -> list[dict[str, Any]]:
         """
         Extract native filter default values from a dashboard
@@ -115,6 +119,11 @@ class ChartWarmUpCacheCommand(BaseCommand):
                         filter_name, filter_id, chart_id, charts_in_scope,
                     )
                     continue
+
+            # Preheat override: caller supplies exact filter values
+            if override_values and filter_id in override_values:
+                extra_filters.extend(override_values[filter_id])
+                continue
 
             # Try 1: dashboard-level dataMask (last-applied/saved values)
             # — this reflects what users actually see when opening the
@@ -213,7 +222,7 @@ class ChartWarmUpCacheCommand(BaseCommand):
                 #   [...appendFilters(native), ...adhoc_simple_WHERE]
                 if self._dashboard_id:
                     native_extras = self._get_native_filter_extras(
-                        chart.id, self._dashboard_id
+                        chart.id, self._dashboard_id, self._override_values
                     )
                     if native_extras:
                         logger.info(

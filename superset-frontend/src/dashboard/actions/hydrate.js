@@ -295,8 +295,34 @@ export const hydrateDashboard =
       directPathToChild.push(directLinkComponentId);
     }
 
+    const rawFilterConfig = metadata?.native_filter_configuration || [];
+    const lastMonth = new Date();
+    lastMonth.setDate(0);
+    const filterConfig = rawFilterConfig.map(f => {
+      if (!f.preheatRelative) return f;
+      const col = f.targets?.[0]?.column?.name;
+      if (!col) return f;
+      const val =
+        f.preheatRelative === 'last_month'
+          ? lastMonth.getMonth() + 1
+          : lastMonth.getFullYear();
+      return {
+        ...f,
+        defaultDataMask: {
+          ...f.defaultDataMask,
+          extraFormData: { filters: [{ col, op: 'IN', val: [val] }] },
+          filterState: { value: [val] },
+        },
+      };
+    });
+
+    // Update metadata with computed filter configs
+    if (metadata) {
+      metadata.native_filter_configuration = filterConfig;
+    }
+
     const nativeFilters = getInitialNativeFilterState({
-      filterConfig: metadata?.native_filter_configuration || [],
+      filterConfig,
     });
 
     if (isFeatureEnabled(FeatureFlag.DASHBOARD_CROSS_FILTERS)) {
@@ -355,11 +381,29 @@ export const hydrateDashboard =
             FilterBarOrientation.VERTICAL,
           crossFiltersEnabled,
         },
-        dataMask,
+        dataMask: {
+          // Merge preselectNativeFilters (role-based factory defaults) into the
+          // initial dataMask so fillNativeFilters applies them on first load.
+          ...Object.entries(
+            dashboard.preselectNativeFilters || {},
+          ).reduce((acc, [filterId, preselect]) => {
+            acc[filterId] = {
+              id: filterId,
+              extraFormData: preselect.extraFormData || {},
+              filterState: preselect.filterState || {},
+              ownState: {},
+            };
+            return acc;
+          }, {}),
+          ...dataMask,
+        },
         dashboardFilters,
         nativeFilters,
         dashboardState: {
-          preselectNativeFilters: getUrlParam(URL_PARAMS.nativeFilters),
+          preselectNativeFilters:
+            getUrlParam(URL_PARAMS.nativeFilters) ||
+            dashboard.preselectNativeFilters ||
+            null,
           sliceIds: Array.from(sliceIds),
           directPathToChild,
           directPathLastUpdated: Date.now(),

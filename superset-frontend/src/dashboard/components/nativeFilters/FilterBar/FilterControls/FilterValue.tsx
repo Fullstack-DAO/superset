@@ -56,7 +56,7 @@ import { RESPONSIVE_WIDTH } from 'src/filters/components/common';
 import { FAST_DEBOUNCE } from 'src/constants';
 import { dispatchHoverAction, dispatchFocusAction } from './utils';
 import { FilterControlProps } from './types';
-import { getFormData } from '../../utils';
+import { getFormData, mergeExtraFormData } from '../../utils';
 import { useFilterDependencies } from './state';
 import { useFilterOutlined } from '../useFilterOutlined';
 
@@ -146,7 +146,20 @@ const FilterValue: React.FC<FilterControlProps> = ({
     const newFormData = getFormData({
       ...filter,
       datasetId,
-      dependencies,
+      dependencies: mergeExtraFormData(
+        dependencies,
+        (filter as any).preselect?.availableFactories?.length
+          ? {
+              filters: [
+                {
+                  col: (filter.targets?.[0]?.column as any)?.name,
+                  op: 'IN',
+                  val: (filter as any).preselect.availableFactories,
+                },
+              ],
+            }
+          : {},
+      ),
       groupby,
       adhoc_filters,
       time_range,
@@ -288,9 +301,16 @@ const FilterValue: React.FC<FilterControlProps> = ({
   const filterState = useMemo(
     () => ({
       ...filter.dataMask?.filterState,
+      ...(filter as any).preselect?.filterState,
+      ...dataMaskSelected[id]?.filterState,
       validateStatus,
     }),
-    [filter.dataMask?.filterState, validateStatus],
+    [
+      filter.dataMask?.filterState,
+      (filter as any).preselect?.filterState,
+      dataMaskSelected[id]?.filterState,
+      validateStatus,
+    ],
   );
 
   const displaySettings = useMemo(

@@ -16,6 +16,8 @@
 # under the License.
 import json
 import logging
+import time
+from datetime import datetime, timedelta
 from typing import Any, Optional, Union
 from urllib import request
 from urllib.error import URLError
@@ -296,6 +298,89 @@ def cache_warmup(
     return results
 
 
+def _extract_default_values(f: dict[str, Any]) -> list:
+    """Extract a filter's configured default value(s) from defaultDataMask."""
+    ddm = f.get("defaultDataMask", {}) or {}
+    for clause in ddm.get("extraFormData", {}).get("filters", []) or []:
+        val = clause.get("val")
+        if val is not None:
+            return val if isinstance(val, list) else [val]
+    val = (ddm.get("filterState", {}) or {}).get("value")
+    if val is not None:
+        return val if isinstance(val, list) else [val]
+    return []
+
+
+def _extract_preheat_overrides(
+    dashboard: Dashboard,
+) -> list[Optional[dict[str, list]]]:
+    """Scan native_filter_configuration and build preheat override combinations.
+
+    Each returned element is an ``override_values`` dict mapping filter_id to a
+    list of filter clauses. Filters NOT present in a dict fall back to their own
+    ``defaultDataMask`` automatically (handled by ChartWarmUpCacheCommand), so
+    e.g. 年度=2025 is applied to every combination without being listed here.
+
+    Combination rules:
+      - relative-date filters (preheatRelative, e.g. 月份) → applied to EVERY
+        combination as a static override.
+      - role-factory filter (preheatRoleDefaults, e.g. 工厂) → ONE combination
+        per role (the role's full factory list as a single ``IN`` clause),
+        PLUS one combination for the filter's own configured default value.
+
+    With no preheat config, returns ``[None]`` (single no-override pass,
+    preserving the original behaviour).
+    """
+    try:
+        metadata = json.loads(dashboard.json_metadata or "{}")
+    except json.JSONDecodeError:
+        return [None]
+
+    last_month = datetime.now().replace(day=1) - timedelta(days=1)
+
+    static_overrides: dict[str, list] = {}
+    # (filter_id, col_name, role_defaults, default_vals)
+    role_filter: Optional[tuple[str, str, dict, list]] = None
+
+    for f in metadata.get("native_filter_configuration", []):
+        fid = f.get("id", "")
+        col = (f.get("targets") or [{}])[0].get("column") or {}
+        col_name = col.get("name", "") if isinstance(col, dict) else str(col)
+
+        if role_defaults := f.get("preheatRoleDefaults"):
+            role_filter = (fid, col_name, role_defaults, _extract_default_values(f))
+        elif relative := f.get("preheatRelative"):
+            val = last_month.month if relative == "last_month" else last_month.year
+            static_overrides[fid] = [{"col": col_name, "op": "IN", "val": [val]}]
+
+    if not role_filter:
+        return [static_overrides] if static_overrides else [None]
+
+    fid, col_name, role_defaults, default_vals = role_filter
+    combos: list[Optional[dict[str, list]]] = []
+    seen: set[tuple] = set()
+
+    def add_combo(vals: list) -> None:
+        if not vals:
+            return
+        key = tuple(sorted(str(v) for v in vals))
+        if key in seen:
+            return
+        seen.add(key)
+        overrides = dict(static_overrides)
+        overrides[fid] = [{"col": col_name, "op": "IN", "val": list(vals)}]
+        combos.append(overrides)
+
+    # one combination per role (full factory list kept together as one IN)
+    for vals in role_defaults.values():
+        add_combo(vals)
+    # plus the filter's own configured default value
+    add_combo(default_vals)
+
+    return combos or [None]
+
+
+
 @celery_app.task(name="dashboard-cache-warmup")
 def dashboard_cache_warmup(
     dashboard_ids: Optional[list[int]] = None,
@@ -330,42 +415,69 @@ def dashboard_cache_warmup(
     else:
         dashboards = db.session.query(Dashboard).all()
 
+    task_start = time.monotonic()
+
     results: dict[str, list[dict[str, Any]]] = {"success": [], "errors": []}
 
     for dashboard in dashboards:
+        t0 = time.monotonic()
         logger.info(
-            "Warming up cache for dashboard %d (%s)",
+            "Dashboard %d (%s): 开始预热",
             dashboard.id,
             dashboard.dashboard_title,
         )
-        for chart in dashboard.slices:
-            try:
-                result = ChartWarmUpCacheCommand(
-                    chart_or_id=chart,
-                    dashboard_id=dashboard.id,
-                    extra_filters=None,
-                    warm_up=True,
-                ).run()
-                logger.info(
-                    "Chart %d warmup result: %s", chart.id, result.get("viz_status")
-                )
-                if result.get("viz_error"):
-                    results["errors"].append(result)
-                else:
-                    results["success"].append(result)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    "Error warming up chart %d in dashboard %d",
-                    chart.id,
-                    dashboard.id,
-                )
-                results["errors"].append(
-                    {"chart_id": chart.id, "dashboard_id": dashboard.id}
-                )
+        # Each element is an override_values dict (or None) representing one
+        # preheat combination: one per role + one for the filter's own default,
+        # each carrying the relative-date (月份) and falling back to other
+        # filters' defaults (年度) automatically.
+        override_list = _extract_preheat_overrides(dashboard)
+        logger.info(
+            "Dashboard %d: %d preheat combination(s) × %d chart(s)",
+            dashboard.id,
+            len(override_list),
+            len(dashboard.slices),
+        )
+
+        for override_values in override_list:
+            for chart in dashboard.slices:
+                try:
+                    result = ChartWarmUpCacheCommand(
+                        chart_or_id=chart,
+                        dashboard_id=dashboard.id,
+                        extra_filters=None,
+                        warm_up=True,
+                        override_values=override_values,
+                    ).run()
+                    logger.info(
+                        "Chart %d warmup result: %s", chart.id, result.get("viz_status")
+                    )
+                    if result.get("viz_error"):
+                        results["errors"].append(result)
+                    else:
+                        results["success"].append(result)
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception(
+                        "Error warming up chart %d in dashboard %d",
+                        chart.id,
+                        dashboard.id,
+                    )
+                    results["errors"].append(
+                        {"chart_id": chart.id, "dashboard_id": dashboard.id}
+                    )
+
+        logger.info(
+            "Dashboard %d (%s): 预热完成，耗时 %.1fs（成功 %d，失败 %d）",
+            dashboard.id,
+            dashboard.dashboard_title,
+            time.monotonic() - t0,
+            len(results["success"]),
+            len(results["errors"]),
+        )
 
     logger.info(
-        "Dashboard cache warmup complete: %d success, %d errors",
+        "Dashboard cache warmup complete: %d success, %d errors, 总耗时 %.1fs",
         len(results["success"]),
         len(results["errors"]),
+        time.monotonic() - task_start,
     )
     return results

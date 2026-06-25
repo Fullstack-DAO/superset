@@ -18,7 +18,7 @@
 import functools
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timedelta
 from io import BytesIO
 from typing import Any, Callable, cast, Optional
 from zipfile import is_zipfile, ZipFile
@@ -106,6 +106,73 @@ from superset.views.filters import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _build_preselect_native_filters(dashboard: "Dashboard") -> dict[str, Any]:
+    """Return preselectNativeFilters for the current user based on preheatRoleDefaults.
+
+    - extraFormData / filterState: FIRST matching role's factory (hits preheat cache)
+    - availableFactories: union of ALL matching roles' factories (options list scope)
+    """
+    try:
+        metadata = json.loads(dashboard.json_metadata or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+    current_user = get_current_user_object()
+    if not current_user:
+        return {}
+
+    user_roles = {r.name for r in getattr(current_user, "roles", [])}
+    result: dict[str, Any] = {}
+
+    last_month = datetime.now().replace(day=1) - timedelta(days=1)
+
+    for f in metadata.get("native_filter_configuration", []):
+        col = (f.get("targets") or [{}])[0].get("column") or {}
+        col_name = col.get("name", "") if isinstance(col, dict) else str(col)
+
+        if relative := f.get("preheatRelative"):
+            val = last_month.month if relative == "last_month" else last_month.year
+            result[f["id"]] = {
+                "extraFormData": {
+                    "filters": [{"col": col_name, "op": "IN", "val": [val]}]
+                },
+                "filterState": {"value": [val]},
+            }
+            continue
+
+        role_defaults = f.get("preheatRoleDefaults")
+        if not role_defaults:
+            continue
+
+        available: list[str] = []
+        first_role_factories: list[str] = []  # complete factory set of first matching role
+
+        for role_name, factory_val in role_defaults.items():
+            if role_name not in user_roles:
+                continue
+            # factory_val may be list (multi) or string (single) — backward compat
+            factories = [v for v in (factory_val if isinstance(factory_val, list) else [factory_val]) if v]
+            if not first_role_factories:
+                first_role_factories = factories  # use entire first role's factory set
+            for v in factories:
+                if v not in available:
+                    available.append(v)
+
+        if not available:
+            continue
+
+        initial = first_role_factories if first_role_factories else available[:1]
+        result[f["id"]] = {
+            "extraFormData": {
+                "filters": [{"col": col_name, "op": "IN", "val": initial}]
+            },
+            "filterState": {"value": initial},
+            "availableFactories": available,
+        }
+
+    return result
 
 
 def with_dashboard(
@@ -340,6 +407,7 @@ class DashboardRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/404'
         """
         result = self.dashboard_get_response_schema.dump(dash)
+        result["preselectNativeFilters"] = _build_preselect_native_filters(dash)
         add_extra_log_payload(
             dashboard_id=dash.id, action=f"{self.__class__.__name__}.get"
         )

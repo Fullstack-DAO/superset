@@ -144,6 +144,26 @@ export const createHandleSave =
           sortMetric: formInputs.sortMetric,
           type: formInputs.type,
           description: (formInputs.description || '').trim(),
+          preheatRoleDefaults: (() => {
+            const rows = formInputs.preheatRoleDefaultsList || [];
+            const result: Record<string, string[]> = {};
+            rows.forEach(
+              (item: { role?: string; factories?: string | string[] }) => {
+                const role = item?.role?.trim();
+                if (role) {
+                  const f = item.factories;
+                  result[role] = Array.isArray(f)
+                    ? f.filter(Boolean)
+                    : (f || '')
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(Boolean);
+                }
+              },
+            );
+            return Object.keys(result).length ? result : undefined;
+          })(),
+          preheatRelative: formInputs.preheatRelative || undefined,
         };
       });
 

@@ -406,14 +406,22 @@ def dashboard_cache_warmup(
     )
     flask_g.user = user
 
+    # 只对已发布的仪表盘进行预热查询
     if dashboard_ids:
         dashboards = (
             db.session.query(Dashboard)
-            .filter(Dashboard.id.in_(dashboard_ids))
+            .filter(
+                Dashboard.id.in_(dashboard_ids),
+                Dashboard.published.is_(True),
+            )
             .all()
         )
     else:
-        dashboards = db.session.query(Dashboard).all()
+        dashboards = (
+            db.session.query(Dashboard)
+            .filter(Dashboard.published.is_(True))
+            .all()
+        )
 
     task_start = time.monotonic()
 

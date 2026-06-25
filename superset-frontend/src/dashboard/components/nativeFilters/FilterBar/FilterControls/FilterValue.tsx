@@ -302,13 +302,13 @@ const FilterValue: React.FC<FilterControlProps> = ({
     () => ({
       ...filter.dataMask?.filterState,
       ...(filter as any).preselect?.filterState,
-      ...(dataMaskSelected[id]?.filterState || {}),
+      ...(dataMaskSelected?.[id]?.filterState || {}),
       validateStatus,
     }),
     [
       filter.dataMask?.filterState,
       (filter as any).preselect?.filterState,
-      dataMaskSelected[id]?.filterState,
+      dataMaskSelected?.[id]?.filterState,
       validateStatus,
     ],
   );

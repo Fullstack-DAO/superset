@@ -80,6 +80,31 @@ const fullSizeStyle = css`
   }
 `;
 
+const landscapeFullSizeStyle = css`
+  &&& {
+    position: fixed;
+    z-index: 3000;
+    width: 100vh !important;
+    height: 100vw !important;
+    left: calc(50vw - 50vh);
+    top: calc(50vh - 50vw);
+    margin: 0 !important;
+    padding: 16px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform: rotate(90deg);
+    transform-origin: center;
+    overflow: hidden;
+
+    .chart-container,
+    .chart-container .slice_container {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+`;
+
 const ChartContainer = styled.div`
   position: relative;
   width: 100%;
@@ -256,11 +281,20 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
     setIsMounted(true);
   }, []);
 
+  const shouldRotateFullSize =
+    isAppDashboard &&
+    isMobile &&
+    isFullSize &&
+    window.innerHeight > window.innerWidth;
+
   const { chartWidth, chartHeight } = useMemo(() => {
     let chartWidth = 0;
     let chartHeight = 0;
 
-    if (isFullSize) {
+    if (shouldRotateFullSize) {
+      chartWidth = window.innerHeight - CHART_MARGIN;
+      chartHeight = window.innerWidth - CHART_MARGIN;
+    } else if (isFullSize) {
       chartWidth = window.innerWidth - CHART_MARGIN;
       chartHeight = window.innerHeight - CHART_MARGIN;
     } else if (isMobile) {
@@ -286,6 +320,7 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
     component,
     isFullSize,
     isMobile,
+    shouldRotateFullSize,
     widthMultiple,
     theme.gridUnit,
     isBigNumber,
@@ -353,7 +388,13 @@ const ChartHolder: React.FC<ChartHolderProps> = ({
             ref={dragSourceRef}
             data-test="dashboard-component-chart-holder"
             style={focusHighlightStyles}
-            css={isFullSize ? fullSizeStyle : undefined}
+            css={
+              isFullSize
+                ? shouldRotateFullSize
+                  ? landscapeFullSizeStyle
+                  : fullSizeStyle
+                : undefined
+            }
             className={cx(
               'dashboard-component',
               'dashboard-component-chart-holder',
